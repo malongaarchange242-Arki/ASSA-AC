@@ -8,14 +8,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer } from 'ws';
-import detectPort from 'detect-port'; // à installer avec npm i detect-port
+
 
 
 // Routes imports
-import adminRoutes from './routes/admins.js';
+import adminRoutes from './Routes/admins.js';
 import companyRoutes from './Routes/compagnies.js';
 import factureRoutes from './routes/factureRoutes.js';
-import journalRoutes from './routes/journalActiviteRoutes.js';
+import journalRoutes from './Routes/journalActiviteRoutes.js';
 import authRoutes from './routes/auth.js';
 import messagesRoutesFactory from './routes/messages.js';
 import preuveRoutes from './routes/preuveRoutes.js';
@@ -137,19 +137,11 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================
-// LANCEMENT SERVEUR AVEC PORT AUTO
+// LANCEMENT SERVEUR POUR RENDER
 // ==========================
-const DEFAULT_PORT = parseInt(process.env.PORT) || 5002;
+const PORT = process.env.PORT || 5002;
 
-async function startServer(port) {
-  const freePort = await detectPort(port);
-  if (freePort !== port) {
-    console.warn(`⚠️  Port ${port} occupé. Utilisation du port libre ${freePort}`);
-  }
+server.listen(PORT, () => {
+  console.log(`🚀 Serveur HTTP+WS démarré sur le port ${PORT}`);
+});
 
-  server.listen(freePort, () => {
-    console.log(`🚀 Serveur HTTP+WS démarré sur le port ${freePort}`);
-  });
-}
-
-startServer(DEFAULT_PORT);
