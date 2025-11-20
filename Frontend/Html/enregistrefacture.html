@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Facture Redevance (Formulaire & Aperçu)</title>
+    <link rel="stylesheet" href="/Frontend/Css/enregistrefacture.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+</head>
+
+<body class="min-h-screen p-4 sm:p-8">
+    
+    <div class="bg-white p-6 sm:p-10 rounded-2xl shadow-xl max-w-5xl mx-auto border border-gray-100">
+        
+        <div id="form-area">
+            <h1 class="text-xl font-bold text-center text-primary mb-6">SAISIE DES DONNÉES DE FACTURE</h1>
+
+            <div id="form-message" class="text-center p-3 mb-6 hidden rounded-xl font-medium border transition-opacity duration-300"></div>
+
+            <form id="invoice-form" onsubmit="return false;">
+                
+                <fieldset class="formal-section">
+                    <legend class="text-base font-bold text-gray-700 mb-4 px-1">Références de la Facture</legend>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        
+                        <div>
+                            <label for="issue-location" class="block text-sm font-bold text-primary mb-1">Fait à</label>
+                            <input type="text" id="issue-location" class="form-input" value="N'Djamena" placeholder="Ex: N'Djamena">
+                        </div>
+                        <div>
+                            <label for="client-name" class="block text-sm font-bold text-gray-700 mb-1">Client <span class="text-red-500">*</span></label>
+                            <select id="client-name" required class="form-select">
+                                <option value="" disabled selected>Sélectionner un client</option>
+                                <option value="Asky">Asky</option>
+                                <option value="Camerco">Camerco</option>
+                                <option value="Air France">Air France</option>
+                                <option value="Ethiopian Airlines">Ethiopian Airlines</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="airport" class="block text-sm font-bold text-gray-700 mb-1">Aéroport</label>
+                            <input type="text" id="airport" class="form-input" placeholder="Ex: Aéroport International Malabo">
+                        </div>
+
+                        <div class="hidden"> 
+                            <input type="text" id="invoice-id" class="form-input" readonly value="">
+                            <input type="date" id="issue-date" class="form-input" readonly>
+                            <input type="text" id="purpose" class="form-input" value="Redevance de Sécurité Aérienne Régionale (RSAR)" readonly>
+                            <input type="text" id="period" class="form-input" readonly>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="formal-section">
+                    <legend class="text-base font-bold text-gray-700 mb-4 px-1 flex justify-between w-full pr-6 items-center">
+                        Articles de Redevance
+                        <button type="button" id="table-add-button" onclick="addItemRow()" class="hidden"></button>
+                    </legend>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-300 border border-formal-border">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-2 py-2 text-center text-xs font-bold uppercase tracking-wider text-gray-700 w-12 border-r border-formal-border header-numero">N°</th>
+                                    <th class="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-700 w-1/4 border-r border-formal-border header-designation">Désignation</th>
+                                    <th class="px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-gray-700 w-1/3 border-r border-formal-border">Nbre Passagers / Vols</th>
+                                    <th class="px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-gray-700 w-1/3 border-r border-formal-border">Zone</th>
+                                    <th class="px-3 py-2 text-right text-xs font-bold uppercase tracking-wider text-gray-700 w-1/3">Coût Total (Frs)</th>
+                                    <th class="px-1 py-2 text-xs font-bold uppercase tracking-wider text-gray-700 w-10 header-delete">Suppr.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-container" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t border-formal-border">
+                                <tr>
+                                    <td colspan="2" class="col-designation"></td> 
+                                    <td colspan="2" class="px-3 py-2 text-right text-sm font-extrabold uppercase text-primary">TOTAL</td> 
+                                    <td id="grand-total" class="px-3 py-2 text-right text-base font-extrabold text-primary">0 Frs CFA</td>
+                                    <td class="col-delete"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <p id="total-in-words" class="mt-4 text-sm font-semibold text-gray-800 italic"></p>
+
+                </fieldset>
+
+                <div class="mt-6 flex justify-end space-x-4">
+                    <button type="button" onclick="showPreview()" id="preview-button" class="w-full sm:w-1/3 py-3 bg-blue-600 text-white font-semibold text-lg rounded-xl hover:bg-blue-700 transition duration-150 shadow-lg">
+                        Aperçu de la Facture
+                    </button>
+                </div>
+            </form>
+
+            <button onclick="addItemRow()" id="fab-add-button" class="fab-button" title="Ajouter une nouvelle ligne">
+                +
+            </button>
+        </div>
+        
+        <div id="modal-wrapper" class="hidden">
+            <div id="modal-overlay" onclick="showForm()"></div>
+            <div id="modal-container">
+                <div id="modal-content">
+                    
+                    <div id="preview-area" class="p-0">
+                        <div id="preview-content">
+                            </div>
+                    </div>
+                    
+                    <div class="text-center p-6 bg-gray-50 border-t">
+                        <button type="button" onclick="showForm()" id="back-button" class="py-2 px-6 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-700 transition duration-150 shadow-lg">
+                            Retour
+                        </button>
+                        <button type="button" onclick="sendInvoice()" id="send-button" class="ml-4 py-2 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition duration-150 shadow-lg">
+                            Envoyer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+
+
+    <script>
+        const CURRENCY = 'Frs CFA';
+        const itemsContainer = document.getElementById('items-container');
+        const grandTotalSpan = document.getElementById('grand-total');
+        const totalInWords = document.getElementById('total-in-words');
+        const formMessage = document.getElementById('form-message');
+        
+        const modalWrapper = document.getElementById('modal-wrapper');
+        const modalContainer = document.getElementById('modal-container'); 
+        const previewContent = document.getElementById('preview-content');
+        
+        const invoiceIdInput = document.getElementById('invoice-id');
+        let rowCounter = 0;
+        const PRICE_CEMAC = 1000;
+        const PRICE_HORS_CEMAC = 1500;
+        let currentInvoiceData = null;
+        
+      
+        let companiesData = {}; // Mapping: company_name -> { id, airport, city }
+        
+        // ======================= Utilitaires =======================
+        function formatNumber(number) {
+            return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+        }
+        
+        function numberToWords(n) {
+            n = Math.round(n);
+            if (n === 0) return "ZÉRO";
+        
+            const units = ['', 'Un', 'Deux', 'Trois', 'Quatre', 'Cinq', 'Six', 'Sept', 'Huit', 'Neuf'];
+            const special = ['Dix', 'Onze', 'Douze', 'Treize', 'Quatorze', 'Quinze', 'Seize', 'Dix-sept', 'Dix-huit', 'Dix-neuf'];
+            const tens = ['', 'Dix', 'Vingt', 'Trente', 'Quarante', 'Cinquante', 'Soixante', 'Quatre-vingt', 'Quatre-vingt-dix'];
+        
+            function converter(num) {
+                if (num === 0) return '';
+                if (num < 10) return units[num];
+                if (num < 20) return special[num - 10];
+                let result = '';
+                const dizaine = Math.floor(num / 10);
+                const unite = num % 10;
+                if (dizaine <= 6) {
+                    result += tens[dizaine];
+                    if (unite > 0) result += '-' + units[unite].replace('Un', 'un'); 
+                } else if (dizaine === 7) { 
+                    result += 'Soixante';
+                    result += unite === 0 ? '-Dix' : '-' + special[unite].toLowerCase();
+                } else if (dizaine === 8) { 
+                    result += tens[dizaine]; 
+                    if (unite > 0) result += '-' + units[unite].replace('Un', 'un');
+                } else if (dizaine === 9) { 
+                    result += 'Quatre-vingt-Dix';
+                    if (unite > 0) result += '-' + special[unite].toLowerCase();
+                }
+                return result.replace(/-un/g, '-un').replace('un', 'Un');
+            }
+        
+            function toHundreds(num) {
+                let result = '';
+                const centaine = Math.floor(num / 100);
+                const reste = num % 100;
+                if (centaine > 0) {
+                    result += (centaine === 1 && num < 200 ? 'Cent' : units[centaine] + ' Cent');
+                    if (centaine > 1 && reste === 0) result += 's'; 
+                    if (reste > 0 && num > 100) result += ' ';
+                }
+                result += converter(reste);
+                return result.trim();
+            }
+        
+            let words = [];
+            let r = n;
+            const scales = [
+                { unit: 1000000000, name: 'Milliard' },
+                { unit: 1000000, name: 'Million' },
+                { unit: 1000, name: 'Mille' }
+            ];
+        
+            for (const scale of scales) {
+                const part = Math.floor(r / scale.unit);
+                if (part > 0) {
+                    const partWords = toHundreds(part).trim();
+                    if (scale.name === 'Mille') {
+                        words.push((partWords === 'Un' ? '' : partWords) + ' Mille');
+                    } else {
+                        words.push(partWords + ' ' + scale.name + (part > 1 ? 'S' : ''));
+                    }
+                    r %= scale.unit;
+                }
+            }
+        
+            if (r > 0) words.push(toHundreds(r));
+            return words.join(' ').replace(/\s+/g, ' ').trim().toUpperCase();
+        }
+        
+        function getPriceByZone(zone) {
+            if (zone === 'CEMAC') return PRICE_CEMAC;
+            if (zone === 'HORS CEMAC') return PRICE_HORS_CEMAC;
+            return 0;
+        }
+        
+        // ======================= Lignes de facture =======================
+        function calculateTotals() {
+            let grandTotal = 0;
+            const rows = itemsContainer.querySelectorAll('tr');
+            rows.forEach(row => {
+                const qty = parseFloat(row.querySelector('input[name="qty"]')?.value) || 0;
+                const selectedZone = row.querySelector('select[name="zone"]')?.value; 
+                const price = getPriceByZone(selectedZone); 
+                row.querySelector('input[name="price_value"]').value = price;
+        
+                const lineTotal = qty * price;
+                grandTotal += lineTotal;
+        
+                const totalSpan = row.querySelector('span[name="line-total-value"]');
+                totalSpan.textContent = formatNumber(lineTotal) + ' ' + CURRENCY; 
+            });
+            grandTotalSpan.textContent = formatNumber(grandTotal) + ' ' + CURRENCY;
+            totalInWords.textContent = `Arrêtée la présente facture à la somme de ${numberToWords(Math.round(grandTotal))} (${formatNumber(Math.round(grandTotal))}) ${CURRENCY}.`;
+        }
+        
+        function addItemRow() {
+            rowCounter++;
+            const newRow = document.createElement('tr');
+            newRow.className = "hover:bg-gray-50 transition duration-100";
+            newRow.innerHTML = `
+                <td class="px-2 py-2 text-center text-sm font-medium border-r border-formal-border col-numero">${rowCounter}</td>
+                <td class="px-3 py-2 border-r border-formal-border col-designation">
+                    <input type="text" name="designation" class="form-input bg-gray-200" value="Redevance de Sécurité Aérienne" readonly required>
+                </td>
+                <td class="px-3 py-2 border-r border-formal-border">
+                    <input type="number" name="qty" oninput="calculateTotals()" class="form-input text-center" value="1" min="0" required>
+                </td>
+                <td class="px-3 py-2 border-r border-formal-border">
+                    <select name="zone" onchange="calculateTotals()" class="form-select text-sm p-1.5 w-full" required>
+                        <option value="" selected disabled>Choisir la Zone</option>
+                        <option value="CEMAC">CEMAC</option>
+                        <option value="HORS CEMAC">HORS CEMAC</option>
+                    </select>
+                    <input type="hidden" name="price_value" value="0"> 
+                </td>
+                <td class="px-3 py-2 line-total-cell">
+                    <div class="flex flex-col items-end">
+                        <span name="line-total-value" class="font-bold text-base text-primary">0 ${CURRENCY}</span>
+                    </div>
+                </td>
+                <td class="px-1 py-2 text-center col-delete">
+                    <button type="button" onclick="removeItemRow(this)" class="text-danger hover:text-red-700 transition duration-150">x</button>
+                </td>
+            `;
+            itemsContainer.appendChild(newRow);
+            calculateTotals();
+        }
+        
+        function removeItemRow(button) {
+            if (itemsContainer.children.length <= 1) {
+                alert("Vous devez conserver au moins une ligne de redevance (RSAR).");
+                return;
+            }
+            button.closest('tr').remove();
+            calculateTotals();
+        }
+        
+        // ======================= Gestion clients =======================
+
+
+async function loadClients() {
+    const select = document.getElementById('client-name');
+    select.innerHTML = '<option value="" disabled selected>Sélectionner un client</option>';
+    try {
+        const token = localStorage.getItem('jwtTokenAdmin');
+        const response = await fetch('http://localhost:5002/api/companies/all', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Impossible de récupérer les compagnies');
+        const { companies } = await response.json();
+
+        companies.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.company_name;
+            option.textContent = c.company_name;
+            select.appendChild(option);
+
+            // Stocker l'ID et les infos pour auto-remplissage
+            companiesData[c.company_name] = {
+                id: c.id,
+                airport: c.airport_code || '',
+                city: c.city || ''
+            };
+        });
+    } catch(e) { 
+        console.error(e); 
+        alert('Erreur: impossible de charger les compagnies.'); 
+    }
+}
+
+document.getElementById('client-name').addEventListener('change', e => {
+    const selected = e.target.value;
+    if (companiesData[selected]) {
+        document.getElementById('airport').value = companiesData[selected].airport;
+        document.getElementById('issue-location').value = companiesData[selected].city || "N'Djamena";
+    }
+});
+
+// ======================= Collecte des données de la facture =======================
+function collectInvoiceData() {
+    const rows = itemsContainer.querySelectorAll('tr');
+    if (!rows.length) throw new Error("Veuillez ajouter au moins une ligne de facture.");
+
+    const selectedClient = document.getElementById('client-name').value;
+    if (!selectedClient || !companiesData[selectedClient]) {
+        throw new Error("Veuillez sélectionner un client valide.");
+    }
+
+    const lineItems = Array.from(rows).map((row, idx) => {
+        const qty = parseFloat(row.querySelector('input[name="qty"]').value) || 0;
+        const price = parseFloat(row.querySelector('input[name="price_value"]').value) || 0;
+        const zone = row.querySelector('select[name="zone"]').value;
+        if (price === 0) throw new Error(`Veuillez sélectionner la Zone/Coût pour la ligne N° ${idx + 1}.`);
+        return {
+            numero_ligne: idx + 1,
+            designation: "RSAR",
+            destination: zone,
+            nombre_passagers: qty,
+            cout_unitaire: price,
+            cout_total: qty * price
+        };
+    });
+
+    const total = lineItems.reduce((sum, i) => sum + i.cout_total, 0);
+
+    return {
+        numero_facture: invoiceIdInput.value,
+        nom_client: selectedClient,
+        id_companie: companiesData[selectedClient].id, 
+        objet: document.getElementById('purpose').value,
+        periode: document.getElementById('period').value,
+        aeroport: document.getElementById('airport').value,
+        date_emission: document.getElementById('issue-date').value,
+        lieu_emission: document.getElementById('issue-location').value || "N'Djamena",
+        montant_total: total,
+        devise: CURRENCY,
+        montant_en_lettres: totalInWords.textContent,
+        lignes: lineItems
+    };
+}
+
+        
+        function showPreview() {
+            try {
+                const data = collectInvoiceData();
+                currentInvoiceData = data; 
+                
+                const dateValue = document.getElementById('issue-date').value;
+                const emissionDateFormatted = new Date(dateValue + 'T12:00:00Z')
+                    .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+                
+                let itemsTable = data.lignes.map(item => `
+                    <tr>
+                        <td style="text-align: center;">${item.numero_ligne}</td>
+                        <td style="text-align: center;">${item.designation}</td>
+                        <td style="text-align: center;">${formatNumber(item.nombre_passagers)}</td>
+                        <td style="text-align: right;">${formatNumber(item.cout_unitaire)}</td>
+                        <td style="text-align: right; font-weight: bold;">${formatNumber(item.cout_total)}</td>
+                    </tr>
+                `).join('');
+        
+                const logoPlaceholder = `<div style="width: 80px; height: 80px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 9pt; color: #999;">[LOGO OEMA]</div>`;
+        
+                const previewHTML = `
+                    <div class="invoice-document" style="font-family: 'Times New Roman', Times, serif; color: #000; font-size: 11pt;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative;">
+                            <div style="line-height: 1.3; font-size: 9pt;">
+                                <p style="font-size: 10pt; font-weight: bold;">COMMUNAUTÉ ÉCONOMIQUE ET MONÉTAIRE DE L'AFRIQUE CENTRALE</p>
+                                <p>UNION ÉCONOMIQUE DE L'AFRIQUE CENTRALE</p>
+                                <p>AGENCE DE SUPERVISION DE LA SÉCURITÉ AÉRIENNE EN AFRIQUE CENTRALE</p>
+                                <p>ASSA-AC</p>
+                                <p class="direction-line">La Direction Générale</p>
+                            </div>
+                            <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 0;">
+                                ${logoPlaceholder}
+                            </div>
+                            <div style="width: 300px; border: 1.5px solid #000; padding: 10px; line-height: 1.3; font-size: 9pt; font-style: italic;">
+                                <p>Vision CEMAC 2025 : "Faire de la CEMAC en 2025 un espace économique intégré et émergent, où règneront la sécurité, la solidarité et la bonne gouvernance, au service du développement humain."</p>
+                            </div>
+                        </div>
+        
+                        <h2 class="invoice-title">FACTURE ${data.numero_facture}</h2>
+        
+                        <div class="client-details">
+                            <p><strong style="display: inline-block; width: 80px; font-weight: bold;">Client</strong> : ${data.nom_client}</p>
+                            <p><strong style="display: inline-block; width: 80px; font-weight: bold;">Pour</strong> : ${data.objet}</p>
+                            <p><strong style="display: inline-block; width: 80px; font-weight: bold;">Période</strong> : ${data.periode}</p>
+                            <p><strong style="display: inline-block; width: 80px; font-weight: bold;">Aéroport</strong> : ${data.aeroport}</p>
+                        </div>
+                        
+                        <div class="preview-details">
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                                <thead>
+                                    <tr style="background-color: #f0f0f0;">
+                                        <th style="border: 1px solid #000; padding: 5px 8px; font-weight: bold;">N°</th>
+                                        <th style="border: 1px solid #000; padding: 5px 8px; font-weight: bold;">Désignation</th>
+                                        <th style="border: 1px solid #000; padding: 5px 8px; font-weight: bold;">Nbre de Passagers</th>
+                                        <th style="border: 1px solid #000; padding: 5px 8px; font-weight: bold;">Coût Unitaire</th>
+                                        <th style="border: 1px solid #000; padding: 5px 8px; font-weight: bold;">Coût Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsTable}
+                                    <tr class="total-row" style="font-weight: bold; border-top: 2px solid #000;">
+                                        <td colspan="4" style="border: 1px solid #000; padding: 5px 8px; text-align: left; padding-left: 10px;">TOTAL</td>
+                                        <td style="text-align: right; border: 1px solid #000; padding: 5px 8px;">${formatNumber(data.montant_total)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+        
+                        <p class="amount-in-words">${data.montant_en_lettres}</p>
+        
+                        <div class="signature-block">
+                            <div class="signature-info">
+                                <p class="signature-date">Fait à ${data.lieu_emission}, le ${emissionDateFormatted}</p>
+                                <div style="color: #ccc; font-size: 9pt; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: -1;">[CACHE ASSA-AC]</div>
+                                <p class="signature-title">Le Directeur Général</p>
+                                <p class="signature-name">Eugene APOMBI</p> 
+                            </div>
+                        </div>
+                        
+                        <div class="payment-conditions">
+                            <p style="font-weight: bold;">Conditions de paiement :</p>
+                            <ul style="list-style-type: disc; list-style-position: inside; margin-left: 1rem; margin-top: 0.5rem;">
+                                <li>Par virement bancaire suivant RIB joint en annexe, à trente jours échus ;</li>
+                                <li>Au-delà des trente jours une pénalité de 5% est facturée par tranche de 15 jours de retard ;</li>
+                                <li>Chaque quinzaine entamée est due.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+        
+                previewContent.innerHTML = previewHTML;
+                modalWrapper.classList.remove('hidden');
+                modalContainer.scrollTop = 0;
+        
+            } catch (error) {
+                showMessage(`Erreur de validation: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        function printPreview() {
+            if (!currentInvoiceData) return alert("Aucune facture à imprimer.");
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(previewContent.innerHTML);
+            printWindow.document.close();
+            printWindow.print();
+        }
+        
+        // ======================= Envoi =======================
+        async function sendInvoice() {
+    if (!currentInvoiceData) return alert("Générer un aperçu d'abord.");
+    try {
+        const token = localStorage.getItem('jwtTokenAdmin');
+        const response = await fetch('http://localhost:5002/api/factures', {
+            method: 'POST',
+            headers: { 
+                'Content-Type':'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify(currentInvoiceData)
+        });
+
+        if (!response.ok) throw new Error('Erreur lors de l’envoi de la facture');
+
+        showMessage("Facture envoyée avec succès !", 'success');
+
+        // Fermer le pop-up/modal
+        modalWrapper.classList.add('hidden');
+
+        // Réinitialiser le formulaire
+        document.getElementById('invoice-form').reset();
+        itemsContainer.innerHTML = '';
+        window.onload();
+
+        // Ouvrir la page messagerie
+        window.location.href = 'messagerieAdmin.html';
+
+    } catch(e) { 
+        showMessage(`Erreur: ${e.message}`, 'error'); 
+    }
+}
+
+        // ======================= Messages =======================
+        function showMessage(msg, type) {
+            formMessage.textContent = msg;
+            formMessage.className = 'text-center p-3 mb-6 rounded-xl font-medium border transition-opacity duration-300';
+            if (type === 'error') {
+                formMessage.classList.add('bg-red-50', 'text-red-800', 'border-red-500');
+            } else {
+                formMessage.classList.add('bg-green-50', 'text-green-800', 'border-green-500');
+            }
+            setTimeout(() => { formMessage.textContent = ''; formMessage.className = ''; }, 5000);
+        }
+        
+        // ======================= Initialisation =======================
+        async function fetchNextInvoiceId() {
+            try {
+                const token = localStorage.getItem('jwtTokenAdmin');
+                const response = await fetch('http://localhost:5002/api/factures/generate-ref', {
+                    headers:{ 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Impossible de générer la référence');
+                const data = await response.json();
+                invoiceIdInput.value = data.numero_facture;
+            } catch(e) {
+                console.error(e);
+                invoiceIdInput.value = 'N°XXXX/XX/XX/ASSA-AC/DAF';
+            }
+        }
+        
+        function getPreviousMonthPeriod() {
+            const date = new Date();
+            date.setDate(1);
+            date.setMonth(date.getMonth()-1);
+            const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+            return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        }
+        
+        window.onload = () => {
+            const today = new Date();
+            document.getElementById('issue-date').value = today.toISOString().split('T')[0];
+            document.getElementById('period').value = getPreviousMonthPeriod();
+            fetchNextInvoiceId();
+            loadClients();
+            showForm();
+            if (!itemsContainer.children.length) addItemRow();
+            else calculateTotals();
+        }
+        
+        function showForm() { modalWrapper.classList.add('hidden'); }
+        
+    </script>
+        
+</body>
+</html>
