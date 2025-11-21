@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const url = role === 'admin'
-                ? 'http://localhost:5002/api/admins/token/refresh'
-                : 'http://localhost:5002/api/companies/token/refresh';
+                ? 'https://assa-ac.onrender.com/api/admins/token/refresh'
+                : 'https://assa-ac.onrender.com/api/companies/token/refresh';
 
             const res = await fetch(url, {
                 method: 'POST',
@@ -72,8 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function chargerActivites() {
         try {
             const url = role === 'admin'
-                ? 'http://localhost:5002/api/journal/recent?limit=5'
-                : 'http://localhost:5002/api/companies/journal/recent?limit=5';
+                ? 'https://assa-ac.onrender.com/api/journal/recent?limit=5'
+                : 'https://assa-ac.onrender.com/api/companies/journal/recent?limit=5';
 
             const resData = await fetchAuth(url);
             const activites = Array.isArray(resData) ? resData : resData.activites || [];

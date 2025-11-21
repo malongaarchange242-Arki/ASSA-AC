@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!refreshToken) return false;
 
         try {
-            const res = await fetch('http://localhost:5002/api/admins/token/refresh', {
+            const res = await fetch('https://assa-ac.onrender.com/api/admins/token/refresh', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken })
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function chargerArchives() {
         try {
-            const archives = await fetchWithAuth('http://localhost:5002/api/archives');
+            const archives = await fetchWithAuth('https://assa-ac.onrender.com/api/archives');
             console.log('Archives reçues :', archives);
 
             if (!Array.isArray(archives)) {

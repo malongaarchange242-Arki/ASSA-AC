@@ -97,6 +97,17 @@
                 </div>
             </form>
 
+            <div class="text-center p-6 bg-gray-50 border-t flex justify-between">
+                <!-- Bouton Retour à gauche -->
+                <button type="button" 
+                        onclick="window.location.href='AccueilAdmin.html'" 
+                        id="back-button" 
+                        class="py-2 px-6 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-700 transition duration-150 shadow-lg">
+                    Retour
+                </button>
+            </div>
+            
+
             <button onclick="addItemRow()" id="fab-add-button" class="fab-button" title="Ajouter une nouvelle ligne">
                 +
             </button>
@@ -112,14 +123,14 @@
                             </div>
                     </div>
                     
-                    <div class="text-center p-6 bg-gray-50 border-t">
+                    <!-- <div class="text-center p-6 bg-gray-50 border-t">
                         <button type="button" onclick="showForm()" id="back-button" class="py-2 px-6 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-700 transition duration-150 shadow-lg">
                             Retour
                         </button>
                         <button type="button" onclick="sendInvoice()" id="send-button" class="ml-4 py-2 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition duration-150 shadow-lg">
                             Envoyer
                         </button>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>

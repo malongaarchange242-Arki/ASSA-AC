@@ -1,4 +1,4 @@
-// ======================= CONSTANTES ET RÉFÉRENCES DOM =======================
+// ======================= CONSTANTES =======================
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;
@@ -10,34 +10,30 @@ const formMessage = document.getElementById('form-message');
 
 const modalWrapper = document.getElementById('modal-wrapper');
 const previewContent = document.getElementById('preview-content');
-const formArea = document.getElementById('form-area'); 
 
 const invoiceIdInput = document.getElementById('invoice-id');
 const clientSelect = document.getElementById('client-name');
 
 let rowCounter = 0;
-let companiesData = { // Données initiales pour les exemples sans API
-    "Asky": { id: 1, airport: "LFW", city: "Lomé" },
-    "Camerco": { id: 2, airport: "NSI", city: "Yaoundé" },
-    "Air France": { id: 3, airport: "CDG", city: "Paris" },
-    "Ethiopian Airlines": { id: 4, airport: "ADD", city: "Addis-Abeba" },
-};
+let companiesData = {}; // mapping: company_name -> { id, airport, city }
 
 // ======================= UTILITAIRES =======================
 function showMessage(msg, type='info') {
     formMessage.textContent = msg;
-    formMessage.className = `text-center p-3 mb-6 rounded-xl font-medium border transition-opacity duration-300 ${type === 'error' ? 'bg-red-100 text-red-700 border-red-300' : 'bg-green-100 text-green-700 border-green-300'}`;
-    formMessage.classList.remove('hidden');
-    setTimeout(() => formMessage.classList.add('hidden'), 5000);
+    formMessage.className = `form-message ${type}`;
+    setTimeout(() => formMessage.textContent = '', 5000);
 }
 
 function getAdminToken() {
+    const token = localStorage.getItem('jwtTokenAdmin');
+    if (!token) throw new Error("Token admin manquant");
     try {
-        const token = localStorage.getItem('jwtTokenAdmin');
-        if (!token) throw new Error("Token admin manquant (Simulation)");
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now() / 1000;
+        if (payload.exp < now) throw new Error("Token expiré");
         return token;
     } catch (err) {
-        return null;
+        throw new Error("Token invalide");
     }
 }
 
@@ -45,13 +41,10 @@ function formatNumber(number) {
     return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
+// Convertit un nombre en lettres (simplifié)
 function numberToWords(n) {
-    // Implémentation SIMPLIFIÉE du montant en lettres
-    const units = ['', 'Un', 'Deux', 'Trois', 'Quatre', 'Cinq', 'Six', 'Sept', 'Huit', 'Neuf'];
-    const s = formatNumber(n);
-    if (n === 0) return "Zéro";
-    if (n > 1000000000) return s + " (Montant très élevé)"; 
-    return s.replace(/\s/g, ' ').trim() + " (Montant en chiffres)"; 
+    // Ici, tu peux remplacer par une vraie fonction en lettres si tu veux
+    return n;
 }
 
 function getPriceByZone(zone) {
@@ -60,20 +53,14 @@ function getPriceByZone(zone) {
     return 0;
 }
 
-// ======================= LIGNES ET CALCULS =======================
+// ======================= LIGNES =======================
 function calculateTotals() {
     let grandTotal = 0;
-    let currentLine = 0;
     itemsContainer.querySelectorAll('tr').forEach(row => {
-        currentLine++;
-        row.querySelector('td:first-child').textContent = currentLine; 
-        
         const qty = parseFloat(row.querySelector('input[name="qty"]')?.value) || 0;
         const zone = row.querySelector('select[name="zone"]')?.value;
         const price = getPriceByZone(zone);
-        
-        const priceInput = row.querySelector('input[name="price_value"]');
-        if (priceInput) priceInput.value = price;
+        row.querySelector('input[name="price_value"]').value = price;
 
         const lineTotal = qty * price;
         grandTotal += lineTotal;
@@ -83,15 +70,15 @@ function calculateTotals() {
     });
 
     grandTotalSpan.textContent = `${formatNumber(grandTotal)} ${CURRENCY}`;
-    const totalRounded = Math.round(grandTotal); 
-    totalInWords.textContent = `Arrêtée la présente facture à la somme de ${numberToWords(totalRounded)} (${formatNumber(totalRounded)}) ${CURRENCY}.`;
+    totalInWords.textContent = `Arrêtée la présente facture à la somme de ${numberToWords(Math.round(grandTotal))} (${formatNumber(Math.round(grandTotal))}) ${CURRENCY}.`;
 }
 
 function addItemRow() {
+    rowCounter++;
     const newRow = document.createElement('tr');
     newRow.className = "hover:bg-gray-50 transition duration-100";
     newRow.innerHTML = `
-        <td class="px-2 py-2 text-center text-sm font-medium border-r border-formal-border"></td> 
+        <td class="px-2 py-2 text-center text-sm font-medium border-r border-formal-border">${rowCounter}</td>
         <td class="px-3 py-2 border-r border-formal-border">
             <input type="text" name="designation" class="form-input bg-gray-200" value="Redevance de Sécurité Aérienne" readonly required>
         </td>
@@ -126,14 +113,35 @@ function removeItemRow(btn) {
     calculateTotals();
 }
 
-// ======================= GESTION CLIENTS ET RÉFÉRENCES =======================
-function loadClients() {
-    clientSelect.innerHTML = '<option value="" disabled selected>Sélectionner un client</option>';
-    for (const name in companiesData) {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        clientSelect.appendChild(opt);
+// ======================= CLIENTS =======================
+async function loadClients() {
+    try {
+        const token = getAdminToken();
+        const response = await fetch('https://assa-ac.onrender.com/api/companies/all', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error(`Erreur ${response.status}`);
+
+        const resData = await response.json();
+        const companies = resData.companies || resData;
+
+        clientSelect.innerHTML = '<option value="" disabled selected>Sélectionner un client</option>';
+        companies.filter(c => c.status === 'Actif').forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.company_name;
+            opt.textContent = c.company_name;
+            clientSelect.appendChild(opt);
+
+            companiesData[c.company_name] = {
+                id: c.id,
+                airport: c.airport_code || '',
+                city: c.city || ''
+            };
+        });
+    } catch (err) {
+        console.error(err);
+        showMessage('Erreur: impossible de charger les compagnies.', 'error');
     }
 }
 
@@ -145,33 +153,30 @@ clientSelect.addEventListener('change', e => {
     }
 });
 
+// ======================= NUMERO FACTURE =======================
 async function fetchNextInvoiceId() {
-    invoiceIdInput.value = 'N°1234/25/11/ASSA-AC/DAF';
+    try {
+        const token = getAdminToken();
+        const response = await fetch('https://assa-ac.onrender.com/api/factures/generate-ref', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Impossible de générer la référence');
+
+        const data = await response.json();
+        invoiceIdInput.value = data.numero_facture;
+    } catch (err) {
+        console.error(err);
+        invoiceIdInput.value = 'N°XXXX/XX/XX/ASSA-AC/DAF';
+        showMessage('Impossible de générer la référence. Vérifiez votre connexion.', 'error');
+    }
 }
 
-
-// ======================= GESTION NAVIGATION ET VUES =======================
-
-/**
- * Fonction liée au nouveau bouton 'Accueil' (Redirection).
- */
-function goToHomepage() {
-    window.location.href = '/dashboard'; 
-}
-
-/**
- * Fonction liée au bouton 'Retour' de la modale.
- */
-function showForm() {
-    modalWrapper.classList.add('hidden');
-    formArea.classList.remove('hidden'); 
-}
-
+// ======================= APERÇU =======================
 function validateForm() {
     const requiredInputs = document.querySelectorAll('#invoice-form [required]');
     for (const input of requiredInputs) {
-        if (!input.value || input.value === "" || (input.tagName === 'SELECT' && input.value === '')) {
-            showMessage(`Veuillez remplir le champ requis : ${document.querySelector(`label[for="${input.id}"]`)?.textContent || input.name}`, 'error');
+        if (!input.value || (input.tagName === 'SELECT' && input.value === '')) {
+            showMessage(`Veuillez remplir le champ requis : ${input.name}`, 'error');
             input.focus();
             return false;
         }
@@ -179,86 +184,194 @@ function validateForm() {
     return true;
 }
 
-/**
- * Fonction liée au bouton 'Aperçu de la Facture'.
- */
 function showPreview() {
-    if (!validateForm()) {
-        return;
-    }
-    
-    // Génération du contenu HTML de l'aperçu
-    previewContent.innerHTML = 
-        `<div class="invoice-document">
-            <p class="direction-line">Direction Générale</p>
-            <h2 class="invoice-title">FACTURE DE REDEVANCE N° ${invoiceIdInput.value}</h2>
-            <div class="client-details">
-                <p><strong>Client:</strong> ${clientSelect.value}</p>
-                <p><strong>Objet:</strong> ${document.getElementById('purpose').value}</p>
-                <p><strong>Période:</strong> ${document.getElementById('period').value}</p>
-            </div>
-            
-            <div class="preview-details">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 5%;">N°</th>
-                            <th style="width: 45%;">Désignation</th>
-                            <th style="width: 20%;">Quantité</th>
-                            <th style="width: 30%;">Montant Total (Frs)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${Array.from(itemsContainer.querySelectorAll('tr')).map((row, index) => {
-                            const designation = row.querySelector('input[name="designation"]')?.value;
-                            const qty = row.querySelector('input[name="qty"]')?.value;
-                            const total = row.querySelector('span[name="line-total-value"]')?.textContent;
-                            return `
-                                <tr>
-                                    <td>${index + 1}</td>
-                                    <td style="text-align: left;">${designation} - Zone ${row.querySelector('select[name="zone"]')?.value}</td>
-                                    <td>${qty}</td>
-                                    <td style="text-align: right;">${total}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3" style="text-align: right; font-weight: bold;">TOTAL À PAYER</td>
-                            <td style="text-align: right; font-weight: bold;">${grandTotalSpan.textContent}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+    if (!validateForm()) return;
 
-            <p class="amount-in-words">${totalInWords.textContent}</p>
+    try {
+        // Générer les lignes de la facture
+        const itemsHTML = Array.from(itemsContainer.querySelectorAll('tr')).map((row, idx) => {
+            const designation = row.querySelector('input[name="designation"]').value;
+            const qty = row.querySelector('input[name="qty"]').value;
+            const zone = row.querySelector('select[name="zone"]').value;
+            const total = row.querySelector('span[name="line-total-value"]').textContent;
+            return `<tr>
+                <td class="text-center px-2 py-1 border">${idx + 1}</td>
+                <td class="px-2 py-1 border">${designation}</td>
+                <td class="text-center px-2 py-1 border">${qty}</td>
+                <td class="text-center px-2 py-1 border">${zone}</td>
+                <td class="text-right px-2 py-1 border font-bold">${total}</td>
+            </tr>`;
+        }).join('');
 
-            <div class="signature-block">
-                <div class="signature-info">
-                    <p class="signature-date">Fait à ${document.getElementById('issue-location').value}, le ${new Date().toLocaleDateString('fr-FR')}</p>
-                    <p class="signature-title">Le Directeur Général</p>
+        // HTML complet de l'aperçu
+        const previewHTML = `
+        <div class="p-6 font-sans text-gray-800" style="max-width:800px; margin:auto; background:white; border:1px solid #ccc;">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold">ASSA-AC</h1>
+                    <p>Direction Administrative et Financière</p>
+                    <p>N'Djamena, Tchad</p>
+                    <p>Email: contact@assa-ac.com</p>
+                </div>
+                <div class="text-right">
+                    <h2 class="text-xl font-semibold">FACTURE</h2>
+                    <p><strong>N°:</strong> ${invoiceIdInput.value}</p>
+                    <p><strong>Date:</strong> ${document.getElementById('issue-date').value}</p>
+                    <p><strong>Période:</strong> ${document.getElementById('period').value}</p>
                 </div>
             </div>
-            <div class="payment-conditions">
-                <p>Conditions de paiement : Net à 30 jours à réception.</p>
+
+            <div class="mb-4">
+                <h3 class="font-semibold mb-1">Facturé à :</h3>
+                <p><strong>Client:</strong> ${clientSelect.value}</p>
+                <p><strong>Aéroport:</strong> ${document.getElementById('airport').value}</p>
+                <p><strong>Lieu d'émission:</strong> ${document.getElementById('issue-location').value}</p>
             </div>
 
-        </div>`;
-    
-    formArea.classList.add('hidden');
-    modalWrapper.classList.remove('hidden');
+            <table class="w-full border-collapse mb-4 text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border px-2 py-1">N°</th>
+                        <th class="border px-2 py-1">Désignation</th>
+                        <th class="border px-2 py-1">Quantité</th>
+                        <th class="border px-2 py-1">Zone</th>
+                        <th class="border px-2 py-1">Total</th>
+                    </tr>
+                </thead>
+                <tbody>${itemsHTML}</tbody>
+            </table>
+
+            <div class="flex justify-end mb-4">
+                <div class="text-right">
+                    <p class="text-lg font-bold">Total Général: ${grandTotalSpan.textContent}</p>
+                    <p class="text-sm italic">${totalInWords.textContent}</p>
+                </div>
+            </div>
+
+            <div class="mt-4 p-3 border-t border-gray-300 text-sm text-gray-700">
+                <strong>Conditions de paiement :</strong>
+                <ul class="list-disc ml-5">
+                    <li>Par virement bancaire suivant RIB joint en annexe, à trente jours échus ;</li>
+                    <li>Au-delà des trente jours, une pénalité de 5% est facturée par tranche de 15 jours de retard ;</li>
+                    <li>Chaque quinzaine entamée est due.</li>
+                </ul>
+            </div>
+
+            <p class="mt-6 text-center text-gray-600 text-sm">Merci pour votre confiance. Cette facture est générée électroniquement et est valide sans signature.</p>
+
+            <div class="mt-4 flex justify-center gap-2">
+                <button onclick="closePreview()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Retour</button>
+                <button onclick="sendInvoice()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Envoyer</button>
+                <button onclick="printPreview()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Imprimer</button>
+            </div>
+        </div>
+        `;
+
+        previewContent.innerHTML = previewHTML;
+        modalWrapper.classList.remove('hidden');
+        modalWrapper.scrollTop = 0;
+
+    } catch (error) {
+        showMessage(`Erreur de validation: ${error.message}`, 'error');
+        console.error(error);
+    }
 }
 
-function sendInvoice() {
-    alert("Fonction d'envoi de la facture vers le backend déclenchée.");
+function printPreview() {
+    try {
+        // Vérifie qu’il y a un aperçu
+        if (!previewContent.innerHTML.trim()) {
+            return alert("Aucune facture à imprimer.");
+        }
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Facture ${invoiceIdInput.value}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th, td { border: 1px solid #333; padding: 5px; text-align: center; }
+                    th { background-color: #f0f0f0; }
+                    .text-end { text-align: right; }
+                </style>
+            </head>
+            <body>
+                ${previewContent.innerHTML}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    } catch (err) {
+        console.error(err);
+        alert("Impossible d'imprimer la facture.");
+    }
 }
 
 
-// ======================= INITIALISATION DU DOCUMENT =======================
+function closePreview() {
+    modalWrapper.classList.add('hidden');
+}
+
+
+// ======================= ENVOI =======================
+async function sendInvoice() {
+    if (!validateForm()) return;
+
+    const items = Array.from(itemsContainer.querySelectorAll('tr')).map(row => ({
+        designation: row.querySelector('input[name="designation"]').value,
+        qty: parseFloat(row.querySelector('input[name="qty"]').value),
+        zone: row.querySelector('select[name="zone"]').value,
+        price: parseFloat(row.querySelector('input[name="price_value"]').value)
+    }));
+
+    // Calculer le total numérique
+    const totalNumeric = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+
+    const invoiceData = {
+        invoice_id: invoiceIdInput.value || 'N°XXXX/XX/XX/ASSA-AC/DAF',
+        nom_client: clientSelect.value,       // Obligatoire
+        period: document.getElementById('period')?.value || '',
+        issue_date: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
+        items,
+        montant_total: totalNumeric,          // ✅ Total numérique pour PostgreSQL
+        currency: CURRENCY,
+        statut: 'Impayée'
+    };
+
+    console.log('Invoice payload:', invoiceData); // Pour debug
+
+    try {
+        const token = getAdminToken();
+        const response = await fetch('https://assa-ac.onrender.com/api/factures', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(invoiceData)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(`Erreur ${response.status}: ${JSON.stringify(errData)}`);
+        }
+
+        showMessage('Facture envoyée avec succès !', 'success');
+        closePreview();
+    } catch (err) {
+        console.error('Erreur lors de l’envoi de la facture:', err);
+        showMessage('Erreur lors de l’envoi de la facture.', 'error');
+    }
+}
+
+
+// ======================= INITIALISATION =======================
 window.onload = () => {
     try {
-        getAdminToken(); 
+        getAdminToken();
 
         const today = new Date();
         document.getElementById('issue-date').value = today.toISOString().split('T')[0];
@@ -271,8 +384,6 @@ window.onload = () => {
         else calculateTotals();
 
         modalWrapper.classList.add('hidden');
-        formArea.classList.remove('hidden');
-
     } catch (err) {
         console.error(err);
         showMessage('Erreur d\'initialisation: ' + err.message, 'error');

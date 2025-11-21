@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEmail = email;
 
         try {
-            const res = await fetch('http://localhost:5002/api/auth/check-email', {
+            const res = await fetch('https://assa-ac.onrender.com/api/auth/check-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================
     async function requestOtp() {
         try {
-            const res = await fetch('http://localhost:5002/api/companies/otp/request', {
+            const res = await fetch('https://assa-ac.onrender.com/api/companies/otp/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail })
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const data = await fetchWithAuth(
-                'http://localhost:5002/api/companies/otp/validate',
+                'https://assa-ac.onrender.com/api/companies/otp/validate',
                 { method: 'POST', body: JSON.stringify({ email: currentEmail, otp, password }) }
             );
 
@@ -214,8 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let url;
             let isCompany = false;
-            if (currentRole === 'admin' || currentRole === 'supervisor') url = 'http://localhost:5002/api/admins/login';
-            else if (currentRole === 'company') { url = 'http://localhost:5002/api/companies/login'; isCompany = true; }
+            if (currentRole === 'admin' || currentRole === 'supervisor') url = 'https://assa-ac.onrender.com/api/admins/login';
+            else if (currentRole === 'company') { url = 'https://assa-ac.onrender.com/api/companies/login'; isCompany = true; }
             else return alert('Role inconnu.');
 
             const res = await fetch(url, {

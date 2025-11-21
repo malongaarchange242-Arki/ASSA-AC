@@ -5,7 +5,8 @@ import {
     updateFacture,
     archiveFacture,
     getCompanyInvoices,
-    updateFactureStatut
+    updateFactureStatut,
+    generateNumeroFacture  // ✅ importer le helper
 } from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
@@ -15,6 +16,17 @@ const router = express.Router();
 // ==========================
 // Routes Factures
 // ==========================
+
+// Générer une référence unique
+router.get('/generate-ref', verifyToken, async (req, res) => {
+    try {
+        const numero_facture = await generateNumeroFacture();
+        res.status(200).json({ numero_facture });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Impossible de générer la référence', error: err.message });
+    }
+});
 
 // Créer une facture (Admins seulement)
 router.post('/', verifyToken, checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']), createFacture);
