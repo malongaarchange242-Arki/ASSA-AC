@@ -1,6 +1,6 @@
 // routes/auth.js
 import express from 'express'
-import { checkUserRole } from '../controllers/authCommonController.js'
+import { checkUserRole } from '../Controllers/authCommonController.js'
 
 const router = express.Router()
 

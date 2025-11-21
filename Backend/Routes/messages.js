@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { getMessagesHistory, postMessage, uploadAndSendProof } from '../controllers/messagesController.js';
+import { getMessagesHistory, postMessage, uploadAndSendProof } from '../Controllers/messagesController.js';
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();

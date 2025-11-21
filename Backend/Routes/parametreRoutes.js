@@ -1,7 +1,7 @@
 import express from 'express';
 import { verifyToken } from '../Middleware/auth.js';
 import { checkRole } from '../Middleware/role.js';
-import { getParametres, updateParametres } from '../controllers/parametreAdminController.js';
+import { getParametres, updateParametres } from '../Controllers/parametreAdminController.js';
 
 const router = express.Router();
 

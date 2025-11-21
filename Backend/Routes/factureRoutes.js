@@ -6,7 +6,7 @@ import {
     archiveFacture,
     getCompanyInvoices,
     updateFactureStatut
-} from '../controllers/factureController.js';
+} from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
