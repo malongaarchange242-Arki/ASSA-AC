@@ -14,12 +14,12 @@ import { WebSocketServer } from 'ws';
 // Routes imports
 import adminRoutes from './Routes/admins.js';
 import companyRoutes from './Routes/compagnies.js';
-import factureRoutes from './routes/factureRoutes.js';
+import factureRoutes from './Routes/factureRoutes.js';
 import journalRoutes from './Routes/journalActiviteRoutes.js';
-import authRoutes from './routes/auth.js';
-import messagesRoutesFactory from './routes/messages.js';
-import preuveRoutes from './routes/preuveRoutes.js';
-import parametreRoutes from './routes/parametreRoutes.js';
+import authRoutes from './Routes/auth.js';
+import messagesRoutesFactory from './Routes/messages.js';
+import preuveRoutes from './Routes/preuveRoutes.js';
+import parametreRoutes from './Routes/parametreRoutes.js';
 import archiveRoutes from './Routes/archiveRoutes.js';
 
 // ==========================
