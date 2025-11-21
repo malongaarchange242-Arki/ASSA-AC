@@ -9,8 +9,6 @@ import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 
-
-
 // Routes imports
 import adminRoutes from './Routes/admins.js';
 import companyRoutes from './Routes/compagnies.js';
@@ -51,7 +49,9 @@ const corsOptions = {
   credentials: true
 };
 
+// Appliquer CORS pour toutes les routes
 app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // ==========================
@@ -65,7 +65,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/preuves', preuveRoutes);
 app.use('/api/parametres', parametreRoutes);
 app.use('/api/archives', archiveRoutes);
-
 
 // 404 pour toutes les routes /api/*
 app.use('/api', (req, res) => {
@@ -137,12 +136,9 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================
-// LANCEMENT SERVEUR POUR RENDER
+// LANCEMENT SERVEUR
 // ==========================
 const PORT = process.env.PORT || 5002;
-
 server.listen(PORT, () => {
   console.log(`🚀 Serveur HTTP+WS démarré sur le port ${PORT}`);
 });
-
-
