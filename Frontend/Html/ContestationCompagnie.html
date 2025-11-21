@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr" class="bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Portail Client - Soumettre Contestation</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5', // Indigo (Main Accent)
+                        'secondary': '#10b981', // Emerald (Success)
+                        'assa-ac': '#1e40af', // Dark Blue for Branding
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="client-styles.css">
+</head>
+
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+
+    <div class="flex h-full">
+
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-xl transition-transform duration-300 ease-in-out transform -translate-x-full lg:translate-x-0 lg:sticky lg:h-screen lg:flex lg:flex-col p-4 border-r border-gray-200 dark:border-gray-700">
+            <div class="text-2xl font-extrabold text-assa-ac dark:text-primary mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
+                ASSA-AC Client
+            </div>
+
+            <nav class="space-y-2 flex-grow" id="nav-links">
+                
+                <a href="AccueilCompagnie.html" data-view="factures" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    Factures (Consultation)
+                </a>
+                
+                <a href="TeleverserCompagnie.html" data-view="paiements" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 10v-1m-4-3H9m2-2h-1.5M15 11h2.5m-2.5 0a1.5 1.5 0 003 0m0 0a1.5 1.5 0 01-3 0M6 12h.01M18 12h.01"></path></svg>
+                    Téléverser Preuve
+                </a>
+                
+                <a href="ContestationCompagnie.html" data-view="contestations" class="nav-link flex items-center p-3 text-sm font-semibold rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-primary transition duration-150 hover:shadow-md hover:shadow-indigo-500/50">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.508-1.656 1.745-2.99l-6.928-12c-.76-1.31-2.69-1.31-3.45 0l-6.928 12c-.763 1.334.204 2.99 1.745 2.99z"></path></svg>
+                    Soumettre Contestation
+                </a>
+                
+                <a href="messa_comp.html" data-view="messagerie" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-2 4v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7"></path></svg>
+                    Messagerie
+                </a>
+
+                <a href="profilcomp.html" data-view="profil" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Mon Compte
+                </a>
+            </nav>
+            
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                
+                <button onclick="toggleTheme()" class="w-full flex items-center p-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover-neon-glow hover:shadow-indigo-500/50">
+                    <svg id="theme-icon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        </svg>
+                    <span id="theme-text">Mode Jour</span>
+                </button>
+
+                <a href="#" onclick="showModal('Déconnexion', 'Vous avez été déconnecté avec succès. Simulation: redirection vers la page de connexion.')" class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Déconnexion
+                </a>
+            </div>
+
+            <button id="close-sidebar-btn" class="absolute top-4 right-4 lg:hidden text-gray-500 dark:text-gray-400 focus:outline-none z-40">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </aside>
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto">
+
+            <header id="main-header" class="bg-white dark:bg-gray-800 p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                
+                <div class="flex items-center justify-between w-full md:w-auto mb-4 md:mb-0">
+                    <h1 id="main-title" class="text-2xl font-bold text-gray-900 dark:text-white">Soumettre une Contestation de Facture</h1>
+                    <button id="open-sidebar-btn" class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-4 w-full md:w-auto">
+                    
+                    <div class="relative w-full md:max-w-xs">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="text" id="search-input" placeholder="Rechercher (contexte...)" class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150">
+                    </div>
+                    
+                    <button class="relative p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition hidden sm:block" title="Notifications">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-gray-800 bg-red-500"></span>
+                    </button>
+                    
+                    <button class="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="Mon Compte">
+                        <span class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100">Air France</span>
+                        <img class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary" src="https://placehold.co/40x40/1e40af/ffffff?text=AF" alt="Logo Compagnie">
+                    </button>
+                    
+                </div>
+            </header>
+
+            <div id="main-content-scroll" class="p-4 sm:p-6 lg:p-8">
+                <div id="content-area">
+                    
+                    <div id="contestations-view">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-3xl mx-auto">
+                            <h2 class="text-xl font-semibold mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 text-gray-900 dark:text-gray-100">Soumettre une Contestation de Facture</h2>
+                            
+                            <form id="contestations-form">
+                                <div class="space-y-6">
+                                    
+                                    <div>
+                                        <label for="invoice-select-contestation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Facture concernée <span class="text-red-500">*</span></label>
+                                        <select id="invoice-select-contestation" name="invoice" required class="w-full pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150">
+                                            <option value="">Sélectionnez une facture à contester...</option>
+                                            </select>
+                                    </div>
+
+                                    <div>
+                                        <label for="dispute-explanation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Explication Détaillée <span class="text-red-500">*</span></label>
+                                        <textarea id="dispute-explanation" rows="5" placeholder="Veuillez fournir tous les détails pertinents pour l'examen de votre contestation..." required class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150"></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Documents Justificatifs (Optionnel)</label>
+                                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg">
+                                            <div class="space-y-1 text-center">
+                                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                </svg>
+                                                <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                                                    <label for="file-upload-contestation" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-primary hover:text-indigo-500 focus-within:outline-none">
+                                                        <span>Téléverser des preuves</span>
+                                                        <input id="file-upload-contestation" name="file-upload" type="file" class="sr-only" multiple accept=".pdf,.png,.jpg,.jpeg">
+                                                    </label>
+                                                    <p class="pl-1">ou glissez-déposez</p>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-500" id="file-upload-display-contestation">PDF, PNG, JPG (MAX. 5 fichiers)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition duration-150 shadow-md hover-neon-glow hover:shadow-red-500/50">
+                                        Soumettre la Contestation
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="status-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 dark:bg-opacity-75 z-50 flex items-center justify-center opacity-0 invisible" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-primary dark:text-white">Opération Réussie</h3>
+            <p id="modal-message" class="text-gray-700 dark:text-gray-300 mb-6">Votre action a été traitée avec succès.</p>
+            <button onclick="closeModal()" class="w-full px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-indigo-600 transition shadow-md">Fermer</button>
+        </div>
+    </div>
+
+    <script src="client-scripts.js"></script>
+</body>
+</html>
