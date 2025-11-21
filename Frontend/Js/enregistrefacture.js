@@ -160,16 +160,22 @@ async function fetchNextInvoiceId() {
         const response = await fetch('https://assa-ac.onrender.com/api/factures/generate-ref', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Impossible de générer la référence');
+
+        if (!response.ok) throw new Error(`Impossible de générer la référence (${response.status})`);
 
         const data = await response.json();
-        invoiceIdInput.value = data.numero_facture;
+
+        // 🔹 Vérifie la clé renvoyée par le serveur
+        invoiceIdInput.value = data.numero_facture || data.invoice_id || 'N°XXXX/XX/XX/ASSA-AC/DAF';
+
+        console.log('Référence générée:', invoiceIdInput.value);
     } catch (err) {
-        console.error(err);
+        console.error('Erreur fetchNextInvoiceId:', err);
         invoiceIdInput.value = 'N°XXXX/XX/XX/ASSA-AC/DAF';
         showMessage('Impossible de générer la référence. Vérifiez votre connexion.', 'error');
     }
 }
+
 
 // ======================= APERÇU =======================
 function validateForm() {
@@ -327,21 +333,20 @@ async function sendInvoice() {
         price: parseFloat(row.querySelector('input[name="price_value"]').value)
     }));
 
-    // Calculer le total numérique
     const totalNumeric = items.reduce((sum, item) => sum + item.qty * item.price, 0);
 
     const invoiceData = {
         invoice_id: invoiceIdInput.value || 'N°XXXX/XX/XX/ASSA-AC/DAF',
-        nom_client: clientSelect.value,       // Obligatoire
+        nom_client: clientSelect.value,
         period: document.getElementById('period')?.value || '',
         issue_date: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
         items,
-        montant_total: totalNumeric,          // ✅ Total numérique pour PostgreSQL
+        montant_total: totalNumeric,
         currency: CURRENCY,
         statut: 'Impayée'
     };
 
-    console.log('Invoice payload:', invoiceData); // Pour debug
+    console.log('Invoice payload:', invoiceData);
 
     try {
         const token = getAdminToken();
@@ -354,42 +359,51 @@ async function sendInvoice() {
             body: JSON.stringify(invoiceData)
         });
 
+        const resData = await response.json();
+
         if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(`Erreur ${response.status}: ${JSON.stringify(errData)}`);
+            throw new Error(`Erreur ${response.status}: ${JSON.stringify(resData)}`);
         }
 
-        showMessage('Facture envoyée avec succès !', 'success');
+        // ✅ Met à jour la référence générée côté serveur
+        if (resData?.invoice_id) {
+            invoiceIdInput.value = resData.invoice_id;
+            console.log('Référence de la facture:', resData.invoice_id);
+        }
+
+        showMessage(`Facture envoyée avec succès ! Réf: ${invoiceIdInput.value}`, 'success');
         closePreview();
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
-        showMessage('Erreur lors de l’envoi de la facture.', 'error');
+        showMessage(`Erreur lors de l’envoi de la facture: ${err.message}`, 'error');
     }
 }
 
 
 // ======================= INITIALISATION =======================
-window.onload = () => {
+window.onload = async () => {
     try {
         getAdminToken();
 
+        // Date et période par défaut
         const today = new Date();
         document.getElementById('issue-date').value = today.toISOString().split('T')[0];
         document.getElementById('period').value = getPreviousMonthPeriod();
 
-        fetchNextInvoiceId();
-        loadClients();
+        // 🔹 Attendre que la référence et les clients soient chargés
+        await fetchNextInvoiceId();
+        await loadClients();
 
+        // Ajouter une ligne par défaut si nécessaire
         if (!itemsContainer.children.length) addItemRow();
         else calculateTotals();
 
         modalWrapper.classList.add('hidden');
     } catch (err) {
-        console.error(err);
+        console.error('Erreur d\'initialisation:', err);
         showMessage('Erreur d\'initialisation: ' + err.message, 'error');
     }
 };
-
 function getPreviousMonthPeriod() {
     const date = new Date();
     date.setDate(1);
