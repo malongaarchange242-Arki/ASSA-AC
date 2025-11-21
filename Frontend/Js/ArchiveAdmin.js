@@ -69,42 +69,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         return data;
     }
 
-    // ================== Récupération des archives ==================
+    // ================== Sélecteurs ==================
     const archiveTableBody = document.querySelector('.archive-table tbody');
+    const filterButton = document.querySelector('.action-buttons button:first-child');
+    const restoreButton = document.querySelector('.action-buttons button:nth-child(2)');
+    const printButton = document.querySelector('.print-selector-group .print-btn');
+    const selectMonth = document.getElementById('select-month');
 
+    let archivesData = [];
+
+    // ================== Formatage ==================
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+    }
+
+    function formatAmount(amount) {
+        if (amount == null) return '-';
+        return amount.toLocaleString('fr-FR', { style: 'currency', currency: 'XAF' });
+    }
+
+    // ================== Charger les archives ==================
     async function chargerArchives() {
         try {
             const archives = await fetchWithAuth('https://assa-ac.onrender.com/api/archives');
-            console.log('Archives reçues :', archives);
-
-            if (!Array.isArray(archives)) {
-                archiveTableBody.innerHTML = '<tr><td colspan="6">Aucune archive disponible</td></tr>';
-                return;
-            }
-
-            archiveTableBody.innerHTML = '';
-            archives.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.type}</td>
-                    <td>${item.reference}</td>
-                    <td>${item.compagnie}</td>
-                    <td>${item.montant ?? '-'}</td>
-                    <td>${item.date_cloture ?? '-'}</td>
-                    <td class="table-actions">
-                        <button class="view-btn">Voir</button>
-                        <button class="pdf-btn">PDF</button>
-                    </td>
-                `;
-                archiveTableBody.appendChild(row);
-            });
-
-            // Ajouter les actions Vue / PDF
-            ajouterActions();
+            archivesData = Array.isArray(archives.archives) ? archives.archives : [];
+            afficherArchives(archivesData);
         } catch (err) {
             console.error('Erreur fetch archives :', err);
             archiveTableBody.innerHTML = '<tr><td colspan="6">Impossible de récupérer les archives</td></tr>';
         }
+    }
+
+    // ================== Afficher les archives ==================
+    function afficherArchives(data) {
+        archiveTableBody.innerHTML = '';
+
+        if (data.length === 0) {
+            archiveTableBody.innerHTML = '<tr><td colspan="6">Aucune archive disponible</td></tr>';
+            return;
+        }
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.type}</td>
+                <td>${item.reference}</td>
+                <td>${item.compagnie}</td>
+                <td>${formatAmount(item.montant)}</td>
+                <td>${formatDate(item.date_cloture)}</td>
+                <td class="table-actions">
+                    <button class="view-btn" title="Voir Fiche"><i class="fas fa-eye"></i></button>
+                    <button class="pdf-btn" title="Télécharger PDF"><i class="fas fa-download"></i></button>
+                </td>
+            `;
+            archiveTableBody.appendChild(row);
+        });
+
+        ajouterActions();
     }
 
     // ================== Actions Vue / PDF ==================
@@ -113,52 +136,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         const pdfButtons = document.querySelectorAll('.table-actions .pdf-btn');
 
         viewButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.onclick = (e) => {
                 const row = e.target.closest('tr');
                 const type = row.children[0].textContent;
                 const ref = row.children[1].textContent;
                 alert(`Voir ${type} : ${ref}`);
-            });
+            };
         });
 
         pdfButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.onclick = (e) => {
                 const row = e.target.closest('tr');
                 const type = row.children[0].textContent;
                 const ref = row.children[1].textContent;
                 alert(`Télécharger PDF pour ${type} : ${ref}`);
-            });
+            };
         });
     }
 
-    // ================== Filtrage par type ==================
-    const filterButton = document.querySelector('.action-buttons button:first-child');
+    // ================== Filtrage ==================
     filterButton.addEventListener('click', () => {
         const type = prompt('Filtrer par type (Facture, Compagnie, Devis) ou laisser vide pour tout afficher :');
-        document.querySelectorAll('.archive-table tbody tr').forEach(row => {
-            if (!type || row.children[0].textContent.trim() === type) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+        const monthValue = selectMonth.value;
+
+        const filtered = archivesData.filter(item => {
+            const matchType = !type || item.type.toLowerCase() === type.toLowerCase();
+            let matchMonth = true;
+            if (monthValue !== 'current') {
+                const itemMonth = item.date_cloture?.slice(0,7); // yyyy-mm
+                matchMonth = itemMonth === monthValue;
             }
+            return matchType && matchMonth;
         });
+
+        afficherArchives(filtered);
     });
 
-    // ================== Restaurer tous les éléments ==================
-    const restoreButton = document.querySelector('.action-buttons button:nth-child(2)');
+    // ================== Restaurer les filtres ==================
     restoreButton.addEventListener('click', () => {
-        document.querySelectorAll('.archive-table tbody tr').forEach(row => row.style.display = '');
+        selectMonth.value = 'current';
+        afficherArchives(archivesData);
     });
 
     // ================== Impression par mois ==================
-    const printButton = document.querySelector('.print-selector-group .print-btn');
-    const selectMonth = document.getElementById('select-month');
-
     printButton.addEventListener('click', () => {
-        const month = selectMonth.value;
-        alert(`Impression des archives pour : ${month}`);
+        const monthValue = selectMonth.value;
+        const filtered = archivesData.filter(item => {
+            if (monthValue === 'current') return true;
+            const itemMonth = item.date_cloture?.slice(0,7);
+            return itemMonth === monthValue;
+        });
+        alert(`Impression de ${filtered.length} archives pour : ${monthValue}`);
+        // Ici, tu pourras remplacer par la génération PDF réelle
     });
 
     // ================== Initialisation ==================
     await chargerArchives();
+
 });

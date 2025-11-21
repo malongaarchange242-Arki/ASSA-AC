@@ -6,17 +6,18 @@ document.querySelectorAll(".nav-menu a").forEach(link => {
 
 // ================== Dashboard ==================
 document.addEventListener('DOMContentLoaded', async () => {
+
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
-
     let token = localStorage.getItem(TOKEN_KEY);
+
     if (!token) {
         alert("Vous n'êtes pas connecté !");
         window.location.href = 'login.html';
         return;
     }
 
-    // Sélecteurs des cartes statistiques
+    // ================== Sélecteurs des cartes statistiques ==================
     const statCards = {
         companies: document.querySelector('.stat-card:nth-child(1) .stat-value'),
         factures: document.querySelector('.stat-card:nth-child(2) .stat-value')
@@ -30,9 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await fetch('http://localhost:5002/api/admins/token/refresh', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken })
             });
 
@@ -45,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('Token rafraîchi avec succès !');
                 return true;
             }
-
             return false;
         } catch (err) {
             console.error('Erreur lors du refresh token :', err);
@@ -61,7 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let res = await fetch(url, options);
 
-        // Si token expiré, tenter un refresh
         if (res.status === 401) {
             console.warn('Token expiré ou invalide, tentative de rafraîchissement...');
             const refreshed = await refreshToken();
@@ -72,7 +69,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.location.href = 'login.html';
                 throw new Error('Token expiré');
             }
-            // refaire la requête avec le nouveau token
             options.headers['Authorization'] = `Bearer ${token}`;
             res = await fetch(url, options);
         }
@@ -90,6 +86,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await fetchWithAuth('http://localhost:5002/api/companies/all');
             console.log('Données compagnies reçues:', data);
 
+            if (!statCards.companies) {
+                console.warn('Élément stat-card pour les compagnies introuvable');
+                return;
+            }
+
             if (Array.isArray(data.companies)) {
                 const activeCompanies = data.companies.filter(c =>
                     typeof c.status === 'string' && c.status.trim().toLowerCase() === 'actif'
@@ -100,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (err) {
             console.error('Impossible de récupérer les compagnies actives :', err);
-            statCards.companies.textContent = '0';
+            if (statCards.companies) statCards.companies.textContent = '0';
         }
     }
 
@@ -110,10 +111,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const factures = await fetchWithAuth('http://localhost:5002/api/factures');
             console.log('Données factures reçues:', factures);
 
+            if (!statCards.factures) {
+                console.warn('Élément stat-card pour les factures introuvable');
+                return;
+            }
+
             statCards.factures.textContent = Array.isArray(factures) ? factures.length : '0';
         } catch (err) {
             console.error('Impossible de récupérer les factures :', err);
-            statCards.factures.textContent = '0';
+            if (statCards.factures) statCards.factures.textContent = '0';
         }
     }
 
@@ -126,4 +132,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         await chargerCompanies();
         await chargerFactures();
     }, 600000); // 600000ms = 10 minutes
+
 });
