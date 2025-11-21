@@ -1,5 +1,5 @@
 // controllers/authCommonController.js
-import supabase from '../config/db.js';
+import supabase from '../Config/db.js';
 
 /* ---------------------------------------------------------
    🔹 Vérifie le rôle d'un utilisateur via son email

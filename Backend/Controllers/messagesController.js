@@ -1,5 +1,5 @@
 // controllers/messagesController.js
-import supabase from '../config/db.js';
+import supabase from '../Config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const ATTACH_BUCKET = 'Attachement_message';
