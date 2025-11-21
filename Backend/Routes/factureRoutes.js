@@ -6,7 +6,7 @@ import {
     archiveFacture,
     getCompanyInvoices,
     updateFactureStatut,
-    generateNumeroFacture  // ✅ importer le helper
+    generateRef
 } from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
@@ -14,36 +14,58 @@ import { verifyToken, checkRole } from '../Middleware/auth.js';
 const router = express.Router();
 
 // ==========================
-// Routes Factures
+// GENERER UNE REFERENCE DE FACTURE
 // ==========================
+router.get('/generate-ref', verifyToken, generateRef);
 
-// Générer une référence unique
-router.get('/generate-ref', verifyToken, async (req, res) => {
-    try {
-        const numero_facture = await generateNumeroFacture();
-        res.status(200).json({ numero_facture });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Impossible de générer la référence', error: err.message });
-    }
-});
+// ==========================
+// CREATION FACTURE
+// ==========================
+router.post(
+    '/',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    createFacture
+);
 
-// Créer une facture (Admins seulement)
-router.post('/', verifyToken, checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']), createFacture);
-
-// Récupérer toutes les factures de la compagnie de l'utilisateur connecté
+// ==========================
+// LISTE DES FACTURES
+// ==========================
 router.get('/', verifyToken, getCompanyInvoices);
 
-// Récupérer une facture par son numéro
+// ==========================
+// AFFICHER UNE FACTURE PAR NUMERO
+// ==========================
 router.get('/:numero_facture', verifyToken, getFactureByNumero);
 
-// Mettre à jour une facture (Admins seulement)
-router.put('/:numero_facture', verifyToken, checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']), updateFacture);
+// ==========================
+// METTRE À JOUR UNE FACTURE
+// ==========================
+router.put(
+    '/:numero_facture',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    updateFacture
+);
 
-// Archiver une facture (Admins seulement)
-router.delete('/:numero_facture', verifyToken, checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']), archiveFacture);
+// ==========================
+// ARCHIVER UNE FACTURE
+// ==========================
+router.delete(
+    '/:numero_facture',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    archiveFacture
+);
 
-// Mettre à jour le statut d'une facture
-router.put('/statut', verifyToken, checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']), updateFactureStatut);
+// ==========================
+// METTRE À JOUR UN STATUT DE FACTURE
+// ==========================
+router.put(
+    '/statut',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    updateFactureStatut
+);
 
 export default router;

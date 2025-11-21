@@ -3,7 +3,7 @@ import supabase from '../Config/db.js';
 import nodemailer from 'nodemailer';
 
 // ===============================================================
-// Helper : Générer un numéro de facture unique
+// Helper : Générer un numéro de facture unique (VERSION OPTIMISÉE)
 // ===============================================================
 export const generateNumeroFacture = async () => {
   const today = new Date();
@@ -12,38 +12,31 @@ export const generateNumeroFacture = async () => {
   const entreprise = "ASSA-AC";
   const service = "DAF";
 
+  // On récupère la dernière facture existante
+  const { data: lastFacture, error } = await supabase
+    .from('factures')
+    .select('numero_facture')
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(`Erreur récupération dernier numéro : ${error.message}`);
+
   let nextNumber = 1;
-  let numero;
 
-  while (true) {
-    const { data, error } = await supabase
-      .from('factures')
-      .select('numero_facture')
-      .order('id', { ascending: false })
-      .limit(1);
-
-    if (error) throw new Error(`Erreur récupération dernier numéro : ${error.message}`);
-
-    if (data?.length) {
-      const lastRef = data[0].numero_facture;
-      const lastNumber = parseInt(lastRef.split('/')[0]);
-      if (!isNaN(lastNumber)) nextNumber = lastNumber + 1;
-    }
-
-    numero = String(nextNumber).padStart(3, '0') + `/${mois}/${annee}/${entreprise}/${service}`;
-
-    const { data: exists } = await supabase
-      .from('factures')
-      .select('numero_facture')
-      .eq('numero_facture', numero)
-      .maybeSingle();
-
-    if (!exists) break;
-    nextNumber++;
+  // On récupère le numéro précédent
+  if (lastFacture?.numero_facture) {
+    const lastNum = parseInt(lastFacture.numero_facture.split('/')[0]);
+    if (!isNaN(lastNum)) nextNumber = lastNum + 1;
   }
 
-  return numero;
+  // On génère la nouvelle référence
+  return (
+    String(nextNumber).padStart(3, '0') +
+    `/${mois}/${annee}/${entreprise}/${service}`
+  );
 };
+
 
 // ===============================================================
 // Helper : Envoyer un email de facture
@@ -69,6 +62,22 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
 };
 
 // ===============================================================
+// ENDPOINT : Générer une référence de facture
+// ===============================================================
+export const generateRef = async (req, res) => {
+  try {
+    const id_companie = req.user?.id_companie;
+    if (!id_companie) return res.status(401).json({ message: 'Utilisateur non autorisé' });
+
+    const numero_facture = await generateNumeroFacture();
+    res.status(200).json({ numero_facture });
+  } catch (err) {
+    console.error('Erreur génération référence :', err);
+    res.status(500).json({ message: 'Erreur génération référence', error: err.message });
+  }
+};
+
+// ===============================================================
 // CREATE Facture
 // ===============================================================
 export const createFacture = async (req, res) => {
@@ -88,7 +97,6 @@ export const createFacture = async (req, res) => {
 
     const numero_facture = await generateNumeroFacture();
 
-    // Insertion facture principale
     const { data: factureData, error: factureError } = await supabase
       .from('factures')
       .insert([{
@@ -154,7 +162,6 @@ export const createFacture = async (req, res) => {
 export const getCompanyInvoices = async (req, res) => {
   try {
     const id_companie = req.user?.id_companie;
-
     if (!id_companie) return res.status(401).json({ message: 'Utilisateur non autorisé' });
 
     const { data: invoices, error } = await supabase
@@ -165,7 +172,6 @@ export const getCompanyInvoices = async (req, res) => {
       .order('date_emission', { ascending: false });
 
     if (error) throw error;
-
     res.status(200).json(invoices || []);
   } catch (err) {
     console.error(err);
@@ -217,7 +223,6 @@ export const updateFacture = async (req, res) => {
     const { nom_client, objet, periode, aeroport, date_emission,
             lieu_emission, montant_total, devise, montant_en_lettres, lignes } = req.body;
 
-    // Vérifier la facture existante
     const { data: factureData, error: factureError } = await supabase
       .from('factures')
       .select('*')
@@ -228,7 +233,6 @@ export const updateFacture = async (req, res) => {
 
     if (factureError || !factureData) return res.status(404).json({ message: 'Facture non trouvée ou accès refusé' });
 
-    // Mettre à jour la facture
     const { data: updatedData, error: updateError } = await supabase
       .from('factures')
       .update({ nom_client, objet, periode, aeroport, date_emission, lieu_emission, montant_total, devise, montant_en_lettres })
@@ -238,7 +242,6 @@ export const updateFacture = async (req, res) => {
 
     if (updateError) throw updateError;
 
-    // Supprimer anciennes lignes et insérer les nouvelles
     await supabase.from('lignes_facture').delete().eq('numero_facture', numero_facture);
 
     if (lignes?.length) {
@@ -345,4 +348,3 @@ export const updateFactureStatut = async (req, res) => {
     res.status(500).json({ message: 'Erreur mise à jour statut', error: err.message });
   }
 };
-

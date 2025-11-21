@@ -117,7 +117,7 @@ function removeItemRow(btn) {
 async function loadClients() {
     try {
         const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/companies/all', {
+        const response = await fetch('http://localhost:5002/api/companies/all', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -157,25 +157,19 @@ clientSelect.addEventListener('change', e => {
 async function fetchNextInvoiceId() {
     try {
         const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/factures/generate-ref', {
+        const response = await fetch('http://localhost:5002/api/factures/generate-ref', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (!response.ok) throw new Error(`Impossible de générer la référence (${response.status})`);
+        if (!response.ok) throw new Error('Impossible de générer la référence');
 
         const data = await response.json();
-
-        // 🔹 Vérifie la clé renvoyée par le serveur
-        invoiceIdInput.value = data.numero_facture || data.invoice_id || 'N°XXXX/XX/XX/ASSA-AC/DAF';
-
-        console.log('Référence générée:', invoiceIdInput.value);
+        invoiceIdInput.value = data.numero_facture;
     } catch (err) {
-        console.error('Erreur fetchNextInvoiceId:', err);
+        console.error(err);
         invoiceIdInput.value = 'N°XXXX/XX/XX/ASSA-AC/DAF';
         showMessage('Impossible de générer la référence. Vérifiez votre connexion.', 'error');
     }
 }
-
 
 // ======================= APERÇU =======================
 function validateForm() {
@@ -333,24 +327,25 @@ async function sendInvoice() {
         price: parseFloat(row.querySelector('input[name="price_value"]').value)
     }));
 
+    // Calculer le total numérique
     const totalNumeric = items.reduce((sum, item) => sum + item.qty * item.price, 0);
 
     const invoiceData = {
         invoice_id: invoiceIdInput.value || 'N°XXXX/XX/XX/ASSA-AC/DAF',
-        nom_client: clientSelect.value,
+        nom_client: clientSelect.value,       // Obligatoire
         period: document.getElementById('period')?.value || '',
         issue_date: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
         items,
-        montant_total: totalNumeric,
+        montant_total: totalNumeric,          // ✅ Total numérique pour PostgreSQL
         currency: CURRENCY,
         statut: 'Impayée'
     };
 
-    console.log('Invoice payload:', invoiceData);
+    console.log('Invoice payload:', invoiceData); // Pour debug
 
     try {
         const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/factures', {
+        const response = await fetch('http://localhost:5002/api/factures', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -359,51 +354,42 @@ async function sendInvoice() {
             body: JSON.stringify(invoiceData)
         });
 
-        const resData = await response.json();
-
         if (!response.ok) {
-            throw new Error(`Erreur ${response.status}: ${JSON.stringify(resData)}`);
+            const errData = await response.json();
+            throw new Error(`Erreur ${response.status}: ${JSON.stringify(errData)}`);
         }
 
-        // ✅ Met à jour la référence générée côté serveur
-        if (resData?.invoice_id) {
-            invoiceIdInput.value = resData.invoice_id;
-            console.log('Référence de la facture:', resData.invoice_id);
-        }
-
-        showMessage(`Facture envoyée avec succès ! Réf: ${invoiceIdInput.value}`, 'success');
+        showMessage('Facture envoyée avec succès !', 'success');
         closePreview();
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
-        showMessage(`Erreur lors de l’envoi de la facture: ${err.message}`, 'error');
+        showMessage('Erreur lors de l’envoi de la facture.', 'error');
     }
 }
 
 
 // ======================= INITIALISATION =======================
-window.onload = async () => {
+window.onload = () => {
     try {
         getAdminToken();
 
-        // Date et période par défaut
         const today = new Date();
         document.getElementById('issue-date').value = today.toISOString().split('T')[0];
         document.getElementById('period').value = getPreviousMonthPeriod();
 
-        // 🔹 Attendre que la référence et les clients soient chargés
-        await fetchNextInvoiceId();
-        await loadClients();
+        fetchNextInvoiceId();
+        loadClients();
 
-        // Ajouter une ligne par défaut si nécessaire
         if (!itemsContainer.children.length) addItemRow();
         else calculateTotals();
 
         modalWrapper.classList.add('hidden');
     } catch (err) {
-        console.error('Erreur d\'initialisation:', err);
+        console.error(err);
         showMessage('Erreur d\'initialisation: ' + err.message, 'error');
     }
 };
+
 function getPreviousMonthPeriod() {
     const date = new Date();
     date.setDate(1);
