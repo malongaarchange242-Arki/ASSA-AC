@@ -12,7 +12,11 @@ export const generateNumeroFacture = async () => {
   const entreprise = "ASSA-AC";
   const service = "DAF";
 
-  // On récupère la dernière facture existante
+  let nextNumber = 1;
+
+  // -----------------------------
+  // 1️⃣ Récupération du dernier numéro
+  // -----------------------------
   const { data: lastFacture, error } = await supabase
     .from('factures')
     .select('numero_facture')
@@ -22,20 +26,41 @@ export const generateNumeroFacture = async () => {
 
   if (error) throw new Error(`Erreur récupération dernier numéro : ${error.message}`);
 
-  let nextNumber = 1;
-
-  // On récupère le numéro précédent
   if (lastFacture?.numero_facture) {
     const lastNum = parseInt(lastFacture.numero_facture.split('/')[0]);
     if (!isNaN(lastNum)) nextNumber = lastNum + 1;
   }
 
-  // On génère la nouvelle référence
-  return (
-    String(nextNumber).padStart(3, '0') +
-    `/${mois}/${annee}/${entreprise}/${service}`
-  );
+  // -----------------------------
+  // 2️⃣ Génération du numéro
+  // -----------------------------
+  let numero = `
+    ${String(nextNumber).padStart(3, '0')}/${mois}/${annee}/${entreprise}/${service}
+  `.replace(/\s+/g, '');
+
+  // -----------------------------
+  // 3️⃣ Vérification d'un numéro dupliqué
+  // -----------------------------
+  while (true) {
+    const { data: exists, error: checkError } = await supabase
+      .from('factures')
+      .select('numero_facture')
+      .eq('numero_facture', numero)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+
+    if (!exists) break;  // <-- Numéro disponible
+
+    nextNumber++;
+    numero = `
+      ${String(nextNumber).padStart(3, '0')}/${mois}/${annee}/${entreprise}/${service}
+    `.replace(/\s+/g, '');
+  }
+
+  return numero;
 };
+
 
 
 // ===============================================================
