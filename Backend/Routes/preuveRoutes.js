@@ -1,5 +1,5 @@
 import express from 'express';
-import { uploadMiddleware, uploadPreuvesPaiement, getPreuveById } from '../controllers/preuve_paiement.js';
+import { uploadMiddleware, uploadPreuvesPaiement, getPreuveById } from '../Controllers/preuve_paiement.js';
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
