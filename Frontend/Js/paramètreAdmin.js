@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                const data = await fetchWithAdmin('http://localhost:5002/api/admins/update-password', {
+                const data = await fetchWithAdmin(' https://assa-ac.onrender.com/api/admins/update-password', {
                     method: 'POST',
                     body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
                 });
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                const data = await fetchWithAdmin('http://localhost:5002/api/parametres', {
+                const data = await fetchWithAdmin(' https://assa-ac.onrender.com/api/parametres', {
                     method: 'PUT',
                     body: JSON.stringify({ companyName, address, email })
                 });
