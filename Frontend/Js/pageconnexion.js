@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('userRoleCompany', 'company');
                 localStorage.setItem('userEmailCompany', currentEmail);
                 localStorage.setItem('id_companie', data.id_companie);
-                window.location.href = 'indexacompa.html';
+                window.location.href = '/Frontend/Html/AccueilCompagnie.html';
             } else {
                 localStorage.setItem('jwtTokenAdmin', data.token);
                 localStorage.setItem('userRoleAdmin', currentRole);
