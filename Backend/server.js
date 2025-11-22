@@ -65,6 +65,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/preuves', preuveRoutes);
 app.use('/api/parametres', parametreRoutes);
 app.use('/api/archives', archiveRoutes);
+app.use('/api/messages', messagesRoutesFactory(broadcastToRoom));
+
 
 // 404 pour toutes les routes /api/*
 app.use('/api', (req, res) => {

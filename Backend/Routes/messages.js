@@ -1,3 +1,4 @@
+// Routes/messages.js
 import express from 'express';
 import multer from 'multer';
 import { getMessagesHistory, postMessage, uploadAndSendProof } from '../Controllers/messagesController.js';
@@ -5,7 +6,7 @@ import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
 
-// 🔹 Multer memory storage (max 10MB par fichier, max 5 fichiers)
+// Multer memory storage (max 10MB par fichier, max 5 fichiers)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 5 }
@@ -15,8 +16,8 @@ export default (broadcastToRoom) => {
   // --- Historique messages (accessible aux Companies et Admins) ---
   router.get(
     '/history',
-    verifyToken, 
-    checkRole(['Company', 'Administrateur']),
+    verifyToken,
+    checkRole(['Company', 'Administrateur']), // Les rôles doivent correspondre à req.user.profile
     getMessagesHistory
   );
 

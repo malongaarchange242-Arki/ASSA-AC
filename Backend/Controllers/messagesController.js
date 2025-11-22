@@ -1,20 +1,19 @@
-// controllers/messagesController.js
 import supabase from '../Config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const ATTACH_BUCKET = 'Attachement_message';
-const getRoomKey = (adminId, id_companie) => `${adminId}:${id_companie}`;
-const getCompanyRoomKey = (id_companie) => `company:${id_companie}`;
+const getRoomKey = (adminId, companyId) => `${adminId}:${companyId}`;
+const getCompanyRoomKey = (companyId) => `company:${companyId}`;
 
-/**
- * Récupère un admin lié à une compagnie
- */
-async function findAdminForCompany(id_companie) {
+// ---------------------------
+// Utils
+// ---------------------------
+async function findAdminForCompany(companyId) {
   try {
     const { data: admins, error } = await supabase
       .from('admins')
       .select('id')
-      .eq('id_companie', id_companie)
+      .eq('id_companie', companyId)
       .limit(1);
 
     if (error) {
@@ -29,27 +28,25 @@ async function findAdminForCompany(id_companie) {
   }
 }
 
-/**
- * Historique messages
- */
+// ---------------------------
+// Historique messages
+// ---------------------------
 export const getMessagesHistory = async (req, res) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
 
-    // ID de la compagnie à utiliser
-    const id_companie = user.company_id || req.query.id_companie;
-    if (!id_companie) return res.status(400).json({ message: 'id_companie requis' });
+    const companyId = req.query.id_companie || user.company_id;
+    if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
 
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('id_companie', id_companie)
+      .eq('id_companie', companyId)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
 
-    // Récupération des pièces jointes
     const messageIds = messages.map(m => m.id);
     let attachments = [];
     if (messageIds.length) {
@@ -61,7 +58,6 @@ export const getMessagesHistory = async (req, res) => {
       attachments = atts || [];
     }
 
-    // Map attachments par message
     const byMessage = new Map();
     attachments.forEach(att => {
       if (!byMessage.has(att.message_id)) byMessage.set(att.message_id, []);
@@ -77,19 +73,19 @@ export const getMessagesHistory = async (req, res) => {
   }
 };
 
-/**
- * Envoi message
- */
+// ---------------------------
+// Envoi message
+// ---------------------------
 export const postMessage = async (req, res, broadcastToRoom) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
 
     const isCompany = user.profile === 'Company';
-    const id_companie = user.company_id || req.body.id_companie;
-    if (!id_companie) return res.status(400).json({ message: 'id_companie requis' });
+    const companyId = req.body.id_companie || user.company_id;
+    if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
 
-    const adminId = isCompany ? await findAdminForCompany(id_companie) : user.id;
+    const adminId = isCompany ? await findAdminForCompany(companyId) : user.id;
     const content = (req.body.content || '').trim();
 
     if (!content && (!req.files || req.files.length === 0)) {
@@ -97,7 +93,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
     }
 
     const insertObj = {
-      id_companie,
+      id_companie: companyId,
       sender_role: isCompany ? 'company' : 'admin',
       content,
       admin_id: adminId || null
@@ -110,13 +106,12 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       .single();
     if (error) throw error;
 
-    // Upload des fichiers attachés
     const uploaded = [];
-    if (req.files && req.files.length) {
+    if (req.files?.length) {
       for (const file of req.files) {
         const ext = file.originalname.split('.').pop() || 'bin';
         const filename = `${uuidv4()}.${ext}`;
-        const storagePath = `${adminId || 'company'}/${id_companie}/${msg.id}/${filename}`;
+        const storagePath = `${adminId || 'company'}/${companyId}/${msg.id}/${filename}`;
 
         const { error: upErr } = await supabase.storage
           .from(ATTACH_BUCKET)
@@ -138,10 +133,9 @@ export const postMessage = async (req, res, broadcastToRoom) => {
 
     const payload = { type: 'message', message: msg, attachments: uploaded };
 
-    // Broadcast WebSocket
     if (broadcastToRoom) {
-      if (adminId) broadcastToRoom(getRoomKey(adminId, id_companie), payload);
-      broadcastToRoom(getCompanyRoomKey(id_companie), payload);
+      if (adminId) broadcastToRoom(getRoomKey(adminId, companyId), payload);
+      broadcastToRoom(getCompanyRoomKey(companyId), payload);
     }
 
     res.status(201).json(payload);
@@ -152,33 +146,33 @@ export const postMessage = async (req, res, broadcastToRoom) => {
   }
 };
 
-/**
- * Upload preuve et envoi automatique
- */
+// ---------------------------
+// Upload preuve + message automatique
+// ---------------------------
 export const uploadAndSendProof = async (req, res, broadcastToRoom) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
 
-    const id_companie = user.company_id || req.body.id_companie;
-    if (!id_companie) return res.status(400).json({ message: 'id_companie requis' });
+    const companyId = req.body.id_companie || user.company_id;
+    if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
 
     const { numero_facture, paid_amount, payment_method, commentaire } = req.body;
-    if (!numero_facture || !paid_amount || !payment_method || !req.files || !req.files.length) {
+    if (!numero_facture || !paid_amount || !payment_method || !req.files?.length) {
       return res.status(400).json({ message: 'Tous les champs et fichiers sont requis' });
     }
 
     const { data: preuve, error: preuveErr } = await supabase
       .from('preuves')
-      .insert([{ numero_facture, paid_amount, payment_method, commentaire, id_companie }])
+      .insert([{ numero_facture, paid_amount, payment_method, commentaire, id_companie: companyId }])
       .select('*')
       .single();
     if (preuveErr) throw preuveErr;
 
-    const adminId = await findAdminForCompany(id_companie);
+    const adminId = await findAdminForCompany(companyId);
 
     const insertMsg = {
-      id_companie,
+      id_companie: companyId,
       sender_role: 'company',
       content: `Nouvelle preuve de paiement pour la facture ${numero_facture}`,
       admin_id: adminId || null
@@ -195,7 +189,7 @@ export const uploadAndSendProof = async (req, res, broadcastToRoom) => {
     for (const file of req.files) {
       const ext = file.originalname.split('.').pop() || 'bin';
       const filename = `${uuidv4()}.${ext}`;
-      const storagePath = `companies/${id_companie}/messages/${msg.id}/${filename}`;
+      const storagePath = `companies/${companyId}/messages/${msg.id}/${filename}`;
 
       const { error: upErr } = await supabase.storage.from(ATTACH_BUCKET)
         .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
@@ -214,8 +208,8 @@ export const uploadAndSendProof = async (req, res, broadcastToRoom) => {
 
     const payload = { type: 'message', message: msg, attachments: uploaded };
     if (broadcastToRoom) {
-      broadcastToRoom(getCompanyRoomKey(id_companie), payload);
-      if (adminId) broadcastToRoom(getRoomKey(adminId, id_companie), payload);
+      broadcastToRoom(getCompanyRoomKey(companyId), payload);
+      if (adminId) broadcastToRoom(getRoomKey(adminId, companyId), payload);
     }
 
     res.status(201).json({

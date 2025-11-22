@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('id_companie', data.id_companie);
 
             alert('OTP validé ! Mot de passe défini. Vous êtes connecté.');
-            window.location.href = 'indexacompa.html';
+            window.location.href = '/Frontend/Html/AccueilCompagnie.html';
 
         } catch (err) {
             console.error(err);
