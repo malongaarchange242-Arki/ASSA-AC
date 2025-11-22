@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Si token expiré, tenter un refresh
         if (res.status === 401) {
-            console.warn('Token expiré ou invalide, tentative de rafraîchissement...');
+            console.warn('Token expiré, tentative de rafraîchissement...');
             const refreshed = await refreshToken();
             if (!refreshed) {
                 localStorage.removeItem(TOKEN_KEY);
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             res = await fetch(url, options);
         }
 
-        if (res.status === 403) throw new Error('Accès interdit : permissions insuffisantes');
+        if (res.status === 403) throw new Error('Accès interdit');
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || `Erreur API : ${res.status}`);
@@ -82,12 +82,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function formatDate(dateStr) {
         if (!dateStr) return '-';
         const date = new Date(dateStr);
-        return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+        return (
+            date.toLocaleDateString('fr-FR') +
+            ' ' +
+            date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        );
     }
 
     function formatAmount(amount) {
-        if (amount == null) return '-';
-        return amount.toLocaleString('fr-FR', { style: 'currency', currency: 'XAF' });
+        if (!amount || isNaN(amount)) return '-';
+        return Number(amount).toLocaleString('fr-FR', { style: 'currency', currency: 'XAF' });
     }
 
     // ================== Charger les archives ==================
@@ -115,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${item.type}</td>
-                <td>${item.reference}</td>
+                <td>${item.ref}</td>      
                 <td>${item.compagnie}</td>
                 <td>${formatAmount(item.montant)}</td>
                 <td>${formatDate(item.date_cloture)}</td>
@@ -156,14 +160,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ================== Filtrage ==================
     filterButton.addEventListener('click', () => {
-        const type = prompt('Filtrer par type (Facture, Compagnie, Devis) ou laisser vide pour tout afficher :');
+        const type = prompt('Filtrer par type (Facture, Compagnie, Devis) ou laisser vide :');
         const monthValue = selectMonth.value;
 
         const filtered = archivesData.filter(item => {
             const matchType = !type || item.type.toLowerCase() === type.toLowerCase();
             let matchMonth = true;
             if (monthValue !== 'current') {
-                const itemMonth = item.date_cloture?.slice(0,7); // yyyy-mm
+                const itemMonth = item.date_cloture?.slice(0,7);
                 matchMonth = itemMonth === monthValue;
             }
             return matchType && matchMonth;
@@ -178,7 +182,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         afficherArchives(archivesData);
     });
 
-    // ================== Impression par mois ==================
+    // ================== Impression ==================
     printButton.addEventListener('click', () => {
         const monthValue = selectMonth.value;
         const filtered = archivesData.filter(item => {
@@ -186,8 +190,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const itemMonth = item.date_cloture?.slice(0,7);
             return itemMonth === monthValue;
         });
+
         alert(`Impression de ${filtered.length} archives pour : ${monthValue}`);
-        // Ici, tu pourras remplacer par la génération PDF réelle
     });
 
     // ================== Initialisation ==================
