@@ -192,32 +192,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function connectWebSocket(adminId, id_companie) {
+    function connectWebSocket(id_companie) {
         if(ws && (ws.readyState===WebSocket.OPEN || ws.readyState===WebSocket.CONNECTING)) return;
-
+    
         const session = getSessionInfo();
         if(!session) return;
-
+    
         ws = new WebSocket(WS_URL);
-
+    
         ws.onopen = () => {
-            ws.send(JSON.stringify({ type:'join', admin_id: adminId, id_companie, token: session.token }));
+            ws.send(JSON.stringify({ type:'join', company_id: id_companie, token: session.token }));
         };
-
+    
         ws.onmessage = evt => {
             try {
                 const payload = JSON.parse(evt.data);
+                // On affiche tout message lié à la compagnie
                 if(payload.type==='message' && payload.message?.id_companie === id_companie){
-                    if(payload.message.sender_role==='admin' && payload.message.admin_id===adminId) return;
-                    renderMessage(payload);
+                    renderMessage(payload.message, payload.attachments);
                 }
-            } catch(e){ console.warn('Message WS non valide', e); }
+            } catch(e){
+                console.warn('Message WS non valide', e);
+            }
         };
-
+    
         ws.onerror = err => console.error('Erreur WS:', err);
-        ws.onclose = () => { ws=null; setTimeout(()=>connectWebSocket(adminId,id_companie),5000); };
+        ws.onclose = () => { ws=null; setTimeout(()=>connectWebSocket(id_companie),5000); };
     }
-
+    
     async function sendMessage(text, files) {
         const session = getSessionInfo();
         if(!session || !session.id_companie) { showModal('Erreur','id_companie manquant'); return; }

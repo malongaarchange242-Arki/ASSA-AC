@@ -85,9 +85,11 @@ export const postMessage = async (req, res, broadcastToRoom) => {
     const companyId = req.body.id_companie || user.company_id;
     if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
 
+    // Trouver l'admin uniquement si le sender est la compagnie
     const adminId = isCompany ? await findAdminForCompany(companyId) : user.id;
-    const content = (req.body.content || '').trim();
+    if (isCompany && !adminId) return res.status(400).json({ message: 'Aucun admin trouvé pour cette compagnie' });
 
+    const content = (req.body.content || '').trim();
     if (!content && (!req.files || req.files.length === 0)) {
       return res.status(400).json({ message: 'Message vide sans pièce jointe' });
     }
@@ -96,7 +98,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       id_companie: companyId,
       sender_role: isCompany ? 'company' : 'admin',
       content,
-      admin_id: adminId || null
+      admin_id: isCompany ? adminId : null // admin_id null si l'envoyeur est admin
     };
 
     const { data: msg, error } = await supabase
@@ -111,7 +113,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       for (const file of req.files) {
         const ext = file.originalname.split('.').pop() || 'bin';
         const filename = `${uuidv4()}.${ext}`;
-        const storagePath = `${adminId || 'company'}/${companyId}/${msg.id}/${filename}`;
+        const storagePath = `${isCompany ? 'companies' : 'admins'}/${companyId}/${msg.id}/${filename}`;
 
         const { error: upErr } = await supabase.storage
           .from(ATTACH_BUCKET)
@@ -134,7 +136,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
     const payload = { type: 'message', message: msg, attachments: uploaded };
 
     if (broadcastToRoom) {
-      if (adminId) broadcastToRoom(getRoomKey(adminId, companyId), payload);
+      if (isCompany) broadcastToRoom(getRoomKey(adminId, companyId), payload);
       broadcastToRoom(getCompanyRoomKey(companyId), payload);
     }
 
@@ -170,12 +172,13 @@ export const uploadAndSendProof = async (req, res, broadcastToRoom) => {
     if (preuveErr) throw preuveErr;
 
     const adminId = await findAdminForCompany(companyId);
+    if (!adminId) return res.status(400).json({ message: 'Aucun admin trouvé pour cette compagnie' });
 
     const insertMsg = {
       id_companie: companyId,
       sender_role: 'company',
       content: `Nouvelle preuve de paiement pour la facture ${numero_facture}`,
-      admin_id: adminId || null
+      admin_id: adminId
     };
 
     const { data: msg, error: msgErr } = await supabase
@@ -209,7 +212,7 @@ export const uploadAndSendProof = async (req, res, broadcastToRoom) => {
     const payload = { type: 'message', message: msg, attachments: uploaded };
     if (broadcastToRoom) {
       broadcastToRoom(getCompanyRoomKey(companyId), payload);
-      if (adminId) broadcastToRoom(getRoomKey(adminId, companyId), payload);
+      broadcastToRoom(getRoomKey(adminId, companyId), payload);
     }
 
     res.status(201).json({
