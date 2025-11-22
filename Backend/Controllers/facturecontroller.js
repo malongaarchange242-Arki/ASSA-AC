@@ -115,13 +115,19 @@ export const createFacture = async (req, res) => {
     const id_companie = req.user?.id_companie;
     const userRole = req.user?.role;
 
-    if (!id_companie) return res.status(401).json({ message: "Utilisateur non associé à une compagnie." });
+    // Vérifications
+    if (!id_companie) {
+      return res.status(401).json({ message: "Utilisateur non associé à une compagnie." });
+    }
+
     if (!['Administrateur', 'Superviseur', 'Company'].includes(userRole)) {
       return res.status(403).json({ message: 'Rôle non autorisé pour créer une facture.' });
     }
 
+    // Génération du numéro
     const numero_facture = await generateNumeroFacture();
 
+    // 1️⃣ Création de la facture
     const { data: factureData, error: factureError } = await supabase
       .from('factures')
       .insert([{
@@ -145,7 +151,7 @@ export const createFacture = async (req, res) => {
 
     if (factureError) throw factureError;
 
-    // Journal d'activité
+    // 2️⃣ Journal d'activité
     await supabase.from('journal_activite').insert([{
       id_admin: req.user?.id,
       id_companie,
@@ -155,7 +161,15 @@ export const createFacture = async (req, res) => {
       description: `Création facture ${numero_facture} pour ${nom_client}`
     }]);
 
-    // Lignes facture
+    // 3️⃣ ARCHIVE (nouveauté)
+    await createArchive({
+      type: "Création de facture",
+      description: `L'administrateur ${req.user?.email} a créé la facture ${numero_facture} pour le client ${nom_client}.`,
+      reference: numero_facture,
+      fichier_url: null
+    });
+
+    // 4️⃣ Insertion des lignes facture
     if (lignes?.length) {
       const lignesToInsert = lignes.map(l => ({
         numero_facture,
@@ -166,21 +180,37 @@ export const createFacture = async (req, res) => {
         cout_unitaire: l.cout_unitaire,
         cout_total: l.cout_total
       }));
-      const { error: lignesError } = await supabase.from('lignes_facture').insert(lignesToInsert);
+
+      const { error: lignesError } = await supabase
+        .from('lignes_facture')
+        .insert(lignesToInsert);
+
       if (lignesError) throw lignesError;
     }
 
-    // Email
-    try { await sendInvoiceEmail(req.user.email, numero_facture, montant_total); }
-    catch(err) { console.error('Erreur email:', err); }
+    // 5️⃣ Email (optionnel)
+    try {
+      await sendInvoiceEmail(req.user.email, numero_facture, montant_total);
+    } catch (err) {
+      console.error('Erreur email:', err);
+    }
 
-    res.status(201).json({ success: true, message: 'Facture créée', facture: factureData, numero_facture });
+    // Réponse finale
+    res.status(201).json({
+      success: true,
+      message: 'Facture créée avec succès',
+      facture: factureData,
+      numero_facture
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Erreur création facture', error: err.message });
+    res.status(500).json({
+      message: 'Erreur création facture',
+      error: err.message
+    });
   }
 };
-
 // ===============================================================
 // READ : Toutes les factures non archivées
 // ===============================================================
@@ -307,6 +337,7 @@ export const archiveFacture = async (req, res) => {
     const { numero_facture } = req.params;
     const id_companie = req.user?.id_companie;
 
+    // Vérification facture existante et non archivée
     const { data: factureData, error } = await supabase
       .from('factures')
       .select('*')
@@ -315,12 +346,17 @@ export const archiveFacture = async (req, res) => {
       .eq('archived', false)
       .single();
 
-    if (error || !factureData) return res.status(404).json({ message: 'Facture non trouvée ou déjà archivée' });
+    if (error || !factureData) {
+      return res.status(404).json({ message: 'Facture non trouvée ou déjà archivée' });
+    }
 
-    await supabase.from('factures')
+    // Mise à jour du statut et archivage dans factures
+    await supabase
+      .from('factures')
       .update({ archived: true, statut: 'Archivée' })
       .eq('numero_facture', numero_facture);
 
+    // Journal d'activité
     await supabase.from('journal_activite').insert([{
       id_admin: req.user?.id,
       id_companie,
@@ -330,7 +366,16 @@ export const archiveFacture = async (req, res) => {
       description: `Facture ${numero_facture} archivée`
     }]);
 
+    // Création d’une entrée dans la table archives
+    await createArchive({
+      type: 'Archivage de facture',
+      description: `L'administrateur ${req.user?.email} a archivé la facture ${numero_facture}.`,
+      reference: numero_facture,
+      fichier_url: null
+    });
+
     res.status(200).json({ message: 'Facture archivée avec succès', facture: factureData });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur archivage facture', error: err.message });

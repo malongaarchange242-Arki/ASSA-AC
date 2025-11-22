@@ -226,23 +226,28 @@ export const createCompany = async (req, res) => {
 ----------------------------------------------------------*/
 export const listAdmins = async (req, res) => {
   try {
-    const { role } = req.user;
-    if (!['Admin','Administrateur','Superviseur','Super Admin'].includes(role))
-      return res.status(403).json({ message: 'Accès refusé' });
+    const { data: admins, error } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("archived", false)
+      .order("id", { ascending: true });
 
-    const { data, error } = await supabase
-      .from('admins')
-      .select('id, nom_complet, email, role, status, created_at')
-      .eq('archived', false);
+    if (error) throw error;
 
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
-
-    res.json({ total: data.length, admins: data });
+    res.status(200).json({
+      success: true,
+      admins
+    });
 
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    res.status(500).json({
+      message: "Erreur lors de la récupération des administrateurs",
+      error: err.message
+    });
   }
 };
+
+
 
 /* ---------------------------------------------------------
    🔹 UPDATE ADMIN PASSWORD
@@ -325,37 +330,80 @@ export const refreshTokenAdmin = async (req, res) => {
 export const archiveAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const admin = await supabase.from('admins').select('*').eq('id', id).single();
-    if (!admin.data) return res.status(404).json({ message: 'Admin introuvable' });
 
-    await archiveAdminService(admin.data, req.user.id);
-    res.json({ message: 'Admin archivé avec succès' });
+    // Récupérer l'admin
+    const { data: admin, error } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    if (!admin) return res.status(404).json({ message: "Admin introuvable" });
+
+    // Appel au service d’archivage
+    await archiveAdminService(admin, req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Administrateur archivé avec succès"
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    res.status(500).json({
+      message: "Erreur lors de l'archivage de l'administrateur",
+      error: err.message
+    });
   }
 };
 
 export const restoreAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    await restoreAdminService(id);
-    res.json({ message: 'Admin restauré avec succès' });
+
+    const { data: admin, error } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    if (!admin) return res.status(404).json({ message: "Admin introuvable" });
+
+    // Appel au service
+    await restoreAdminService(admin);
+
+    res.status(200).json({
+      success: true,
+      message: "Administrateur restauré avec succès"
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    res.status(500).json({
+      message: "Erreur lors de la restauration de l'administrateur",
+      error: err.message
+    });
   }
 };
-
 export const listArchivedAdmins = async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('admins')
-      .select('id, nom_complet, email, role, created_at')
-      .eq('archived', true);
+    const { data: admins, error } = await supabase
+      .from("admins")
+      .select("*")
+      .eq("archived", true)
+      .order("id", { ascending: true });
 
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
+    if (error) throw error;
 
-    res.json({ total: data.length, admins_archives: data });
+    res.status(200).json({
+      success: true,
+      admins
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    res.status(500).json({
+      message: "Erreur lors de la récupération des admins archivés",
+      error: err.message
+    });
   }
 };

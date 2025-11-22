@@ -299,23 +299,48 @@ export const restoreCompany = async (req, res) => {
 export const getCompanyById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from('companies').select('*').eq('id', id).single();
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
-    if (!data) return res.status(404).json({ message: 'Compagnie introuvable' });
 
-    await logActivite({
-      module: 'Compagnies',
-      type_activite: 'system',
-      description: `Consultation du profil de la compagnie ${data.company_name}`,
-      id_admin: req.user?.id,
-      id_companie: data.id
-    });
+    if (!id) {
+      return res.status(400).json({ message: 'ID de compagnie manquant' });
+    }
 
-    res.json({ company: data });
+    // Requête Supabase
+    const { data: company, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Erreur Supabase getCompanyById:', error);
+      return res.status(500).json({ message: 'Erreur lors de la récupération de la compagnie', erreur: error.message });
+    }
+
+    if (!company) {
+      return res.status(404).json({ message: 'Compagnie introuvable' });
+    }
+
+    // Journaliser l'activité
+    try {
+      await logActivite({
+        module: 'Compagnies',
+        type_activite: 'Consultation',
+        description: `Consultation du profil de la compagnie ${company.company_name}`,
+        id_admin: req.user?.id,
+        id_companie: company.id
+      });
+    } catch (logErr) {
+      console.warn('Impossible de journaliser l’activité:', logErr.message);
+    }
+
+    // Réponse
+    res.status(200).json({ success: true, company });
   } catch (err) {
+    console.error('Erreur getCompanyById:', err);
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
 
 // ----------------- Mettre à jour une compagnie -----------------
 export const updateCompany = async (req, res) => {
