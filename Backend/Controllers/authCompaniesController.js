@@ -383,3 +383,92 @@ export const updateCompany = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
+// ----------------- Supprimer une compagnie en toute sécurité -----------------
+export const deleteCompanySafe = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) return res.status(400).json({ message: 'ID de compagnie manquant' });
+
+    // Vérifier que la compagnie existe
+    const { data: company, error: findError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (findError || !company) return res.status(404).json({ message: 'Compagnie introuvable' });
+
+    // 1️⃣ Archiver les factures liées
+    const { data: factures, error: facturesError } = await supabase
+      .from('factures')
+      .select('*')
+      .eq('id_companie', id)
+      .eq('archived', false);
+
+    if (facturesError) throw facturesError;
+
+    if (factures?.length) {
+      const factureIds = factures.map(f => f.numero_facture);
+      await supabase.from('factures').update({ archived: true, statut: 'Archivée' }).in('numero_facture', factureIds);
+      await supabase.from('journal_activite').insert(
+        factures.map(f => ({
+          id_admin: req.user?.id,
+          id_companie: id,
+          type_activite: 'Archivage',
+          categorie: 'Facture',
+          reference: f.numero_facture,
+          description: `Facture ${f.numero_facture} archivée avant archivage de la compagnie`
+        }))
+      );
+    }
+
+    // 2️⃣ Archiver les admins/utilisateurs liés
+    const { data: admins, error: adminsError } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('id_companie', id)
+      .eq('archived', false);
+
+    if (adminsError) throw adminsError;
+
+    if (admins?.length) {
+      const adminIds = admins.map(a => a.id);
+      await supabase.from('admins').update({ archived: true }).in('id', adminIds);
+      await supabase.from('journal_activite').insert(
+        admins.map(a => ({
+          id_admin: req.user?.id,
+          id_companie: id,
+          type_activite: 'Archivage',
+          categorie: 'Admin',
+          reference: a.id,
+          description: `Admin ${a.email} archivé avant archivage de la compagnie`
+        }))
+      );
+    }
+
+    // 3️⃣ Archiver la compagnie
+    const { error: archiveError } = await supabase
+      .from('companies')
+      .update({ archived: true, status: 'Inactif' })
+      .eq('id', id);
+
+    if (archiveError) throw archiveError;
+
+    // 4️⃣ Journaliser l’archivage
+    await logActivite({
+      module: 'Compagnies',
+      type_activite: 'archive',
+      description: `Compagnie ${company.company_name} archivée`,
+      id_admin: req.user?.id,
+      id_companie: id
+    });
+
+    res.status(200).json({ message: 'Compagnie archivée avec succès', company });
+
+  } catch (err) {
+    console.error('Erreur deleteCompanySafe:', err);
+    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+  }
+};

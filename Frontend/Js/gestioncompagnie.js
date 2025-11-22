@@ -82,14 +82,17 @@ function attachCardEvents() {
             window.location.href = `/Frontend/Html/enregistrecompagnie.html?id=${companyId}`;
         });
 
-        // Supprimer
+        // Supprimer (sécurisé)
         card.querySelector('button[title="Supprimer"]').addEventListener('click', async () => {
-            if (!confirm('Voulez-vous vraiment supprimer cette compagnie ?')) return;
+            if (!confirm('Voulez-vous vraiment supprimer définitivement cette compagnie ?')) return;
 
             try {
-                const res = await fetch(`http://localhost:5002/api/companies/${companyId}`, {
+                const res = await fetch(`http://localhost:5002/api/companies/delete/${companyId}`, {
                     method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
 
                 const result = await res.json();
@@ -100,7 +103,9 @@ function attachCardEvents() {
                     return;
                 }
 
-                alert(`Compagnie "${result.company.company_name}" supprimée avec succès`);
+                alert(`Compagnie "${result.company.company_name}" supprimée définitivement avec succès`);
+                
+                // Retirer la carte de l'affichage
                 card.remove();
                 allCompanies = allCompanies.filter(c => c.id.toString() !== companyId);
 

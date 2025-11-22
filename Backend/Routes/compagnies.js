@@ -14,6 +14,7 @@ import {
   restoreCompany,      // restauration si nécessaire
   getCompanyById,
   updateCompany,
+  deleteCompanySafe,
   me
 } from '../Controllers/authCompaniesController.js';
 
@@ -75,5 +76,14 @@ router.get(
   checkRole(['Administrateur', 'Superviseur']),
   getCompanyById
 );
+
+// Supprimer une compagnie définitivement
+router.delete(
+  '/delete/:id',
+  verifyToken,
+  checkRole(['Administrateur', 'Superviseur']),
+  deleteCompanySafe
+);
+
 
 export default router;
