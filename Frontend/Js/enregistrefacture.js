@@ -157,7 +157,7 @@ clientSelect.addEventListener('change', e => {
 async function fetchNextInvoiceId() {
     try {
         const token = getAdminToken();
-        const response = await fetch('http://localhost:5002/api/factures/generate-ref', {
+        const response = await fetch('https://assa-ac.onrender.com/api/factures/generate-ref', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Impossible de générer la référence');
@@ -345,7 +345,7 @@ async function sendInvoice() {
 
     try {
         const token = getAdminToken();
-        const response = await fetch('http://localhost:5002/api/factures', {
+        const response = await fetch('https://assa-ac.onrender.com/api/factures', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
