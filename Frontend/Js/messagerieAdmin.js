@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const attachmentInput = document.getElementById('attachmentInput');
     const sendBtn = document.getElementById('sendBtn');
 
-    // === NOUVEAU : container pour prévisualisation des fichiers ===
+    // Preview container
     const chatInputArea = document.querySelector('.chat-input-area');
     const previewContainer = document.createElement('div');
     previewContainer.className = 'preview-container';
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             chatMessagesContent.innerHTML = '';
             if(Array.isArray(data) && data.length) data.forEach(renderMessage);
             else chatMessagesContent.innerHTML = '<p style="color:#70757A;">Aucun message pour le moment.</p>';
-            connectWebSocket(adminId, id_companie);
+            connectWebSocket(id_companie);
         } catch(err) {
             console.error('Erreur chargement messages :', err);
             chatMessagesContent.innerHTML = `<p style="color:red;">Erreur serveur : ${err.message}</p>`;
@@ -198,7 +198,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function connectWebSocket(id_companie) {
         if(ws && (ws.readyState===WebSocket.OPEN || ws.readyState===WebSocket.CONNECTING)) return;
-
         const session = getSessionInfo();
         if(!session) return;
 
@@ -247,6 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     async function sendMessage(text, files) {
+        if(!text && files.length === 0) return; // rien à envoyer
         const session = getSessionInfo();
         if(!session || !session.id_companie) { showModal('Erreur','id_companie manquant'); return; }
         const { adminId, id_companie, role } = session;
@@ -263,6 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const payload = await fetchWithAuth(`${API_BASE}/api/messages`, { method:'POST', body: fd });
             if(payload?.message) renderMessage(payload.message, payload.attachments);
 
+            // Réinitialisation après envoi réussi
             messageInput.value = '';
             attachmentInput.value = '';
             selectedFiles = [];
@@ -273,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value, selectedFiles));
+    sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value.trim(), selectedFiles));
 
     // -----------------------
     // COMPANIES
