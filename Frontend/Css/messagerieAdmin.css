@@ -149,3 +149,49 @@ body {
 .input-actions button { background-color: var(--primary-blue); color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer; margin-left:5px; transition:background-color 0.2s;}
 .input-actions button:hover { background-color: var(--dark-blue); }
 .input-actions .attach-btn { background:none; color:var(--text-color); font-size:1.2em; margin-right:10px; border:none; cursor:pointer; }
+
+/* ============================
+   PREVIEW DES FICHIERS AVANT ENVOI
+   ============================ */
+   .preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--border-color);
+    background: #fff;
+}
+
+.preview-item {
+    position: relative;
+    background: #f1f5ff;
+    border: 1px solid #c9d7ff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85em;
+    color: var(--dark-blue);
+    max-width: 250px;
+}
+
+.preview-item i {
+    font-size: 1.2em;
+}
+
+.preview-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--alert-red);
+    color: #fff;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 0.75em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}

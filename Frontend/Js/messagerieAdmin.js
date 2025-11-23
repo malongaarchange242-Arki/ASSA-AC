@@ -17,6 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const attachmentInput = document.getElementById('attachmentInput');
     const sendBtn = document.getElementById('sendBtn');
 
+    // === NOUVEAU : container pour prévisualisation des fichiers ===
+    const chatInputArea = document.querySelector('.chat-input-area');
+    const previewContainer = document.createElement('div');
+    previewContainer.className = 'preview-container';
+    chatInputArea.insertBefore(previewContainer, chatInputArea.children[1]);
+    let selectedFiles = [];
+
     const emailSection = document.getElementById('emailSection');
     const otpSection = document.getElementById('otpSection');
     const allSections = [emailSection, otpSection];
@@ -127,7 +134,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // SESSION & JWT
     // -----------------------
     function getToken() {
-        // 🔹 Récupère automatiquement le token admin ou company
         const t = localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtTokenCompany');
         if(!t) { showModal('Session expirée', 'Veuillez vous reconnecter'); return null; }
         return t;
@@ -157,10 +163,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         const res = await fetch(url, opts);
-
         const newToken = res.headers.get('x-access-token');
         if(newToken) {
-            // 🔹 Met à jour le token selon le rôle
             if(session.role === 'admin') localStorage.setItem('jwtTokenAdmin', newToken);
             else localStorage.setItem('jwtTokenCompany', newToken);
             session.token = newToken;
@@ -194,20 +198,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function connectWebSocket(id_companie) {
         if(ws && (ws.readyState===WebSocket.OPEN || ws.readyState===WebSocket.CONNECTING)) return;
-    
+
         const session = getSessionInfo();
         if(!session) return;
-    
+
         ws = new WebSocket(WS_URL);
-    
+
         ws.onopen = () => {
             ws.send(JSON.stringify({ type:'join', company_id: id_companie, token: session.token }));
         };
-    
+
         ws.onmessage = evt => {
             try {
                 const payload = JSON.parse(evt.data);
-                // On affiche tout message lié à la compagnie
                 if(payload.type==='message' && payload.message?.id_companie === id_companie){
                     renderMessage(payload.message, payload.attachments);
                 }
@@ -215,11 +218,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.warn('Message WS non valide', e);
             }
         };
-    
+
         ws.onerror = err => console.error('Erreur WS:', err);
         ws.onclose = () => { ws=null; setTimeout(()=>connectWebSocket(id_companie),5000); };
     }
-    
+
+    // -----------------------
+    // PREVIEW & ENVOI MESSAGE
+    // -----------------------
+    function updatePreview() {
+        previewContainer.innerHTML = '';
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'preview-item';
+            div.innerHTML = `<i class="fas fa-paperclip"></i> ${file.name} <span class="preview-remove">&times;</span>`;
+            div.querySelector('.preview-remove').addEventListener('click', () => {
+                selectedFiles.splice(index, 1);
+                updatePreview();
+            });
+            previewContainer.appendChild(div);
+        });
+    }
+
+    attachBtn.addEventListener('click', () => attachmentInput.click());
+    attachmentInput.addEventListener('change', (e) => {
+        selectedFiles = Array.from(e.target.files);
+        updatePreview();
+    });
+
     async function sendMessage(text, files) {
         const session = getSessionInfo();
         if(!session || !session.id_companie) { showModal('Erreur','id_companie manquant'); return; }
@@ -239,12 +265,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             messageInput.value = '';
             attachmentInput.value = '';
+            selectedFiles = [];
+            updatePreview();
             messageInput.focus();
         } catch(err){ 
             showModal('Erreur', `Échec de l'envoi: ${err.message}`); 
         }
     }
 
+    sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value, selectedFiles));
+
+    // -----------------------
+    // COMPANIES
+    // -----------------------
     async function fetchCompanies() {
         try {
             const session = getSessionInfo();
@@ -289,10 +322,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // -----------------------
-    // ÉVÉNEMENTS
+    // RECHERCHE
     // -----------------------
-    attachBtn.addEventListener('click', () => attachmentInput.click());
-    sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value, Array.from(attachmentInput.files||[])));
     searchInput.addEventListener('input', ()=> {
         const term = searchInput.value.toLowerCase();
         document.querySelectorAll('.conversation-item').forEach(item=>{
