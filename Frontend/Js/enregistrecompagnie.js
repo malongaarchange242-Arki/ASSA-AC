@@ -87,8 +87,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const formData = new FormData(form);
 
-            // Validation
             const requiredFields = ['company_name', 'representative_name', 'email', 'full_address', 'country', 'city'];
+            if (!companyId) {
+                requiredFields.push('admin_name','admin_email','admin_password');
+            }
             for (const field of requiredFields) {
                 if (!formData.get(field)?.trim()) {
                     showMessage(`Le champ "${field}" est obligatoire.`, 'error');
