@@ -178,7 +178,6 @@ export const createCompany = async (req, res) => {
     airport_code: airport_code?.trim() || '',
     status: 'Inactif',
     logo_url: logoUrl,
-    id_admin: currentAdminId,
     created_at: new Date(),
     updated_at: new Date(),
   };
