@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    const API_BASE = (() => {
+        const origin = window.location.origin;
+        return origin.includes(':5002') ? origin : 'https://assa-ac.onrender.com';
+    })();
     const adminTokenKey = 'jwtTokenAdmin';
     const adminRefreshKey = 'refreshTokenAdmin';
     const companyTokenKey = 'jwtTokenCompany';
@@ -28,8 +32,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const url = role === 'admin'
-                ? 'http://localhost:5002/api/admins/token/refresh'
-                : 'http://localhost:5002/api/companies/token/refresh';
+                ? `${API_BASE}/api/admins/token/refresh`
+                : `${API_BASE}/api/companies/token/refresh`;
 
             const res = await fetch(url, {
                 method: 'POST',
@@ -72,8 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function chargerActivites() {
         try {
             const url = role === 'admin'
-                ? 'http://localhost:5002/api/journal/recent?limit=5'
-                : 'http://localhost:5002/api/companies/journal/recent?limit=5';
+                ? `${API_BASE}/api/journal/recent?limit=5`
+                : `${API_BASE}/api/companies/journal/recent?limit=5`;
 
             const resData = await fetchAuth(url);
             const activites = Array.isArray(resData) ? resData : resData.activites || [];

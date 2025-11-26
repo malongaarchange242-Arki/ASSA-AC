@@ -6,6 +6,10 @@ document.querySelectorAll(".nav-menu a").forEach(link => {
 
 // ================== Dashboard ==================
 document.addEventListener('DOMContentLoaded', async () => {
+    const API_BASE = (() => {
+        const origin = window.location.origin;
+        return origin.includes(':5002') ? origin : 'https://assa-ac.onrender.com';
+    })();
 
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
@@ -29,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!refreshToken) return false;
 
         try {
-            const res = await fetch('https://assa-ac.onrender.com/api/admins/token/refresh', {
+            const res = await fetch(`${API_BASE}/api/admins/token/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken })
@@ -83,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ================== Récupération des compagnies ==================
     async function chargerCompanies() {
         try {
-            const data = await fetchWithAuth('https://assa-ac.onrender.com/api/companies/all');
+            const data = await fetchWithAuth(`${API_BASE}/api/companies/all`);
             console.log('Données compagnies reçues:', data);
 
             if (!statCards.companies) {
@@ -108,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ================== Récupération des factures ==================
     async function chargerFactures() {
         try {
-            const factures = await fetchWithAuth('https://assa-ac.onrender.com/api/factures');
+            const factures = await fetchWithAuth(`${API_BASE}/api/factures`);
             console.log('Données factures reçues:', factures);
 
             if (!statCards.factures) {
