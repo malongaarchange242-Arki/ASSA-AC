@@ -345,7 +345,7 @@ async function sendInvoice() {
 
     try {
         const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/factures', {
+        const response = await fetch('http://localhost:5002/api/factures', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

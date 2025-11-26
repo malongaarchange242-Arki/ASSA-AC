@@ -127,7 +127,7 @@ export const createCompany = async (req, res) => {
       return res.status(403).json({ message: 'Accès refusé' });
     }
 
-    // Récupérer champs
+    // Récupérer champs obligatoires
     const { company_name, representative_name, email, phone_number, full_address, country, city, airport_code } = req.body;
     if (!company_name || !representative_name || !email || !full_address || !country || !city) {
       console.log('Champs obligatoires manquants');
@@ -165,7 +165,7 @@ export const createCompany = async (req, res) => {
       }
     }
 
-    // Préparer données
+    // Préparer données pour insertion
     const companyData = {
       company_name: company_name.trim(),
       representative_name: representative_name.trim(),
@@ -196,20 +196,22 @@ export const createCompany = async (req, res) => {
     const newCompany = insertedData[0];
     console.log('Nouvelle compagnie insérée:', newCompany);
 
-    // Mise à jour admin
-    const { data: adminUpdate, error: adminUpdateError } = await supabase
-      .from('admins')
-      .update({ id_companie: newCompany.id })
-      .eq('id', adminId);
+    // ✅ Associer l'admin à cette nouvelle compagnie
+    const { error: linkError } = await supabase
+      .from('admin_companies')
+      .insert([{ admin_id: adminId, company_id: newCompany.id, role: 'Administrateur', created_at: new Date() }]);
 
-    if (adminUpdateError) {
-      console.log('Erreur mise à jour admin:', adminUpdateError);
-      return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: adminUpdateError.message });
+    if (linkError) {
+      console.log('Erreur association admin-compagnie:', linkError);
+      return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: linkError.message });
     }
 
-    console.log('Admin mis à jour:', adminUpdate);
+    console.log('Admin associé à la compagnie via admin_companies');
 
-    res.status(201).json({ message: 'Compagnie créée avec succès et admin associé', company: newCompany });
+    res.status(201).json({
+      message: 'Compagnie créée avec succès et admin associé',
+      company: newCompany
+    });
 
   } catch (err) {
     console.error('Erreur createCompany (catch):', err);
@@ -219,8 +221,6 @@ export const createCompany = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
-
-
 /* ---------------------------------------------------------
    🔹 LISTE DES ADMINS (ACTIFS)
 ----------------------------------------------------------*/

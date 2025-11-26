@@ -107,17 +107,46 @@ export const generateRef = async (req, res) => {
 
 export const createFacture = async (req, res) => {
   const {
-    nom_client, objet, periode, aeroport, date_emission,
-    lieu_emission, montant_total, devise, montant_en_lettres, lignes
+    nom_client,
+    objet,
+    periode,
+    aeroport,
+    date_emission,
+    lieu_emission,
+    montant_total,
+    devise,
+    montant_en_lettres,
+    lignes,
+    id_companie // <-- nouvelle possibilité : passer l'ID de la compagnie
   } = req.body;
 
   try {
-    const id_companie = req.user?.id_companie;
     const userRole = req.user?.role;
+    const userId = req.user?.id;
 
-    if (!id_companie) return res.status(401).json({ message: "Utilisateur non associé à une compagnie." });
+    // Vérification du rôle
     if (!['Administrateur', 'Superviseur', 'Company'].includes(userRole)) {
       return res.status(403).json({ message: 'Rôle non autorisé pour créer une facture.' });
+    }
+
+    // Déterminer l'ID de la compagnie : soit depuis le body, soit depuis l'utilisateur
+    let compagnieId = id_companie || req.user?.id_companie;
+
+    if (!compagnieId) {
+      return res.status(401).json({ message: "Aucune compagnie spécifiée pour cette facture." });
+    }
+
+    // 🔹 Vérifier que l'utilisateur a le droit sur cette compagnie
+    // (optionnel, mais conseillé)
+    const { data: authorizedCompany } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', compagnieId)
+      .eq('id_admin', userId)
+      .single();
+
+    if (!authorizedCompany) {
+      return res.status(403).json({ message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie." });
     }
 
     // Génération du numéro de facture
@@ -137,8 +166,8 @@ export const createFacture = async (req, res) => {
         montant_total,
         devise: devise || 'Frs CFA',
         montant_en_lettres,
-        id_admin: req.user?.id,
-        id_companie,
+        id_admin: userId,
+        id_companie: compagnieId,
         statut: 'Impayée',
         archived: false
       }])
@@ -149,8 +178,8 @@ export const createFacture = async (req, res) => {
 
     // 2️⃣ Journal d'activité
     await supabase.from('journal_activite').insert([{
-      id_admin: req.user?.id,
-      id_companie,
+      id_admin: userId,
+      id_companie: compagnieId,
       type_activite: 'Création',
       categorie: 'Facture',
       reference: numero_facture,
@@ -158,7 +187,7 @@ export const createFacture = async (req, res) => {
     }]);
 
     // 3️⃣ Archivage via le service spécifique
-    await archiveFactureService(factureData, req.user?.id);
+    await archiveFactureService(factureData, userId);
 
     // 4️⃣ Insertion des lignes facture
     if (lignes?.length) {
