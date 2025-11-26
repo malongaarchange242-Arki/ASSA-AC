@@ -9,7 +9,6 @@ export const createArchive = async ({
   nom_compagnie = null,
   montant = null,
   objet = null,
-  description,
   fichier_url = null
 }) => {
   const { error } = await supabase
@@ -20,7 +19,6 @@ export const createArchive = async ({
       nom_compagnie,
       montant,
       objet,
-      description,
       fichier_url,
       date_cloture: new Date()
     });
@@ -42,8 +40,7 @@ export const archiveCompanyService = async (company, adminId) => {
   await createArchive({
     type: "Archivage de compagnie",
     reference: company.id,
-    nom_compagnie: company.nom,
-    description: `L'administrateur ${adminId} a archivé la compagnie ${company.nom}.`
+    nom_compagnie: company.nom
   });
 
   return true;
@@ -63,8 +60,7 @@ export const restoreCompanyService = async (company, adminId) => {
   await createArchive({
     type: "Restauration de compagnie",
     reference: company.id,
-    nom_compagnie: company.nom,
-    description: `L'administrateur ${adminId} a restauré la compagnie ${company.nom}.`
+    nom_compagnie: company.nom
   });
 
   return true;
@@ -83,10 +79,7 @@ export const archiveAdminService = async (admin, adminId = null) => {
 
   await createArchive({
     type: "Archivage d'administrateur",
-    reference: admin.id,
-    description: adminId
-      ? `L'administrateur ${adminId} a archivé l'administrateur ${admin.email}.`
-      : `L'administrateur ${admin.email} a été archivé.`
+    reference: admin.id
   });
 
   return true;
@@ -105,10 +98,7 @@ export const restoreAdminService = async (admin, adminId = null) => {
 
   await createArchive({
     type: "Restauration d'administrateur",
-    reference: admin.id,
-    description: adminId
-      ? `L'administrateur ${adminId} a restauré l'administrateur ${admin.email}.`
-      : `L'administrateur ${admin.email} a été restauré.`
+    reference: admin.id
   });
 
   return true;
@@ -130,8 +120,7 @@ export const archiveFactureService = async (facture, adminId) => {
     reference: facture.id,
     nom_compagnie: facture.nom_client,
     montant: facture.montant,
-    objet: facture.objet,
-    description: `L'administrateur ${adminId} a archivé la facture ${facture.numero_facture}.`
+    objet: facture.objet
   });
 
   return true;
@@ -153,8 +142,7 @@ export const restoreFactureService = async (facture, adminId) => {
     reference: facture.id,
     nom_compagnie: facture.nom_client,
     montant: facture.montant,
-    objet: facture.objet,
-    description: `L'administrateur ${adminId} a restauré la facture ${facture.numero_facture}.`
+    objet: facture.objet
   });
 
   return true;
