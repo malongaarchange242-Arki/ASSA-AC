@@ -157,7 +157,7 @@ clientSelect.addEventListener('change', e => {
 async function fetchNextInvoiceId() {
     try {
         const token = getAdminToken();
-        const response = await fetch('http://localhost:5002/api/factures/generate-ref', {
+        const response = await fetch('https://assa-ac.onrender.com/api/factures/generate-ref', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Impossible de générer la référence');
@@ -327,18 +327,21 @@ async function sendInvoice() {
         price: parseFloat(row.querySelector('input[name="price_value"]').value)
     }));
 
+    // Calculer le total numérique
     const totalNumeric = items.reduce((sum, item) => sum + item.qty * item.price, 0);
 
     const invoiceData = {
         invoice_id: invoiceIdInput.value || 'N°XXXX/XX/XX/ASSA-AC/DAF',
-        nom_client: clientSelect.value,
+        nom_client: clientSelect.value,       // Obligatoire
         period: document.getElementById('period')?.value || '',
         issue_date: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
         items,
-        montant_total: totalNumeric,
+        montant_total: totalNumeric,          // ✅ Total numérique pour PostgreSQL
         currency: CURRENCY,
         statut: 'Impayée'
     };
+
+    console.log('Invoice payload:', invoiceData); // Pour debug
 
     try {
         const token = getAdminToken();
@@ -358,13 +361,11 @@ async function sendInvoice() {
 
         showMessage('Facture envoyée avec succès !', 'success');
         closePreview();
-
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
         showMessage('Erreur lors de l’envoi de la facture.', 'error');
     }
 }
-
 
 
 // ======================= INITIALISATION =======================
