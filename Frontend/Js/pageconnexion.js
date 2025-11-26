@@ -1,57 +1,35 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==========================
-    // Nettoyage session au chargement
-    // ==========================
-    function clearAllTokens() {
-        try {
-            localStorage.removeItem('jwtTokenAdmin');
-            localStorage.removeItem('jwtTokenCompany');
-            localStorage.removeItem('refreshTokenAdmin');
-            localStorage.removeItem('refreshTokenCompany');
-            localStorage.removeItem('userRoleAdmin');
-            localStorage.removeItem('userRoleCompany');
-            localStorage.removeItem('adminId');
-            localStorage.removeItem('id_companie');
-            localStorage.removeItem('userEmailAdmin');
-            localStorage.removeItem('userEmailCompany');
-        } catch (e) {
-            console.warn('Impossible de nettoyer le localStorage:', e);
-        }
-    }
-
-    // Nettoie au chargement pour éviter les vieux tokens persistants
-    clearAllTokens();
-
-    // ==========================
     // 1. Éléments du DOM
     // ==========================
     const emailSection = document.getElementById('emailSection');
     const otpSection = document.getElementById('otpSection');
     const allSections = [emailSection, otpSection];
-
+    
+    
     const emailInput = document.getElementById('emailInput');
     const passwordField = document.getElementById('passwordField');
     const passwordInput = document.getElementById('passwordInput');
     const otpCodeInput = document.getElementById('otpCode');
     const otpPasswordInput = document.getElementById('otpPasswordInput');
     const otpPasswordGroup = document.getElementById('otpPasswordInputGroup');
-
+    
     const mainButton = document.getElementById('mainButton');
     const actionButtonContainer = document.getElementById('actionButtonContainer');
-
+    
     const mainTitle = document.getElementById('mainTitle');
     const subTitle = document.getElementById('subTitle');
-
+    
     const backToEmail2 = document.getElementById('backToEmail2');
     const resendOtpLink = document.getElementById('resendOtpLink');
-
+    
     let currentEmail = '';
     let currentRole = '';
     let isChecking = false;
     let typingTimer;
     const doneTypingInterval = 300;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/;
-
+    
     // ==========================
     // 2. Effet flottant inputs
     // ==========================
@@ -59,21 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input.value.length > 0 || document.activeElement === input) group.classList.add('floating');
         else group.classList.remove('floating');
     }
-
+    
     const inputGroups = [
         { input: emailInput, group: document.getElementById('emailInputGroup') },
         { input: passwordInput, group: document.getElementById('passwordInputGroup') },
         { input: otpCodeInput, group: document.getElementById('otpInputGroup') },
         { input: otpPasswordInput, group: otpPasswordGroup }
     ];
-
+    
     inputGroups.forEach(({ input, group }) => {
         input.addEventListener('focus', () => checkFloatingState(input, group));
         input.addEventListener('blur', () => checkFloatingState(input, group));
         input.addEventListener('input', () => checkFloatingState(input, group));
         checkFloatingState(input, group);
     });
-
+    
     // ==========================
     // 3. Fonctions utilitaires
     // ==========================
@@ -81,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         allSections.forEach(section => section.classList.remove('visible'));
         setTimeout(() => sectionToShow.classList.add('visible'), 10);
     }
-
+    
     function resetToInitialView() {
         passwordField.classList.remove('visible');
         passwordInput.value = '';
@@ -98,31 +76,29 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.focus();
         inputGroups.forEach(({ input, group }) => checkFloatingState(input, group));
     }
-
+    
     // ==========================
-    // 4. Fonction fetch avec Auth (nettoie token si 401)
+    // 4. Fonction fetch avec Auth
     // ==========================
     async function fetchWithAuth(url, options = {}, isCompany = false) {
         const token = isCompany ? localStorage.getItem('jwtTokenCompany') : localStorage.getItem('jwtTokenAdmin');
         if (!options.headers) options.headers = {};
         options.headers['Content-Type'] = 'application/json';
         if (token) options.headers['Authorization'] = `Bearer ${token}`;
-
+    
         const res = await fetch(url, options);
-
-        // Si 401, on supprime les tokens pour forcer reconnexion propre
+    
         if (res.status === 401) {
-            clearAllTokens();
             throw new Error('Token expiré, reconnectez-vous');
         }
         if (res.status === 403) throw new Error('Accès interdit : permissions insuffisantes');
-
+    
         const data = await res.json().catch(() => null);
         if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur API');
-
+    
         return data;
     }
-
+    
     // ==========================
     // 5. Vérification email
     // ==========================
@@ -130,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isChecking) return;
         isChecking = true;
         currentEmail = email;
-
+    
         try {
             const res = await fetch('https://assa-ac.onrender.com/api/auth/check-email', {
                 method: 'POST',
@@ -138,16 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ email }),
                 credentials: 'include'
             });
-
+    
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Erreur serveur');
-
+    
             currentRole = data.role;
             passwordField.classList.remove('visible');
             actionButtonContainer.classList.remove('visible');
             otpPasswordGroup.style.display = 'none';
             emailInput.readOnly = true;
-
+    
             if (data.role === 'admin' || data.role === 'supervisor') {
                 passwordField.classList.add('visible');
                 actionButtonContainer.classList.add('visible');
@@ -183,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isChecking = false;
         }
     }
-
+    
     // ==========================
     // 6. Demande OTP
     // ==========================
@@ -203,66 +179,61 @@ document.addEventListener('DOMContentLoaded', () => {
             resetToInitialView();
         }
     }
-
+    
     // ==========================
-    // 7. Validation OTP (NE PAS utiliser fetchWithAuth)
+    // 7. Validation OTP
     // ==========================
     async function validateOtp() {
         const otp = otpCodeInput.value.trim();
         const password = otpPasswordInput.value.trim();
         if (!otp || !password) return alert('Veuillez remplir OTP et mot de passe.');
-
+    
         try {
             const res = await fetch('https://assa-ac.onrender.com/api/companies/otp/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail, otp, password })
             });
-
+    
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
-
-            // Stockage séparé company
+    
             localStorage.setItem('jwtTokenCompany', data.token);
             localStorage.setItem('userRoleCompany', 'company');
             localStorage.setItem('userEmailCompany', currentEmail);
             localStorage.setItem('id_companie', data.id_companie);
-
+    
             alert('OTP validé ! Mot de passe défini. Vous êtes connecté.');
             window.location.href = '/Frontend/Html/AccueilCompagnie.html';
-
         } catch (err) {
             console.error(err);
             alert(err.message || 'Erreur validation OTP');
         }
     }
-
+    
     // ==========================
     // 8. Connexion standard
     // ==========================
     async function loginStandard() {
         const password = passwordInput.value.trim();
         if (!password) return alert('Veuillez entrer votre mot de passe.');
-
-        // Nettoyer d'abord les anciens tokens pour éviter contamination
-        clearAllTokens();
-
+    
         try {
             let url;
             let isCompany = false;
             if (currentRole === 'admin' || currentRole === 'supervisor') url = 'https://assa-ac.onrender.com/api/admins/login';
             else if (currentRole === 'company') { url = 'https://assa-ac.onrender.com/api/companies/login'; isCompany = true; }
             else return alert('Role inconnu.');
-
+    
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail, password })
             });
-
+    
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
-
+    
             if (isCompany) {
                 localStorage.setItem('jwtTokenCompany', data.token);
                 localStorage.setItem('userRoleCompany', 'company');
@@ -276,15 +247,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('adminId', data.adminId || data.id || data.adminId);
                 window.location.href = '/Frontend/Html/AccueilAdmin.html';
             }
-
+    
             alert(`Connexion réussie ! Bienvenue ${currentRole}.`);
-
         } catch (err) {
             console.error(err);
             alert(err.message || 'Erreur lors de la connexion');
         }
     }
-
+    
     // ==========================
     // 9. Événements inputs
     // ==========================
@@ -301,14 +271,17 @@ document.addEventListener('DOMContentLoaded', () => {
             actionButtonContainer.classList.remove('visible');
         }
     });
-
+    
     mainButton.addEventListener('click', loginStandard);
     document.getElementById('validateOtpButton').addEventListener('click', validateOtp);
     resendOtpLink.addEventListener('click', e => { e.preventDefault(); if (currentEmail) requestOtp(); });
     backToEmail2.addEventListener('click', e => { e.preventDefault(); resetToInitialView(); });
-
+    
     // ==========================
     // 10. Initialisation
     // ==========================
     resetToInitialView();
-});
+
+    
+    });
+    
