@@ -28,7 +28,6 @@ if (!authToken || !companyId) {
     alert('Token ou ID de compagnie manquant. Veuillez vous reconnecter.');
     window.location.href = '/Frontend/Html/Login.html';
 }
-
 // ========================
 // THEME
 // ========================
