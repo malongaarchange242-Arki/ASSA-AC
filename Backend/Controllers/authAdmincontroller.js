@@ -120,49 +120,42 @@ export const createCompany = async (req, res) => {
     console.log('req.body:', req.body);
     console.log('req.file:', req.file);
 
-    // Vérifier rôle
+    // Vérifier rôle et existence de l'admin
     const { role, id: adminId } = req.user || {};
+    if (!adminId) {
+      return res.status(401).json({ message: "Admin non authentifié" });
+    }
     if (!role || !['Admin','Administrateur','Superviseur','Super Admin'].includes(role)) {
-      console.log('Rôle non autorisé');
-      return res.status(403).json({ message: 'Accès refusé' });
+      return res.status(403).json({ message: 'Accès refusé : rôle non autorisé' });
     }
 
     // Récupérer champs obligatoires
     const { company_name, representative_name, email, phone_number, full_address, country, city, airport_code } = req.body;
     if (!company_name || !representative_name || !email || !full_address || !country || !city) {
-      console.log('Champs obligatoires manquants');
       return res.status(400).json({ message: 'Tous les champs obligatoires doivent être remplis' });
     }
 
     // Logo par défaut
     let logoUrl = 'https://via.placeholder.com/70x70?text=Logo';
 
-    // Si un fichier est envoyé
+    // Si un fichier est envoyé, upload vers Supabase Storage
     if (req.file) {
-      try {
-        const file = req.file;
-        const safeName = file.originalname.normalize('NFD')
-          .replace(/[\u0300-\u036f]/g,'')
-          .replace(/[^a-zA-Z0-9.-]/g,'_');
-        const fileName = `logos/${Date.now()}_${safeName}`;
+      const file = req.file;
+      const safeName = file.originalname.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-zA-Z0-9.-]/g,'_');
+      const fileName = `logos/${Date.now()}_${safeName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('company-logos')
-          .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: true });
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: true });
 
-        if (uploadError) {
-          console.log('Erreur upload logo:', uploadError);
-          return res.status(500).json({ message: 'Impossible de téléverser le logo', erreur: uploadError.message });
-        }
-
-        const { data: publicData } = supabase.storage.from('company-logos').getPublicUrl(fileName);
-        logoUrl = publicData?.publicUrl || logoUrl;
-        console.log('Logo URL:', logoUrl);
-
-      } catch (fileErr) {
-        console.log('Erreur traitement fichier:', fileErr);
-        return res.status(500).json({ message: 'Erreur traitement fichier', erreur: fileErr.message });
+      if (uploadError) {
+        return res.status(500).json({ message: 'Impossible de téléverser le logo', erreur: uploadError.message });
       }
+
+      const { data: publicData } = supabase.storage.from('company-logos').getPublicUrl(fileName);
+      logoUrl = publicData?.publicUrl || logoUrl;
     }
 
     // Préparer données pour insertion
@@ -180,7 +173,6 @@ export const createCompany = async (req, res) => {
       created_at: new Date(),
       updated_at: new Date(),
     };
-    console.log('companyData prêt à insérer:', companyData);
 
     // Insertion dans Supabase
     const { data: insertedData, error: insertError } = await supabase
@@ -189,24 +181,19 @@ export const createCompany = async (req, res) => {
       .select();
 
     if (insertError) {
-      console.log('Erreur insertion compagnie:', insertError);
       return res.status(500).json({ message: 'Erreur création compagnie', erreur: insertError.message });
     }
 
     const newCompany = insertedData[0];
-    console.log('Nouvelle compagnie insérée:', newCompany);
 
-    // ✅ Associer l'admin à cette nouvelle compagnie
+    // ✅ Associer l'admin à cette nouvelle compagnie dans admin_companies
     const { error: linkError } = await supabase
       .from('admin_companies')
       .insert([{ admin_id: adminId, company_id: newCompany.id, role: 'Administrateur', created_at: new Date() }]);
 
     if (linkError) {
-      console.log('Erreur association admin-compagnie:', linkError);
       return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: linkError.message });
     }
-
-    console.log('Admin associé à la compagnie via admin_companies');
 
     res.status(201).json({
       message: 'Compagnie créée avec succès et admin associé',
@@ -221,6 +208,7 @@ export const createCompany = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
 /* ---------------------------------------------------------
    🔹 LISTE DES ADMINS (ACTIFS)
 ----------------------------------------------------------*/
