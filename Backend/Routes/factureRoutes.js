@@ -4,9 +4,9 @@ import {
     getFactureByNumero,
     updateFacture,
     archiveFacture,
-    getCompanyInvoices,
     updateFactureStatut,
-    generateRef
+    generateRef,
+    getInvoicesByCompany   // <-- fonction existante dans le controller
 } from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
@@ -24,14 +24,29 @@ router.get('/generate-ref', verifyToken, generateRef);
 router.post(
     '/',
     verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
     createFacture
 );
 
 // ==========================
-// LISTE DES FACTURES
+// LISTE DES FACTURES DE LA COMPAGNIE CONNECTEE
 // ==========================
-router.get('/', verifyToken, getCompanyInvoices);
+router.get(
+    '/',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
+    getInvoicesByCompany
+);
+
+// ==========================
+// ROUTE SUPPLEMENTAIRE : FACTURES DE LA COMPAGNIE (optionnel)
+// ==========================
+router.get(
+    '/company',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
+    getInvoicesByCompany
+);
 
 // ==========================
 // AFFICHER UNE FACTURE PAR NUMERO

@@ -1,6 +1,9 @@
 // controllers/factureController.js
 import supabase from '../Config/db.js';
 import nodemailer from 'nodemailer';
+import { archiveFactureService } from '../Services/archiveService.js';
+
+
 
 // ===============================================================
 // Helper : Générer un numéro de facture unique (VERSION OPTIMISÉE)
@@ -102,9 +105,6 @@ export const generateRef = async (req, res) => {
   }
 };
 
-// ===============================================================
-// CREATE Facture
-// ===============================================================
 export const createFacture = async (req, res) => {
   const {
     nom_client, objet, periode, aeroport, date_emission,
@@ -115,16 +115,12 @@ export const createFacture = async (req, res) => {
     const id_companie = req.user?.id_companie;
     const userRole = req.user?.role;
 
-    // Vérifications
-    if (!id_companie) {
-      return res.status(401).json({ message: "Utilisateur non associé à une compagnie." });
-    }
-
+    if (!id_companie) return res.status(401).json({ message: "Utilisateur non associé à une compagnie." });
     if (!['Administrateur', 'Superviseur', 'Company'].includes(userRole)) {
       return res.status(403).json({ message: 'Rôle non autorisé pour créer une facture.' });
     }
 
-    // Génération du numéro
+    // Génération du numéro de facture
     const numero_facture = await generateNumeroFacture();
 
     // 1️⃣ Création de la facture
@@ -161,13 +157,8 @@ export const createFacture = async (req, res) => {
       description: `Création facture ${numero_facture} pour ${nom_client}`
     }]);
 
-    // 3️⃣ ARCHIVE (nouveauté)
-    await createArchive({
-      type: "Création de facture",
-      description: `L'administrateur ${req.user?.email} a créé la facture ${numero_facture} pour le client ${nom_client}.`,
-      reference: numero_facture,
-      fichier_url: null
-    });
+    // 3️⃣ Archivage via le service spécifique
+    await archiveFactureService(factureData, req.user?.id);
 
     // 4️⃣ Insertion des lignes facture
     if (lignes?.length) {
@@ -188,17 +179,16 @@ export const createFacture = async (req, res) => {
       if (lignesError) throw lignesError;
     }
 
-    // 5️⃣ Email (optionnel)
+    // 5️⃣ Envoi email
     try {
       await sendInvoiceEmail(req.user.email, numero_facture, montant_total);
     } catch (err) {
       console.error('Erreur email:', err);
     }
 
-    // Réponse finale
     res.status(201).json({
       success: true,
-      message: 'Facture créée avec succès',
+      message: 'Facture créée et archivée avec succès',
       facture: factureData,
       numero_facture
     });
@@ -211,28 +201,58 @@ export const createFacture = async (req, res) => {
     });
   }
 };
-// ===============================================================
-// READ : Toutes les factures non archivées
-// ===============================================================
-export const getCompanyInvoices = async (req, res) => {
-  try {
-    const id_companie = req.user?.id_companie;
-    if (!id_companie) return res.status(401).json({ message: 'Utilisateur non autorisé' });
 
-    const { data: invoices, error } = await supabase
+// READ : Factures de la compagnie connectée
+export const getInvoicesByCompany = async (req, res) => {
+  try {
+    // Récupération de l'id_companie depuis le JWT
+    const id_companie = req.user?.id_companie;
+    const userRole = req.user?.role;
+
+    if (!id_companie && userRole !== 'SuperAdmin') {
+      return res.status(401).json({ message: 'Utilisateur non autorisé ou id_companie manquant' });
+    }
+
+    // Construction de la requête
+    let query = supabase
       .from('factures')
       .select('*')
-      .eq('id_companie', id_companie)
-      .eq('archived', false)
-      .order('date_emission', { ascending: false });
+      .eq('archived', false); // on ne récupère que les factures non archivées
+
+    // Si ce n'est pas un SuperAdmin, filtrer par id_companie
+    if (userRole !== 'SuperAdmin') {
+      query = query.eq('id_companie', id_companie);
+    }
+
+    // Récupération et tri par date d'émission décroissante
+    const { data: invoices, error } = await query.order('date_emission', { ascending: false });
 
     if (error) throw error;
-    res.status(200).json(invoices || []);
+
+    // Vérification du résultat
+    if (!invoices) return res.status(404).json({ message: 'Aucune facture trouvée' });
+
+    // Formatage pour le frontend
+    const result = invoices.map(f => ({
+      id: f.numero_facture,
+      date: f.date_emission || '',
+      amount: Number(f.montant_total || 0),
+      status: f.statut || 'Impayée',
+      due_date: f.date_limite || '',
+      client: f.nom_client
+    }));
+
+    console.log('Factures récupérées pour compagnie', id_companie, ':', invoices.map(f => f.id_companie));
+
+    res.status(200).json(result);
+
   } catch (err) {
-    console.error(err);
+    console.error("Erreur getInvoicesByCompany:", err);
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 };
+
+
 
 // ===============================================================
 // READ : Facture par numéro

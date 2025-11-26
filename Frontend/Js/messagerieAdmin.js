@@ -2,11 +2,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // CONSTANTES
     // -----------------------
-    const API_BASE = 'https://assa-ac.onrender.com';
+    const API_BASE = 'http://localhost:5002';
     const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
                    API_BASE.replace(/^https?:\/\//,'').replace(/\/$/,'') + '/ws';
 
-    // Éléments DOM
+    // -----------------------
+    // ÉLÉMENTS DOM
+    // -----------------------
     const companyContainer = document.getElementById('companyContainer');
     const chatMessagesContent = document.getElementById('chat-messages-content');
     const chatCompanyName = document.getElementById('chat-company-name');
@@ -21,59 +23,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chatInputArea = document.querySelector('.chat-input-area');
     const previewContainer = document.createElement('div');
     previewContainer.className = 'preview-container';
-    chatInputArea.insertBefore(previewContainer, chatInputArea.children[1]);
+    if (chatInputArea) {
+        if (chatInputArea.children.length >= 1) chatInputArea.insertBefore(previewContainer, chatInputArea.children[1]);
+        else chatInputArea.appendChild(previewContainer);
+    }
+
     let selectedFiles = [];
-
-    const emailSection = document.getElementById('emailSection');
-    const otpSection = document.getElementById('otpSection');
-    const allSections = [emailSection, otpSection];
-
-    const emailInput = document.getElementById('emailInput');
-    const passwordField = document.getElementById('passwordField');
-    const passwordInput = document.getElementById('passwordInput');
-    const otpCodeInput = document.getElementById('otpCode');
-    const otpPasswordInput = document.getElementById('otpPasswordInput');
-    const otpPasswordGroup = document.getElementById('otpPasswordInputGroup');
-
-    const mainButton = document.getElementById('mainButton');
-    const actionButtonContainer = document.getElementById('actionButtonContainer');
-
-    const mainTitle = document.getElementById('mainTitle');
-    const subTitle = document.getElementById('subTitle');
-
-    const backToEmail2 = document.getElementById('backToEmail2');
-    const resendOtpLink = document.getElementById('resendOtpLink');
-
     let ws = null;
     let selectedIdCompanie = null;
-    let currentEmail = '';
-    let currentRole = '';
-    let isChecking = false;
-    let typingTimer;
-    const doneTypingInterval = 300;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{3,4}$/;
+    const tempMessageMap = new Map();
+    const displayedMessages = new Set();
 
     // -----------------------
     // UTILITAIRES
     // -----------------------
     function showModal(title, message) {
         const modal = document.getElementById('status-modal');
-        if(!modal) return;
+        if (!modal) return console.warn('Modal non trouvé', title, message);
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-message').innerHTML = message;
-        modal.classList.remove('invisible','opacity-0');
-        modal.classList.add('visible','opacity-100');
+        modal.classList.remove('invisible', 'opacity-0');
+        modal.classList.add('visible', 'opacity-100');
     }
 
     function closeModal() {
         const modal = document.getElementById('status-modal');
-        if(!modal) return;
+        if (!modal) return;
         modal.classList.add('opacity-0');
-        setTimeout(()=>modal.classList.add('invisible'),300);
+        setTimeout(() => modal.classList.add('invisible'), 300);
     }
 
     function makeLetterAvatar(text) {
-        const initial = (String(text||'?').trim().charAt(0) || '?').toUpperCase();
+        const initial = (String(text || '?').trim().charAt(0) || '?').toUpperCase();
         const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='45' height='45'>
             <rect width='100%' height='100%' fill='#1A73E8'/>
             <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
@@ -84,257 +65,386 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function createLogo(company) {
         const raw = company.logo_url || company.logo || '';
-        if (raw) {
-            if (raw.startsWith('http')) {
-                const u = raw.toLowerCase();
-                if (u.includes('via.placeholder.com') || u.includes('dummyimage.com')) return makeLetterAvatar(company.company_name);
-                return raw;
-            }
-            const filename = raw.startsWith('logos/') ? raw.slice(6) : raw.replace(/^\/+/, '');
-            return `https://iswllanzauyloulabutf.supabase.co/storage/v1/object/public/company-logos/${filename}`;
+        if (!raw) return makeLetterAvatar(company.company_name || 'U');
+        if (raw.startsWith('http')) {
+            const u = raw.toLowerCase();
+            if (u.includes('via.placeholder.com') || u.includes('dummyimage.com')) return makeLetterAvatar(company.company_name);
+            return raw;
         }
-        return makeLetterAvatar(company.company_name);
+        const filename = raw.startsWith('logos/') ? raw.slice(6) : raw.replace(/^\/+/, '');
+        return `https://iswllanzauyloulabutf.supabase.co/storage/v1/object/public/company-logos/${filename}`;
     }
 
     function scrollChatBottom() {
         chatMessagesContent.scrollTop = chatMessagesContent.scrollHeight;
     }
 
-    function renderMessage(payload) {
-        const m = payload.message || payload;
-        const attachments = payload.attachments || [];
-        const isAdmin = m.sender_role === 'admin';
-        const wrapper = document.createElement('div');
-        wrapper.className = `message ${isAdmin ? 'message-admin' : 'message-client'}`;
-
-        if (m.content) {
-            const p = document.createElement('div');
-            p.textContent = m.content;
-            wrapper.appendChild(p);
+    function removeTempMessage(tempId) {
+        if (tempMessageMap.has(tempId)) {
+            const tempEl = tempMessageMap.get(tempId);
+            if (tempEl && tempEl.parentNode) tempEl.parentNode.removeChild(tempEl);
+            tempMessageMap.delete(tempId);
+            displayedMessages.delete(tempId);
         }
-
-        if (attachments.length) {
-            attachments.forEach(att => {
-                const a = document.createElement('a');
-                a.href = att.file_url;
-                a.target = '_blank';
-                const attDiv = document.createElement('div');
-                attDiv.className = 'attachment';
-                attDiv.innerHTML = `<i class="fas fa-paperclip"></i> ${att.file_name || 'Pièce jointe'}`;
-                a.appendChild(attDiv);
-                wrapper.appendChild(a);
-            });
-        }
-
-        chatMessagesContent.appendChild(wrapper);
-        scrollChatBottom();
     }
 
     // -----------------------
-    // SESSION & JWT
+    // SESSION & AUTH
     // -----------------------
     function getToken() {
-        const t = localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtTokenCompany');
-        if(!t) { showModal('Session expirée', 'Veuillez vous reconnecter'); return null; }
-        return t;
+        return localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtTokenCompany');
     }
 
     function getSessionInfo() {
         const token = getToken();
-        if(!token) return null;
+        if (!token) return null;
         try {
             const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
             return {
+                token,
                 adminId: payload.id || payload.admin_id || localStorage.getItem('adminId'),
                 id_companie: payload.id_companie || localStorage.getItem('id_companie'),
-                role: payload.profile === 'Administrateur' || payload.profile === 'Superviseur' ? 'admin' : 'company',
-                token
+                role: ['Administrateur', 'Superviseur'].includes(payload.profile) ? 'admin' : 'company'
             };
-        } catch (e) { console.error('JWT parsing error', e); return null; }
+        } catch (e) { console.error('JWT parse error', e); return null; }
     }
 
-    async function fetchWithAuth(url, options={}) {
+    async function fetchWithAuth(url, options = {}) {
         const session = getSessionInfo();
-        if(!session) return null;
-
-        const opts = {
-            ...options,
-            headers: { ...(options.headers||{}), 'Authorization': `Bearer ${session.token}` }
-        };
-
+        if (!session) { showModal('Session expirée', 'Veuillez vous reconnecter'); return null; }
+        const opts = { ...options, headers: { ...(options.headers || {}), 'Authorization': `Bearer ${session.token}` } };
         const res = await fetch(url, opts);
         const newToken = res.headers.get('x-access-token');
-        if(newToken) {
-            if(session.role === 'admin') localStorage.setItem('jwtTokenAdmin', newToken);
-            else localStorage.setItem('jwtTokenCompany', newToken);
+        if (newToken) {
+            localStorage.setItem(session.role === 'admin' ? 'jwtTokenAdmin' : 'jwtTokenCompany', newToken);
             session.token = newToken;
         }
-
-        if(!res.ok) {
-            if(res.status === 401) showModal('Session expirée', 'Veuillez vous reconnecter.');
+        if (!res.ok) {
+            if (res.status === 401) showModal('Session expirée', 'Veuillez vous reconnecter.');
             throw new Error(`Erreur HTTP ${res.status}`);
         }
-
         return res.json();
     }
 
     // -----------------------
-    // MESSAGERIE
+    // RENDER MESSAGE
     // -----------------------
-    async function loadHistory(adminId, id_companie) {
-        if(!id_companie) { chatMessagesContent.innerHTML = '<p style="color:red;">id_companie manquant.</p>'; return; }
-        try {
-            const url = `${API_BASE}/api/messages/history?id_companie=${encodeURIComponent(id_companie)}`;
-            const data = await fetchWithAuth(url);
-            chatMessagesContent.innerHTML = '';
-            if(Array.isArray(data) && data.length) data.forEach(renderMessage);
-            else chatMessagesContent.innerHTML = '<p style="color:#70757A;">Aucun message pour le moment.</p>';
-            connectWebSocket(id_companie);
-        } catch(err) {
-            console.error('Erreur chargement messages :', err);
-            chatMessagesContent.innerHTML = `<p style="color:red;">Erreur serveur : ${err.message}</p>`;
-        }
-    }
-
-    function connectWebSocket(id_companie) {
-        if(ws && (ws.readyState===WebSocket.OPEN || ws.readyState===WebSocket.CONNECTING)) return;
+    function renderMessage(payload, { returnElement = false, temp = false, sending = false, failed = false } = {}) {
+        const m = payload.message || payload;
+        if (!m.id) m.id = 'temp-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        if (displayedMessages.has(m.id) && !temp) return null;
+        displayedMessages.add(m.id);
+    
+        // -----------------------
+        // Déterminer si le message est "à moi"
+        // -----------------------
         const session = getSessionInfo();
-        if(!session) return;
+        let isMine = false;
+    
+        if (session) {
+            if (session.role === 'admin') {
+                // Message envoyé par l'admin connecté
+                isMine = m.admin_id && m.admin_id === session.adminId;
+            } else if (session.role === 'company') {
+                // Message envoyé par la compagnie connectée
+                isMine = m.id_companie && m.id_companie === session.id_companie;
+            }
+        }
+    
+        // -----------------------
+        // Création de l'élément message
+        // -----------------------
+        const wrapper = document.createElement('div');
+        wrapper.className = `message ${isMine ? 'message-admin' : 'message-client'}`; // admin = droite, client = gauche
+        wrapper.dataset.msgId = m.id;
+    
+        if (temp) {
+            wrapper.classList.add('message-temp', 'message-sending');
+            wrapper.style.display = 'none'; // cacher temporaire
+        }
+        if (sending) wrapper.classList.add('message-sending');
+        if (failed) wrapper.classList.add('message-failed');
+    
+        // Contenu texte
+        if (m.content) {
+            const p = document.createElement('div');
+            p.className = 'message-content';
+            p.textContent = m.content;
+            wrapper.appendChild(p);
+        }
+    
+        // Pièces jointes
+        const attachments = payload.attachments || [];
+        attachments.forEach(att => {
+            const a = document.createElement('a');
+            a.href = att.file_url || att.url || (att instanceof File ? URL.createObjectURL(att) : '#');
+            a.target = '_blank';
+    
+            const attDiv = document.createElement('div');
+            attDiv.className = 'attachment';
+            attDiv.textContent = att.file_name || att.name || (att instanceof File ? att.name : 'Pièce jointe');
+            a.appendChild(attDiv);
+    
+            wrapper.appendChild(a);
+        });
+    
+        // Timestamp
+        if (m.created_at) {
+            const t = document.createElement('div');
+            t.className = 'message-ts';
+            t.textContent = new Date(m.created_at).toLocaleString();
+            wrapper.appendChild(t);
+        }
+    
+        chatMessagesContent.appendChild(wrapper);
+        scrollChatBottom();
+    
+        if (returnElement) return wrapper;
+        return null;
+    }
+    
+    // -----------------------
+    // WEBSOCKET
+    // -----------------------
+    function connectWebSocket(id_companie) {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        const session = getSessionInfo();
+        if (!session) return;
 
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
-            ws.send(JSON.stringify({ type:'join', company_id: id_companie, token: session.token }));
+            try { ws.send(JSON.stringify({ type: 'join', company_id: id_companie, token: session.token })); }
+            catch (e) { console.error('WS join failed', e); }
         };
 
         ws.onmessage = evt => {
             try {
                 const payload = JSON.parse(evt.data);
-                if(payload.type==='message' && payload.message?.id_companie === id_companie){
-                    renderMessage(payload.message, payload.attachments);
+                if (payload.type === 'message' && payload.message?.id_companie === id_companie) {
+                    if (displayedMessages.has(payload.message.id)) return;
+
+                    const clientTempId = payload.message.client_temp_id || payload.message.temp_id;
+                    if (clientTempId && tempMessageMap.has(clientTempId)) {
+                        const tempEl = tempMessageMap.get(clientTempId);
+                        const realEl = renderMessage(payload.message, { returnElement: true });
+                        if (realEl && tempEl && tempEl.parentNode) tempEl.parentNode.replaceChild(realEl, tempEl);
+                        tempMessageMap.delete(clientTempId);
+                        displayedMessages.delete(clientTempId);
+                        return;
+                    }
+                    renderMessage(payload.message);
                 }
-            } catch(e){
-                console.warn('Message WS non valide', e);
-            }
+            } catch (e) { console.warn('WS message non valide', e); }
         };
 
         ws.onerror = err => console.error('Erreur WS:', err);
-        ws.onclose = () => { ws=null; setTimeout(()=>connectWebSocket(id_companie),5000); };
+        ws.onclose = () => {
+            ws = null;
+            setTimeout(() => { if (selectedIdCompanie) connectWebSocket(selectedIdCompanie); }, 3000);
+        };
     }
 
     // -----------------------
-    // PREVIEW & ENVOI MESSAGE
+    // LOAD HISTORY
+    // -----------------------
+    async function loadHistory(adminId, id_companie) {
+        if (!id_companie) { chatMessagesContent.innerHTML = '<p style="color:red;">id_companie manquant.</p>'; return; }
+        try {
+            displayedMessages.clear();
+            tempMessageMap.clear();
+            chatMessagesContent.innerHTML = '<p style="color:#70757A;">Chargement...</p>';
+
+            const url = `${API_BASE}/api/messages/history?id_companie=${encodeURIComponent(id_companie)}`;
+            const data = await fetchWithAuth(url);
+            chatMessagesContent.innerHTML = '';
+
+            if (Array.isArray(data) && data.length) data.forEach(msg => renderMessage(msg));
+            else chatMessagesContent.innerHTML = '<p style="color:#70757A;">Aucun message pour le moment.</p>';
+
+            connectWebSocket(id_companie);
+        } catch (err) {
+            console.error('Erreur chargement messages :', err);
+            chatMessagesContent.innerHTML = `<p style="color:red;">Erreur serveur : ${err.message}</p>`;
+        }
+    }
+
+    // -----------------------
+    // PREVIEW FICHIERS
     // -----------------------
     function updatePreview() {
         previewContainer.innerHTML = '';
         selectedFiles.forEach((file, index) => {
             const div = document.createElement('div');
             div.className = 'preview-item';
-            div.innerHTML = `<i class="fas fa-paperclip"></i> ${file.name} <span class="preview-remove">&times;</span>`;
-            div.querySelector('.preview-remove').addEventListener('click', () => {
-                selectedFiles.splice(index, 1);
+
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-paperclip';
+            div.appendChild(icon);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = file.name;
+            div.appendChild(nameSpan);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'preview-remove';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.addEventListener('click', () => {
+                selectedFiles = selectedFiles.filter((_, i) => i !== index);
                 updatePreview();
             });
+            div.appendChild(removeBtn);
+
             previewContainer.appendChild(div);
         });
     }
 
     attachBtn.addEventListener('click', () => attachmentInput.click());
-    attachmentInput.addEventListener('change', (e) => {
-        selectedFiles = Array.from(e.target.files);
-        updatePreview();
-    });
+    attachmentInput.addEventListener('change', (e) => { selectedFiles = Array.from(e.target.files || []); updatePreview(); });
 
+    // -----------------------
+    // SEND MESSAGE
+    // -----------------------
     async function sendMessage(text, files) {
-        if(!text && files.length === 0) return; // rien à envoyer
+        if ((!text || text.trim().length === 0) && (!files || files.length === 0)) return;
         const session = getSessionInfo();
-        if(!session || !session.id_companie) { showModal('Erreur','id_companie manquant'); return; }
+        if (!session || !session.id_companie) { showModal('Erreur', 'id_companie manquant'); return; }
         const { adminId, id_companie, role } = session;
-        if(role==='admin' && !adminId){ showModal('Erreur','admin_id manquant'); return; }
+        if (role === 'admin' && !adminId) { showModal('Erreur', 'admin_id manquant'); return; }
+
+        const tempId = 'temp-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        const tempPayload = { id: tempId, content: text, attachments: files, sender_role: role, created_at: new Date().toISOString() };
+        const tempEl = renderMessage(tempPayload, { returnElement: true, temp: true, sending: true });
+        if (tempEl) tempMessageMap.set(tempId, tempEl);
 
         const fd = new FormData();
         fd.append('sender_role', role);
         fd.append('id_companie', id_companie);
-        if(role==='admin') fd.append('admin_id', adminId);
-        if(text) fd.append('content', text);
-        (files||[]).forEach(f=>fd.append('attachments', f));
+        if (role === 'admin') fd.append('admin_id', adminId);
+        if (text) fd.append('content', text);
+        (files || []).forEach(f => fd.append('attachments', f, f.name));
+
+        messageInput.value = '';
+        attachmentInput.value = '';
+        selectedFiles = [];
+        updatePreview();
+        messageInput.focus();
 
         try {
-            const payload = await fetchWithAuth(`${API_BASE}/api/messages`, { method:'POST', body: fd });
-            if(payload?.message) renderMessage(payload.message, payload.attachments);
+            const res = await fetchWithAuth(`${API_BASE}/api/messages`, { method: 'POST', body: fd });
+            if (!res) throw new Error('Réponse vide du serveur');
 
-            // Réinitialisation après envoi réussi
-            messageInput.value = '';
-            attachmentInput.value = '';
-            selectedFiles = [];
-            updatePreview();
-            messageInput.focus();
-        } catch(err){ 
-            showModal('Erreur', `Échec de l'envoi: ${err.message}`); 
+            const serverMessage = res.message || res;
+            const clientTempId = serverMessage.client_temp_id || serverMessage.temp_id;
+
+            if (clientTempId && tempMessageMap.has(clientTempId)) {
+                const tempNode = tempMessageMap.get(clientTempId);
+                const realEl = renderMessage(serverMessage, { returnElement: true });
+                if (realEl && tempNode && tempNode.parentNode) tempNode.parentNode.replaceChild(realEl, tempNode);
+                tempMessageMap.delete(clientTempId);
+                displayedMessages.delete(clientTempId);
+            } else if (tempMessageMap.has(tempId)) {
+                removeTempMessage(tempId);
+                renderMessage(serverMessage);
+            }
+        } catch (err) {
+            console.error('Échec envoi message:', err);
+            if (tempMessageMap.has(tempId)) {
+                const tempNode = tempMessageMap.get(tempId);
+                if (tempNode) tempNode.classList.add('message-failed');
+                tempMessageMap.delete(tempId);
+            }
+            displayedMessages.delete(tempId);
+            showModal('Erreur', `Échec de l'envoi: ${err.message || err}`);
         }
     }
 
     sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value.trim(), selectedFiles));
+    messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); } });
 
     // -----------------------
-    // COMPANIES
+    // FETCH COMPANIES (Actives)
     // -----------------------
-    async function fetchCompanies() {
+    async function fetchCompaniesActive() {
         try {
             const session = getSessionInfo();
-            if(!session){ companyContainer.innerHTML='<p style="color:red;">Session expirée.</p>'; return; }
+            if (!session) { companyContainer.innerHTML = '<p style="color:red;">Session expirée.</p>'; return; }
 
             const data = await fetchWithAuth(`${API_BASE}/api/companies/all`);
             const companies = Array.isArray(data) ? data : data.companies || [];
-            companyContainer.innerHTML='';
-            if(!companies.length){ companyContainer.innerHTML='<p>Aucune compagnie trouvée.</p>'; return; }
+            const activeCompanies = companies.filter(c => c.status === 'Actif');
+            companyContainer.innerHTML = '';
 
-            companies.forEach(company => {
+            if (!activeCompanies.length) { companyContainer.innerHTML = '<p>Aucune compagnie active trouvée.</p>'; return; }
+
+            activeCompanies.forEach(company => {
                 const card = document.createElement('div');
-                card.className='conversation-item';
+                card.className = 'conversation-item';
                 card.dataset.idCompanie = company.id_companie || company.id;
 
                 const img = document.createElement('img');
-                img.className='conv-avatar';
+                img.className = 'conv-avatar';
                 img.src = createLogo(company);
-                img.alt = company.company_name;
+                img.alt = company.company_name || 'Compagnie';
 
-                const info = document.createElement('div'); info.className='conv-info';
-                const nameDiv = document.createElement('div'); nameDiv.className='conv-company';
-                nameDiv.textContent = company.company_name;
+                const info = document.createElement('div');
+                info.className = 'conv-info';
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'conv-company';
+                nameDiv.textContent = company.company_name || '(Sans nom)';
                 info.appendChild(nameDiv);
 
                 card.appendChild(img);
                 card.appendChild(info);
 
                 card.addEventListener('click', async () => {
-                    document.querySelectorAll('.conversation-item').forEach(c=>c.classList.remove('active'));
+                    document.querySelectorAll('.conversation-item').forEach(c => c.classList.remove('active'));
                     card.classList.add('active');
                     selectedIdCompanie = company.id_companie || company.id;
                     localStorage.setItem('id_companie', selectedIdCompanie);
+                    if (chatCompanyName) chatCompanyName.textContent = company.company_name || '';
+                    if (chatCompanyAvatar) chatCompanyAvatar.src = createLogo(company);
                     const sessionInfo = getSessionInfo();
-                    if(!sessionInfo || !sessionInfo.adminId){ showModal('Erreur','admin_id requis.'); return; }
+                    if (!sessionInfo || !sessionInfo.adminId) { showModal('Erreur', 'admin_id requis.'); return; }
                     await loadHistory(sessionInfo.adminId, selectedIdCompanie);
                 });
 
                 companyContainer.appendChild(card);
             });
-        } catch(err){ console.error('Erreur API compagnies:',err); companyContainer.innerHTML='<p style="color:red;">Erreur serveur.</p>'; }
+        } catch (err) {
+            console.error('Erreur API compagnies:', err);
+            companyContainer.innerHTML = '<p style="color:red;">Erreur serveur.</p>';
+        }
     }
 
     // -----------------------
-    // RECHERCHE
+    // SEARCH
     // -----------------------
-    searchInput.addEventListener('input', ()=> {
-        const term = searchInput.value.toLowerCase();
-        document.querySelectorAll('.conversation-item').forEach(item=>{
-            const name = item.querySelector('.conv-company').textContent.toLowerCase();
-            item.style.display = name.includes(term) ? 'flex' : 'none';
-        });
+    let searchTimer = null;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            const term = (searchInput.value || '').toLowerCase();
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                const name = (item.querySelector('.conv-company')?.textContent || '').toLowerCase();
+                item.style.display = name.includes(term) ? 'flex' : 'none';
+            });
+        }, 180);
     });
 
     // -----------------------
-    // INITIALISATION
+    // INIT
     // -----------------------
-    fetchCompanies();
+    (function init() {
+        fetchCompaniesActive();
+        const saved = localStorage.getItem('id_companie');
+        if (saved) {
+            setTimeout(() => {
+                const el = Array.from(document.querySelectorAll('.conversation-item'))
+                    .find(c => c.dataset.idCompanie === saved);
+                if (el) el.click();
+            }, 600);
+        }
+    })();
 });

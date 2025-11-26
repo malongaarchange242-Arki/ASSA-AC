@@ -1,5 +1,5 @@
-// --- DATA SIMULÉE ---
-const API_BASE = window.location.origin;
+// ------------------- CONFIG -------------------
+const API_BASE = 'http://localhost:5002';
 let SERVER_INVOICES = [];
 
 function parseJwt(token) {
@@ -14,53 +14,68 @@ function parseJwt(token) {
 
 async function loadCompanyInvoices() {
     try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        if (!token) {
-            console.warn('Token manquant pour charger les factures');
+        const token = localStorage.getItem('jwtTokenCompany');
+        const id_companie = localStorage.getItem('id_companie'); // récupéré au login
+        if (!token || !id_companie) {
+            console.warn("Token ou id_companie manquant pour charger les factures");
             return;
         }
-        const payload = parseJwt(token) || {};
-        const profile = payload.profile || 'Company';
-        let url = `${API_BASE}/api/factures/company`;
-        const companyNameParam = (payload.company_name || window.targetCompanyName || '');
-        if (companyNameParam) {
-            const sep = url.includes('?') ? '&' : '?';
-            url += `${sep}company_name=${encodeURIComponent(companyNameParam)}`;
-        }
+
+        const url = `${API_BASE}/api/factures/company`;
+
         const resp = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { "Authorization": `Bearer ${token}` }
         });
-        const data = await resp.json().catch(() => []);
-        console.log(`🟢 Status fetch: ${resp.status}`, data);
+
         if (!resp.ok) {
+            console.error("Erreur serveur :", resp.status);
             return;
         }
-        SERVER_INVOICES = Array.isArray(data) ? data.map(f => ({
-            id: f.numero_facture,
-            date: f.date_emission || '',
-            amount: Number(f.montant_total || 0),
-            status: 'Impayée',
-            due_date: '',
-            pdf_url: '#'
-        })) : [];
+
+        const data = await resp.json().catch(() => []);
+        if (!Array.isArray(data)) {
+            console.warn("Réponse API inattendue :", data);
+            return;
+        }
+
+        // Mapping factures pour l'UI
+        SERVER_INVOICES = data.map(f => ({
+            id: f.id,
+            date: f.date,
+            amount: Number(f.amount),
+            status: f.status,
+            due_date: f.due_date,
+            client: f.client
+        }));
+
+        console.log("Factures filtrées pour cette compagnie :", SERVER_INVOICES);
+
+        // Rendu du select (uniquement impayées ou en retard)
+        renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
+
     } catch (err) {
-        console.error('Erreur loadCompanyInvoices:', err);
+        console.error("Erreur loadCompanyInvoices:", err);
     }
 }
 
-const INVOICES = [
-    { id: 'FCT-2025-001', date: '2025-10-01', amount: 4520.50, status: 'Impayée', due_date: '2025-10-31', pdf_url: '#' },
-    { id: 'FCT-2025-002', date: '2025-09-15', amount: 12000.00, status: 'En Retard', due_date: '2025-10-15', pdf_url: '#' },
-    { id: 'FCT-2025-003', date: '2025-09-01', amount: 800.00, status: 'Payée', due_date: '2025-09-30', pdf_url: '#' },
-    { id: 'FCT-2025-004', date: '2025-08-20', amount: 50.99, status: 'Contestée', due_date: '2025-09-20', pdf_url: '#' },
-    { id: 'FCT-2025-005', date: '2025-08-05', amount: 2500.00, status: 'Payée', due_date: '2025-08-31', pdf_url: '#' },
-];
 
-// Vues qui restent des simulations
-const SIMULATED_VIEWS = ['factures', 'contestations', 'messagerie', 'profil']; 
+// ------------------- RENDER FACTURES -------------------
+function renderInvoiceSelect(viewId, filterFn = inv => true) {
+    const select = document.getElementById(`invoice-select-${viewId}`);
+    if (!select) return;
 
-// --- GESTION DU THÈME ---
+    const targetInvoices = SERVER_INVOICES.filter(filterFn);
 
+    let options = `<option value="">Sélectionnez la facture...</option>`;
+    targetInvoices.forEach(inv => {
+        const amount = Number(inv.amount).toLocaleString('fr-CM', { style: 'currency', currency: 'XAF' });
+        options += `<option value="${inv.id}">${inv.id} (${amount} - Statut: ${inv.status})</option>`;
+    });
+
+    select.innerHTML = options;
+}
+
+// ------------------- THÈME -------------------
 function setTheme(mode) {
     const htmlElement = document.documentElement;
     const themeIcon = document.getElementById('theme-icon');
@@ -84,128 +99,13 @@ function toggleTheme() {
     setTheme(currentTheme === 'dark' ? 'light' : 'dark');
 }
 
-
-/**
- * Remplit le menu déroulant des factures pour les vues Paiements et Contestations.
- */
-function renderInvoiceSelect(viewId, filterFn = (inv) => true) {
-    const select = document.getElementById(`invoice-select-${viewId}`);
-    if(!select) return;
-
-    const source = (window.SERVER_INVOICES && window.SERVER_INVOICES.length)
-      ? window.SERVER_INVOICES
-      : INVOICES;
-
-    const targetInvoices = source.filter(filterFn);
-    
-    let options = `<option value="">Sélectionnez la facture...</option>`;
-    
-    targetInvoices.forEach(invoice => {
-        // Formatage en XAF
-        const amount = Number(invoice.amount || 0).toLocaleString('fr-CM', { style: 'currency', currency: 'XAF' });
-        const status = invoice.status || '—';
-        options += `
-            <option value="${invoice.id}">
-                ${invoice.id} (${amount} - Statut: ${status})
-            </option>
-        `;
-    });
-    
-    select.innerHTML = options;
-}
-
-
-// --- FONCTIONS DE NAVIGATION/ACTION SIMULÉES ---
-
-/**
- * Gère la redirection simulée ou l'affichage de vue et surtout l'état ACTIF du menu.
- * @param {string} view - La vue à activer.
- */
-function changeView(view) {
-    const mainTitle = document.getElementById('main-title');
-    const views = {
-        'paiements': document.getElementById('paiements-view'),
-        'contestations': document.getElementById('contestations-view'),
-        'factures': document.getElementById('factures-view'),
-    };
-    
-    let titleMap = {
-        'factures': 'Consultation des Factures (Simulation)',
-        'paiements': 'Téléverser Preuve de Paiement',
-        'contestations': 'Soumettre une Contestation (Simulation)', 
-        'messagerie': 'Messagerie (Simulation)',
-        'profil': 'Mon Compte (Simulation)',
-    };
-    
-    // 1. Mettre à jour l'état visuel ACTIF de la sidebar
-    document.querySelectorAll('.nav-link').forEach(l => {
-        // Retirer les classes actives et restaurer les classes par défaut/hover
-        l.classList.remove('bg-indigo-100', 'dark:bg-indigo-900/50', 'font-semibold', 'text-primary');
-        l.classList.add('font-medium', 'hover:bg-gray-100', 'dark:hover:bg-gray-700'); 
-        
-        if (l.getAttribute('data-view') === view) {
-            // Appliquer les classes actives
-            l.classList.add('bg-indigo-100', 'dark:bg-indigo-900/50', 'font-semibold', 'text-primary'); 
-            // Retirer les classes neutres/hover pour s'assurer que l'état actif persiste
-            l.classList.remove('font-medium', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
-        }
-    });
-
-    // 2. Gérer l'affichage des vues (masquer toutes les vues)
-    Object.values(views).forEach(v => { if(v) v.classList.add('hidden'); });
-    
-    if (SIMULATED_VIEWS.includes(view)) {
-        mainTitle.textContent = titleMap[view] || 'ASSA-AC Portail Client';
-        simulateRedirect(view);
-    } else if(views[view]) {
-        // Afficher la vue demandée
-        views[view].classList.remove('hidden');
-        mainTitle.textContent = titleMap[view];
-        
-        // Préparer les données spécifiques à la vue
-        if (view === 'paiements') {
-            renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
-        } 
-    }
-    
-    // 3. Masquer la sidebar sur mobile après la navigation
-    const sidebar = document.getElementById('sidebar');
-    if(sidebar) sidebar.classList.add('-translate-x-full');
-}
-
-// Fonction principale de simulation de redirection
-function simulateRedirect(view) {
-     let message = '';
-     let title = 'Accès Simulé';
-
-     switch(view) {
-         case 'factures':
-             message = `Simulation: Redirection vers le module de **Consultation des Factures**.<br>Cette fonctionnalité est en cours de développement.`;
-             break;
-         case 'contestations':
-             message = `Simulation: Redirection vers l'outil de **Messagerie** pour contacter ASSA-AC au sujet d'une contestation.`;
-             break;
-         case 'messagerie':
-             message = `Simulation: Redirection vers l'outil de **Messagerie** pour contacter ASSA-AC.`;
-             break;
-         case 'profil':
-             message = `Simulation: Chargement de la vue **Mon Compte** (Espace Personnel).`;
-             break;
-         default:
-             message = `Simulation: Tentative d'accès à la vue **${view}**.`;
-     }
-     showModal(title, message);
-}
-
-// --- GESTION DES MODALES (pour remplacer les alertes) ---
-
+// ------------------- MODALES -------------------
 function showModal(title, message) {
     const modalTitle = document.getElementById('modal-title');
     const modalMessage = document.getElementById('modal-message');
-    
     if(modalTitle) modalTitle.textContent = title;
     if(modalMessage) modalMessage.innerHTML = message;
-    
+
     const modal = document.getElementById('status-modal');
     if(modal) {
         modal.classList.remove('invisible', 'opacity-0');
@@ -225,80 +125,94 @@ function closeModal() {
     }
 }
 
-// --- INITIALISATION ET GESTION MOBILE ---
+// ------------------- NAVIGATION -------------------
+function changeView(view) {
+    const mainTitle = document.getElementById('main-title');
+    const views = {
+        'paiements': document.getElementById('paiements-view'),
+        'contestations': document.getElementById('contestations-view'),
+        'factures': document.getElementById('factures-view'),
+    };
+
+    let titleMap = {
+        'factures': 'Consultation des Factures',
+        'paiements': 'Téléverser Preuve de Paiement',
+        'contestations': 'Soumettre une Contestation',
+        'messagerie': 'Messagerie',
+        'profil': 'Mon Compte',
+    };
+
+    document.querySelectorAll('.nav-link').forEach(l => {
+        l.classList.remove('bg-indigo-100', 'dark:bg-indigo-900/50', 'font-semibold', 'text-primary');
+        l.classList.add('font-medium', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+        if (l.getAttribute('data-view') === view) {
+            l.classList.add('bg-indigo-100', 'dark:bg-indigo-900/50', 'font-semibold', 'text-primary');
+            l.classList.remove('font-medium', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+        }
+    });
+
+    Object.values(views).forEach(v => { if(v) v.classList.add('hidden'); });
+    if(views[view]) views[view].classList.remove('hidden');
+    if(mainTitle) mainTitle.textContent = titleMap[view] || 'Portail Client';
+
+    if (view === 'paiements') {
+        renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
+    }
+
+    const sidebar = document.getElementById('sidebar');
+    if(sidebar) sidebar.classList.add('-translate-x-full');
+}
+
+// ------------------- DOMContentLoaded -------------------
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // 1. Initialiser le Thème
-    const storedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(storedTheme);
-    
-    // 2. Gestionnaires de la navigation
+    // 1. Thème
+    setTheme(localStorage.getItem('theme') || 'light');
+
+    // 2. Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
+        link.addEventListener('click', e => {
             const view = e.currentTarget.getAttribute('data-view');
             const href = e.currentTarget.getAttribute('href');
-            
-            // Si l'utilisateur clique sur le lien de la page courante (paiements)
             if (view === 'paiements') {
-                e.preventDefault(); 
-                // Mettre à jour l'état actif (ce qui corrige le clignotement)
-                changeView('paiements'); 
+                e.preventDefault();
+                changeView('paiements');
             } else {
-                // Redirection réelle vers la page (pour les autres liens)
                 window.location.href = href;
             }
         });
     });
-    
-    // 3. Gestion du menu mobile
+
+    // 3. Menu mobile
     const sidebar = document.getElementById('sidebar');
     const openBtn = document.getElementById('open-sidebar-btn');
     const closeBtn = document.getElementById('close-sidebar-btn');
+    if(openBtn) openBtn.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
+    if(closeBtn) closeBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
 
-    if(openBtn) {
-        openBtn.addEventListener('click', () => {
-            sidebar.classList.remove('-translate-x-full');
-        });
-    }
-
-    if(closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            sidebar.classList.add('-translate-x-full');
-        });
-    }
-
-    // 4. Gestionnaire pour le formulaire de PAIEMENTS
+    // 4. Formulaire paiements
     const paiementForm = document.getElementById('paiements-form');
     const fileInputPaiement = document.getElementById('file-upload-paiement');
     const fileDisplayPaiement = document.getElementById('file-upload-display-paiement');
-    
+
     if(paiementForm) {
-        paiementForm.addEventListener('submit', async (e) => {
+        paiementForm.addEventListener('submit', async e => {
             e.preventDefault();
             const invoiceId = document.getElementById('invoice-select-paiement').value;
             const note = document.getElementById('paiement-note').value || '';
             const file = fileInputPaiement.files[0];
 
             if (!invoiceId || !file) {
-                if (typeof showModal === 'function') {
-                    showModal('Erreur de Formulaire', 'Veuillez sélectionner la facture et joindre la preuve de paiement.');
-                } else {
-                    alert('Veuillez sélectionner la facture et joindre la preuve de paiement.');
-                }
+                showModal('Erreur de Formulaire', 'Veuillez sélectionner la facture et joindre la preuve de paiement.');
                 return;
             }
 
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const token = localStorage.getItem('jwtTokenCompany');
             if (!token) {
-                if (typeof showModal === 'function') {
-                    showModal('Authentification requise', 'Veuillez vous reconnecter pour envoyer la preuve.');
-                } else {
-                    alert('Veuillez vous reconnecter pour envoyer la preuve.');
-                }
+                showModal('Authentification requise', 'Veuillez vous reconnecter pour envoyer la preuve.');
                 return;
             }
 
-            const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+            const readFileAsBase64 = file => new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
                     const result = reader.result || '';
@@ -321,44 +235,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const resp = await fetch(`${API_BASE}/api/factures/proofs`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 const data = await resp.json().catch(() => ({}));
-                console.log('Upload proof response:', resp.status, data);
-
-                if (!resp.ok) {
-                    if (typeof showModal === 'function') {
-                        showModal('Erreur', data.message || "Échec de l’envoi de la preuve");
-                    } else {
-                        alert(data.message || "Échec de l’envoi de la preuve");
-                    }
+                if(!resp.ok) {
+                    showModal('Erreur', data.message || "Échec de l’envoi de la preuve");
                     return;
                 }
 
-                // Reset formulaire
                 paiementForm.reset();
-                fileDisplayPaiement.textContent = 'PDF, PNG, JPG (MAX. 1 fichier)';
-                fileDisplayPaiement.classList.remove('file-selected');
+                if(fileDisplayPaiement) {
+                    fileDisplayPaiement.textContent = 'PDF, PNG, JPG (MAX. 1 fichier)';
+                    fileDisplayPaiement.classList.remove('file-selected');
+                }
 
-                // Simulation: Rediriger vers la messagerie compagnie avec la facture concernée
                 window.location.href = `/messa_comp.html?invoice=${encodeURIComponent(invoiceId)}`;
             } catch (err) {
                 console.error('Erreur upload preuve:', err);
-                if (typeof showModal === 'function') {
-                    showModal('Erreur', 'Une erreur est survenue lors de l’envoi de la preuve.');
-                } else {
-                    alert('Une erreur est survenue lors de l’envoi de la preuve.');
-                }
+                showModal('Erreur', 'Une erreur est survenue lors de l’envoi de la preuve.');
             }
         });
     }
 
-    // Affichage du nom du fichier (Paiements)
     if(fileInputPaiement) {
         fileInputPaiement.addEventListener('change', () => {
             if (fileInputPaiement.files.length > 0) {
@@ -370,16 +270,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
-    // 5. Démarrer IMMÉDIATEMENT sur la vue 'paiements' et définir l'état actif
+
+    // 5. Vue initiale
     changeView('paiements');
 
-    // Ensuite, charger les factures en arrière-plan
-    loadCompanyInvoices().then(() => {
-        // Une fois chargé, on rafraîchit le menu déroulant
-        const select = document.getElementById('invoice-select-paiement');
-        if (select) {
-            renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
-        }
-    });
+    // 6. Charger les factures
+    loadCompanyInvoices();
 });

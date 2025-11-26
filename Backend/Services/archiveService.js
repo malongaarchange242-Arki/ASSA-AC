@@ -3,7 +3,7 @@ import supabase from '../Config/db.js';
 /* -------------------------------------------------
    🔹 Fonction générique pour créer une archive
 -------------------------------------------------*/
-const createArchive = async ({
+export const createArchive = async ({
   type,
   reference,
   nom_compagnie = null,
