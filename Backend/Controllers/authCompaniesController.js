@@ -41,6 +41,8 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
 });
 
+const isSmtpConfigured = () => !!(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS);
+
 // ----------------- Génération OTP / mot de passe -----------------
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 const generateTempPassword = () => Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
@@ -83,7 +85,11 @@ export const requestFirstLoginOtp = async (req, res) => {
 
     if (updateError) return res.status(500).json({ message: 'Erreur serveur', erreur: updateError.message });
 
-    await sendFirstLoginEmail(email, otp, tempPassword);
+    try {
+      if (isSmtpConfigured()) {
+        await sendFirstLoginEmail(email, otp, tempPassword);
+      }
+    } catch {}
 
     await logActivite({
       module: 'Système',
@@ -92,7 +98,7 @@ export const requestFirstLoginOtp = async (req, res) => {
       id_companie: company.id
     });
 
-    res.json({ message: 'OTP et mot de passe temporaire envoyés', company: updatedCompany[0] });
+    res.json({ message: 'OTP généré', email_sent: isSmtpConfigured(), company: updatedCompany[0] });
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
