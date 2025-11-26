@@ -234,23 +234,49 @@ export const createFacture = async (req, res) => {
 // READ : Factures de la compagnie connectée
 export const getInvoicesByCompany = async (req, res) => {
   try {
-    // Récupération de l'id_companie depuis le JWT
-    const id_companie = req.user?.id_companie;
     const userRole = req.user?.role;
+    const userId = req.user?.id;
+    const id_companie = req.user?.id_companie;
 
-    if (!id_companie && userRole !== 'SuperAdmin') {
-      return res.status(401).json({ message: 'Utilisateur non autorisé ou id_companie manquant' });
+    let companyIds = [];
+    if (String(userRole).toLowerCase() === 'company') {
+      if (id_companie) companyIds = [id_companie];
+    } else if (['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(userRole)) {
+      // Essayer via table de liaison admin_companies
+      const { data: links, error: linksError } = await supabase
+        .from('admin_companies')
+        .select('company_id')
+        .eq('admin_id', userId);
+      if (!linksError && Array.isArray(links) && links.length) {
+        companyIds = links.map(l => l.company_id).filter(Boolean);
+      }
+      // Fallback: champ direct id_admin dans companies
+      if (!companyIds.length) {
+        const { data: ownedCompanies, error: ownedError } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('id_admin', userId);
+        if (!ownedError && Array.isArray(ownedCompanies) && ownedCompanies.length) {
+          companyIds = ownedCompanies.map(c => c.id).filter(Boolean);
+        }
+      }
+      // Si toujours rien et un id_companie existe dans le JWT, l'ajouter
+      if (!companyIds.length && id_companie) companyIds = [id_companie];
     }
 
-    // Construction de la requête
     let query = supabase
       .from('factures')
       .select('*')
-      .eq('archived', false); // on ne récupère que les factures non archivées
+      .eq('archived', false);
 
-    // Si ce n'est pas un SuperAdmin, filtrer par id_companie
-    if (userRole !== 'SuperAdmin') {
-      query = query.eq('id_companie', id_companie);
+    // Filtrage selon rôle
+    if (['Super Admin','SuperAdmin'].includes(userRole)) {
+      // Pas de filtre supplémentaire
+    } else if (companyIds.length) {
+      query = query.in('id_companie', companyIds);
+    } else {
+      // Aucun périmètre accessible
+      return res.status(200).json([]);
     }
 
     // Récupération et tri par date d'émission décroissante
