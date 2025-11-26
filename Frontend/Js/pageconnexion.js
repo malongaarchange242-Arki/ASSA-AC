@@ -1,5 +1,27 @@
-
 document.addEventListener('DOMContentLoaded', () => {
+    // ==========================
+    // Nettoyage session au chargement
+    // ==========================
+    function clearAllTokens() {
+        try {
+            localStorage.removeItem('jwtTokenAdmin');
+            localStorage.removeItem('jwtTokenCompany');
+            localStorage.removeItem('refreshTokenAdmin');
+            localStorage.removeItem('refreshTokenCompany');
+            localStorage.removeItem('userRoleAdmin');
+            localStorage.removeItem('userRoleCompany');
+            localStorage.removeItem('adminId');
+            localStorage.removeItem('id_companie');
+            localStorage.removeItem('userEmailAdmin');
+            localStorage.removeItem('userEmailCompany');
+        } catch (e) {
+            console.warn('Impossible de nettoyer le localStorage:', e);
+        }
+    }
+
+    // Nettoie au chargement pour éviter les vieux tokens persistants
+    clearAllTokens();
+
     // ==========================
     // 1. Éléments du DOM
     // ==========================
@@ -78,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================
-    // 4. Fonction fetch avec Auth
+    // 4. Fonction fetch avec Auth (nettoie token si 401)
     // ==========================
     async function fetchWithAuth(url, options = {}, isCompany = false) {
         const token = isCompany ? localStorage.getItem('jwtTokenCompany') : localStorage.getItem('jwtTokenAdmin');
@@ -87,10 +109,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (token) options.headers['Authorization'] = `Bearer ${token}`;
 
         const res = await fetch(url, options);
-        if (res.status === 401) throw new Error('Token expiré, reconnectez-vous');
+
+        // Si 401, on supprime les tokens pour forcer reconnexion propre
+        if (res.status === 401) {
+            clearAllTokens();
+            throw new Error('Token expiré, reconnectez-vous');
+        }
         if (res.status === 403) throw new Error('Accès interdit : permissions insuffisantes');
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Erreur API');
+
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur API');
+
         return data;
     }
 
@@ -148,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error(err);
-            alert(err.message);
+            alert(err.message || 'Erreur lors de la vérification');
             resetToInitialView();
         } finally {
             isChecking = false;
@@ -176,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================
-    // 7. Validation OTP
+    // 7. Validation OTP (NE PAS utiliser fetchWithAuth)
     // ==========================
     async function validateOtp() {
         const otp = otpCodeInput.value.trim();
@@ -184,10 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!otp || !password) return alert('Veuillez remplir OTP et mot de passe.');
 
         try {
-            const data = await fetchWithAuth(
-                'https://assa-ac.onrender.com/api/companies/otp/validate',
-                { method: 'POST', body: JSON.stringify({ email: currentEmail, otp, password }) }
-            );
+            const res = await fetch('https://assa-ac.onrender.com/api/companies/otp/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail, otp, password })
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
 
             // Stockage séparé company
             localStorage.setItem('jwtTokenCompany', data.token);
@@ -200,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error(err);
-            alert(err.message);
+            alert(err.message || 'Erreur validation OTP');
         }
     }
 
@@ -210,6 +243,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loginStandard() {
         const password = passwordInput.value.trim();
         if (!password) return alert('Veuillez entrer votre mot de passe.');
+
+        // Nettoyer d'abord les anciens tokens pour éviter contamination
+        clearAllTokens();
 
         try {
             let url;
@@ -223,8 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail, password })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Erreur serveur');
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
 
             if (isCompany) {
                 localStorage.setItem('jwtTokenCompany', data.token);
@@ -236,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('jwtTokenAdmin', data.token);
                 localStorage.setItem('userRoleAdmin', currentRole);
                 localStorage.setItem('userEmailAdmin', currentEmail);
-                localStorage.setItem('adminId', data.id);
+                localStorage.setItem('adminId', data.adminId || data.id || data.adminId);
                 window.location.href = '/Frontend/Html/AccueilAdmin.html';
             }
 
@@ -244,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error(err);
-            alert(err.message);
+            alert(err.message || 'Erreur lors de la connexion');
         }
     }
 
