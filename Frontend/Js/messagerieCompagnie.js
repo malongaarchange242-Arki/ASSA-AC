@@ -12,7 +12,7 @@ const ROUTE_MAP = {
 
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'http://localhost:5002';
+    return origin.includes(':5002') ? origin : 'https://assa-ac.onrender.com';
 })();
 
 const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +

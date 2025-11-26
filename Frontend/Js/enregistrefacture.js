@@ -117,7 +117,7 @@ function removeItemRow(btn) {
 async function loadClients() {
     try {
         const token = getAdminToken();
-        const response = await fetch('http://localhost:5002/api/companies/all', {
+        const response = await fetch('https://assa-ac.onrender.com/api/companies/all', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -345,7 +345,7 @@ async function sendInvoice() {
 
     try {
         const token = getAdminToken();
-        const response = await fetch('http://localhost:5002/api/factures', {
+        const response = await fetch('https://assa-ac.onrender.com/api/factures', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

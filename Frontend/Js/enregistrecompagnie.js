@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (companyId) {
         try {
-            const res = await fetch(`http://localhost:5002/api/companies/${companyId}`, {
+            const res = await fetch(`https://assa-ac.onrender.com/api/companies/${companyId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -95,8 +95,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const method = companyId ? 'PUT' : 'POST';
             const url = companyId
-                ? `http://localhost:5002/api/companies/update-company/${companyId}`
-                : 'http://localhost:5002/api/admins/create-company';
+                ? `https://assa-ac.onrender.com/api/companies/update-company/${companyId}`
+                : 'https://assa-ac.onrender.com/admins/create-company';
 
             const response = await fetch(url, {
                 method,

@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!refreshToken) return false;
 
         try {
-            const res = await fetch('http://localhost:5002/api/admins/token/refresh', {
+            const res = await fetch('https://assa-ac.onrender.com/api/admins/token/refresh', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken })
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ================== Récupération des compagnies ==================
     async function chargerCompanies() {
         try {
-            const data = await fetchWithAuth('http://localhost:5002/api/companies/all');
+            const data = await fetchWithAuth('https://assa-ac.onrender.com/api/companies/all');
             console.log('Données compagnies reçues:', data);
 
             if (!statCards.companies) {
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ================== Récupération des factures ==================
     async function chargerFactures() {
         try {
-            const factures = await fetchWithAuth('http://localhost:5002/api/factures');
+            const factures = await fetchWithAuth('https://assa-ac.onrender.com/api/factures');
             console.log('Données factures reçues:', factures);
 
             if (!statCards.factures) {
