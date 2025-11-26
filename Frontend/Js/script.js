@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!options.headers) options.headers = {};
         options.headers['Content-Type'] = 'application/json';
         options.headers['Authorization'] = `Bearer ${token}`;
+        options.headers['x-access-token'] = token;
 
         let res = await fetch(url, options);
 
@@ -74,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Token expiré');
             }
             options.headers['Authorization'] = `Bearer ${token}`;
+            options.headers['x-access-token'] = token;
             res = await fetch(url, options);
         }
 

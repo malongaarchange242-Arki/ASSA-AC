@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const API_BASE = (() => {
+        const origin = window.location.origin;
+        return origin.includes(':5002') ? origin : 'https://assa-ac.onrender.com';
+    })();
     // ==========================
     // 1. Éléments du DOM
     // ==========================
@@ -108,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEmail = email;
     
         try {
-            const res = await fetch('https://assa-ac.onrender.com/api/auth/check-email', {
+            const res = await fetch(`${API_BASE}/api/auth/check-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
@@ -165,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================
     async function requestOtp() {
         try {
-            const res = await fetch('https://assa-ac.onrender.com/api/companies/otp/request', {
+            const res = await fetch(`${API_BASE}/api/companies/first-login-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail })
@@ -189,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!otp || !password) return alert('Veuillez remplir OTP et mot de passe.');
     
         try {
-            const res = await fetch('https://assa-ac.onrender.com/api/companies/otp/validate', {
+            const res = await fetch(`${API_BASE}/api/companies/validate-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail, otp, password })
@@ -221,8 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let url;
             let isCompany = false;
-            if (currentRole === 'admin' || currentRole === 'supervisor') url = 'https://assa-ac.onrender.com/api/admins/login';
-            else if (currentRole === 'company') { url = 'https://assa-ac.onrender.com/api/companies/login'; isCompany = true; }
+            if (currentRole === 'admin' || currentRole === 'supervisor') url = `${API_BASE}/api/admins/login`;
+            else if (currentRole === 'company') { url = `${API_BASE}/api/companies/login`; isCompany = true; }
             else return alert('Role inconnu.');
     
             const res = await fetch(url, {
@@ -241,7 +245,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('id_companie', data.id_companie);
                 window.location.href = '/Frontend/Html/AccueilCompagnie.html';
             } else {
-                localStorage.setItem('jwtTokenAdmin', data.token);
+                const adminToken = data.jwtTokenAdmin || data.token || data.accessToken || data.access_token;
+                const adminRefresh = data.refreshTokenAdmin || data.refreshToken || data.refresh_token;
+                if (adminToken) localStorage.setItem('jwtTokenAdmin', adminToken);
+                if (adminRefresh) localStorage.setItem('refreshTokenAdmin', adminRefresh);
                 localStorage.setItem('userRoleAdmin', currentRole);
                 localStorage.setItem('userEmailAdmin', currentEmail);
                 localStorage.setItem('adminId', data.adminId || data.id || data.adminId);
