@@ -118,55 +118,28 @@ export const createCompany = async (req, res) => {
   console.log('req.body:', req.body);
   console.log('req.file:', req.file);
   
-  // Vérifier rôle et existence de l'admin connecté
   const { role, id: currentAdminId } = req.user || {};
-  if (!currentAdminId) {
-    return res.status(401).json({ message: "Admin non authentifié" });
-  }
+  if (!currentAdminId) return res.status(401).json({ message: "Admin non authentifié" });
   if (!role || !['Admin','Administrateur','Superviseur','Super Admin'].includes(role)) {
     return res.status(403).json({ message: 'Accès refusé : rôle non autorisé' });
   }
   
-  // Champs obligatoires pour la compagnie
-  const {
-    company_name,
-    representative_name,
-    email: company_email,
-    phone_number,
-    full_address,
-    country,
-    city,
-    airport_code
-  } = req.body;
-  
+  const { company_name, representative_name, email: company_email, phone_number, full_address, country, city, airport_code } = req.body;
   if (!company_name || !representative_name || !company_email || !full_address || !country || !city) {
     return res.status(400).json({ message: 'Tous les champs obligatoires de la compagnie doivent être remplis' });
   }
   
-  // Logo par défaut
   let logoUrl = 'https://via.placeholder.com/70x70?text=Logo';
-  
-  // Si un fichier est envoyé, upload vers Supabase Storage
   if (req.file) {
     const file = req.file;
-    const safeName = file.originalname.normalize('NFD')
-      .replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-zA-Z0-9.-]/g,'_');
+    const safeName = file.originalname.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9.-]/g,'_');
     const fileName = `logos/${Date.now()}_${safeName}`;
-  
-    const { error: uploadError } = await supabase.storage
-      .from('company-logos')
-      .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: true });
-  
-    if (uploadError) {
-      return res.status(500).json({ message: 'Impossible de téléverser le logo', erreur: uploadError.message });
-    }
-  
+    const { error: uploadError } = await supabase.storage.from('company-logos').upload(fileName, file.buffer, { contentType: file.mimetype, upsert: true });
+    if (uploadError) return res.status(500).json({ message: 'Impossible de téléverser le logo', erreur: uploadError.message });
     const { data: publicData } = supabase.storage.from('company-logos').getPublicUrl(fileName);
     logoUrl = publicData?.publicUrl || logoUrl;
   }
   
-  // Préparer données pour insertion de la compagnie
   const companyData = {
     company_name: company_name.trim(),
     representative_name: representative_name.trim(),
@@ -182,34 +155,35 @@ export const createCompany = async (req, res) => {
     updated_at: new Date(),
   };
   
-  // Insertion dans Supabase
-  const { data: insertedData, error: insertError } = await supabase
-    .from('companies')
-    .insert([companyData])
-    .select();
-  
-  if (insertError) {
-    return res.status(500).json({ message: 'Erreur création compagnie', erreur: insertError.message });
-  }
+  const { data: insertedData, error: insertError } = await supabase.from('companies').insert([companyData]).select();
+  if (insertError) return res.status(500).json({ message: 'Erreur création compagnie', erreur: insertError.message });
   
   const newCompany = insertedData[0];
+  console.log('Nouvelle compagnie créée:', newCompany);
   
-  let adminId = currentAdminId;
+  const adminId = currentAdminId;
   
-  // Associer l’admin (existant ou nouveau) à la compagnie
-  const { error: linkError } = await supabase
+  const { data: existingLink, error: linkCheckError } = await supabase
     .from('admin_companies')
-    .insert([{ admin_id: adminId, company_id: newCompany.id, role: role || 'Administrateur', created_at: new Date() }]);
+    .select('*')
+    .eq('admin_id', adminId)
+    .eq('id_companie', newCompany.id)
+    .single();
   
-  if (linkError) {
-    return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: linkError.message });
+  if (linkCheckError && linkCheckError.code !== 'PGRST116') {
+    console.error('Erreur vérification lien admin_companies:', linkCheckError);
+    return res.status(500).json({ message: 'Erreur vérification association admin-compagnie', erreur: linkCheckError.message });
   }
   
-  res.status(201).json({
-    message: "Compagnie créée et associée à l’admin connecté",
-    company: newCompany,
-    admin_id: adminId
-  });
+  if (!existingLink) {
+    const { error: linkError } = await supabase.from('admin_companies').insert([{ admin_id: adminId, id_companie: newCompany.id, role: role || 'Administrateur', created_at: new Date() }]);
+    if (linkError) return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: linkError.message });
+    console.log('Admin associé à la compagnie avec succès');
+  } else {
+    console.log('Admin déjà associé à cette compagnie, aucun lien ajouté');
+  }
+  
+  res.status(201).json({ message: "Compagnie créée et associée à l’admin connecté", company: newCompany, admin_id: adminId });
   
   } catch (err) {
   console.error('Erreur createCompany (catch):', err);
