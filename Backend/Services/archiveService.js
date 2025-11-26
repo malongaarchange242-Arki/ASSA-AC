@@ -2,29 +2,35 @@ import supabase from '../Config/db.js';
 
 /* -------------------------------------------------
    🔹 Fonction générique pour créer une archive
+   ✔️ Adaptée au schéma réel de la table `archives`
 -------------------------------------------------*/
 export const createArchive = async ({
   type,
-  reference,
-  nom_compagnie = null,
+  ref,
+  compagnie_id = null,
+  compagnie_nom = null,
   montant = null,
   objet = null,
-  fichier_url = null
+  periode = null,
+  statut = null
 }) => {
   const { error } = await supabase
     .from('archives')
     .insert({
-      type_archive: type,
-      reference,
-      nom_compagnie,
+      type,
+      ref,
+      compagnie_id,
+      compagnie_nom,
       montant,
       objet,
-      fichier_url,
+      periode,
+      statut,
       date_cloture: new Date()
     });
 
   if (error) throw new Error(error.message);
 };
+
 
 /* -------------------------------------------------
    🔹 Archiver une compagnie
@@ -39,8 +45,9 @@ export const archiveCompanyService = async (company, adminId) => {
 
   await createArchive({
     type: "Archivage de compagnie",
-    reference: company.id,
-    nom_compagnie: company.nom
+    ref: company.id,
+    compagnie_id: company.id,
+    compagnie_nom: company.nom
   });
 
   return true;
@@ -59,8 +66,9 @@ export const restoreCompanyService = async (company, adminId) => {
 
   await createArchive({
     type: "Restauration de compagnie",
-    reference: company.id,
-    nom_compagnie: company.nom
+    ref: company.id,
+    compagnie_id: company.id,
+    compagnie_nom: company.nom
   });
 
   return true;
@@ -79,7 +87,7 @@ export const archiveAdminService = async (admin, adminId = null) => {
 
   await createArchive({
     type: "Archivage d'administrateur",
-    reference: admin.id
+    ref: admin.id
   });
 
   return true;
@@ -98,7 +106,7 @@ export const restoreAdminService = async (admin, adminId = null) => {
 
   await createArchive({
     type: "Restauration d'administrateur",
-    reference: admin.id
+    ref: admin.id
   });
 
   return true;
@@ -117,10 +125,13 @@ export const archiveFactureService = async (facture, adminId) => {
 
   await createArchive({
     type: "Archivage de facture",
-    reference: facture.id,
-    nom_compagnie: facture.nom_client,
-    montant: facture.montant,
-    objet: facture.objet
+    ref: facture.id,
+    compagnie_id: facture.id_companie,
+    compagnie_nom: facture.nom_client,
+    montant: facture.montant_total,
+    objet: facture.objet,
+    periode: facture.periode,
+    statut: facture.statut
   });
 
   return true;
@@ -139,10 +150,13 @@ export const restoreFactureService = async (facture, adminId) => {
 
   await createArchive({
     type: "Restauration de facture",
-    reference: facture.id,
-    nom_compagnie: facture.nom_client,
-    montant: facture.montant,
-    objet: facture.objet
+    ref: facture.id,
+    compagnie_id: facture.id_companie,
+    compagnie_nom: facture.nom_client,
+    montant: facture.montant_total,
+    objet: facture.objet,
+    periode: facture.periode,
+    statut: facture.statut
   });
 
   return true;
