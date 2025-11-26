@@ -136,10 +136,7 @@ export const createCompany = async (req, res) => {
     full_address,
     country,
     city,
-    airport_code,
-    admin_name,
-    admin_email,
-    admin_password
+    airport_code
   } = req.body;
   
   if (!company_name || !representative_name || !company_email || !full_address || !country || !city) {
@@ -181,6 +178,7 @@ export const createCompany = async (req, res) => {
     airport_code: airport_code?.trim() || '',
     status: 'Inactif',
     logo_url: logoUrl,
+    id_admin: currentAdminId,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -197,54 +195,19 @@ export const createCompany = async (req, res) => {
   
   const newCompany = insertedData[0];
   
-  let adminId = currentAdminId; // Par défaut, admin connecté
-  
-  // Si on fournit un nouvel admin (email différent), on le crée
-  if (admin_name && admin_email && admin_password) {
-    // Vérifier si admin existe déjà
-    const { data: existingAdmin } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('email', admin_email.toLowerCase())
-      .single();
-  
-    if (existingAdmin) {
-      adminId = existingAdmin.id;
-    } else {
-      const hashedPassword = bcrypt.hashSync(admin_password, 10);
-      const { data: newAdmin, error: adminError } = await supabase
-        .from('admins')
-        .insert([{
-          nom_complet: admin_name.trim(),
-          email: admin_email.toLowerCase().trim(),
-          profile: 'Administrateur',
-          status: 'Actif',
-          password: hashedPassword,
-          created_at: new Date(),
-          updated_at: new Date()
-        }])
-        .select()
-        .single();
-  
-      if (adminError) {
-        return res.status(500).json({ message: 'Erreur création admin', erreur: adminError.message });
-      }
-  
-      adminId = newAdmin.id;
-    }
-  }
+  let adminId = currentAdminId;
   
   // Associer l’admin (existant ou nouveau) à la compagnie
   const { error: linkError } = await supabase
     .from('admin_companies')
-    .insert([{ admin_id: adminId, company_id: newCompany.id, role: 'Administrateur', created_at: new Date() }]);
+    .insert([{ admin_id: adminId, company_id: newCompany.id, role: role || 'Administrateur', created_at: new Date() }]);
   
   if (linkError) {
     return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: linkError.message });
   }
   
   res.status(201).json({
-    message: 'Compagnie créée avec succès et admin associé',
+    message: "Compagnie créée et associée à l’admin connecté",
     company: newCompany,
     admin_id: adminId
   });
