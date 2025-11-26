@@ -113,6 +113,9 @@ export const upload = multer({ storage, fileFilter });
 /* ---------------------------------------------------------
    🔹 CRÉER UNE COMPAGNIE
 ----------------------------------------------------------*/
+/* ---------------------------------------------------------
+   🔹 CRÉER UNE COMPAGNIE AVEC ADMIN
+----------------------------------------------------------*/
 export const createCompany = async (req, res) => {
   try {
     console.log('--- Début createCompany ---');
@@ -120,19 +123,35 @@ export const createCompany = async (req, res) => {
     console.log('req.body:', req.body);
     console.log('req.file:', req.file);
 
-    // Vérifier rôle et existence de l'admin
-    const { role, id: adminId } = req.user || {};
-    if (!adminId) {
+    // Vérifier rôle et existence de l'admin connecté
+    const { role, id: currentAdminId } = req.user || {};
+    if (!currentAdminId) {
       return res.status(401).json({ message: "Admin non authentifié" });
     }
     if (!role || !['Admin','Administrateur','Superviseur','Super Admin'].includes(role)) {
       return res.status(403).json({ message: 'Accès refusé : rôle non autorisé' });
     }
 
-    // Récupérer champs obligatoires
-    const { company_name, representative_name, email, phone_number, full_address, country, city, airport_code } = req.body;
-    if (!company_name || !representative_name || !email || !full_address || !country || !city) {
-      return res.status(400).json({ message: 'Tous les champs obligatoires doivent être remplis' });
+    // Champs obligatoires pour la compagnie
+    const {
+      company_name,
+      representative_name,
+      email: company_email,
+      phone_number,
+      full_address,
+      country,
+      city,
+      airport_code,
+      admin_name,
+      admin_email,
+      admin_password
+    } = req.body;
+
+    if (!company_name || !representative_name || !company_email || !full_address || !country || !city) {
+      return res.status(400).json({ message: 'Tous les champs obligatoires de la compagnie doivent être remplis' });
+    }
+    if (!admin_name || !admin_email || !admin_password) {
+      return res.status(400).json({ message: 'Tous les champs obligatoires de l’admin doivent être remplis' });
     }
 
     // Logo par défaut
@@ -158,11 +177,11 @@ export const createCompany = async (req, res) => {
       logoUrl = publicData?.publicUrl || logoUrl;
     }
 
-    // Préparer données pour insertion
+    // Préparer données pour insertion de la compagnie
     const companyData = {
       company_name: company_name.trim(),
       representative_name: representative_name.trim(),
-      email: email.toLowerCase().trim(),
+      email: company_email.toLowerCase().trim(),
       phone_number: phone_number?.trim() || '',
       full_address: full_address.trim(),
       country: country.trim(),
@@ -186,29 +205,47 @@ export const createCompany = async (req, res) => {
 
     const newCompany = insertedData[0];
 
-    // ✅ Associer l'admin à cette nouvelle compagnie dans admin_companies
+    // 🔹 Créer le nouvel admin pour cette compagnie
+    const hashedPassword = bcrypt.hashSync(admin_password, 10);
+
+    const { data: newAdmin, error: adminError } = await supabase
+      .from('admins')
+      .insert([{
+        nom_complet: admin_name.trim(),
+        email: admin_email.toLowerCase().trim(),
+        profile: 'Administrateur',
+        status: 'Actif',
+        password: hashedPassword,
+        created_at: new Date(),
+        updated_at: new Date()
+      }])
+      .select()
+      .single();
+
+    if (adminError) {
+      return res.status(500).json({ message: 'Erreur création admin', erreur: adminError.message });
+    }
+
+    // 🔹 Associer le nouvel admin à la compagnie dans admin_companies
     const { error: linkError } = await supabase
       .from('admin_companies')
-      .insert([{ admin_id: adminId, company_id: newCompany.id, role: 'Administrateur', created_at: new Date() }]);
+      .insert([{ admin_id: newAdmin.id, company_id: newCompany.id, role: 'Administrateur', created_at: new Date() }]);
 
     if (linkError) {
       return res.status(500).json({ message: 'Erreur association admin à la compagnie', erreur: linkError.message });
     }
 
     res.status(201).json({
-      message: 'Compagnie créée avec succès et admin associé',
-      company: newCompany
+      message: 'Compagnie créée avec succès et nouvel admin associé',
+      company: newCompany,
+      admin: newAdmin
     });
 
   } catch (err) {
     console.error('Erreur createCompany (catch):', err);
-    if (err instanceof multer.MulterError || err.message.includes('Format de fichier non autorisé')) {
-      return res.status(400).json({ message: err.message });
-    }
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
-
 /* ---------------------------------------------------------
    🔹 LISTE DES ADMINS (ACTIFS)
 ----------------------------------------------------------*/
