@@ -44,10 +44,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Erreur rafraîchissement token');
 
-            if (role === 'admin') localStorage.setItem(adminTokenKey, data.token);
-            else localStorage.setItem(companyTokenKey, data.token);
+            const newToken = data.token || data.accessToken || data.access_token;
+            if (!newToken) throw new Error('Réponse refresh sans token');
 
-            token = data.token;
+            if (role === 'admin') localStorage.setItem(adminTokenKey, newToken);
+            else localStorage.setItem(companyTokenKey, newToken);
+
+            token = newToken;
             return true;
         } catch (err) {
             console.error('Impossible de rafraîchir le token :', err);

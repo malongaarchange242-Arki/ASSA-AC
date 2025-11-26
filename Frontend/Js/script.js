@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!token) {
         alert("Vous n'êtes pas connecté !");
-        window.location.href = 'login.html';
+        window.location.href = '/Frontend/Html/Pageconnexion.html';
         return;
     }
 
