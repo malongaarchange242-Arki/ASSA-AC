@@ -59,13 +59,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAuth(url, options = {}) {
         if (!token) throw new Error('Token manquant');
-        options.headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        options.headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'x-access-token': token };
 
         let res = await fetch(url, options);
         if (res.status === 401) {
             const refreshed = await refreshToken();
             if (!refreshed) throw new Error('Token expiré');
             options.headers['Authorization'] = `Bearer ${token}`;
+            options.headers['x-access-token'] = token;
             res = await fetch(url, options);
         }
 

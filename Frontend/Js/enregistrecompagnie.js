@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    const API_BASE = (() => {
+        const origin = window.location.origin;
+        return origin.includes(':5002') ? origin : 'https://assa-ac.onrender.com';
+    })();
     const form = document.getElementById('company-registration-form');
     const saveButton = document.getElementById('save-button');
     const REDIRECT_DELAY_MS = 2000;
@@ -31,11 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (companyId) {
         try {
-            const res = await fetch(`https://assa-ac.onrender.com/api/companies/${companyId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`${API_BASE}/api/companies/${companyId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'x-access-token': token }
             });
 
-            const result = await res.json();
+            const ct = res.headers.get('content-type') || '';
+            const result = ct.includes('application/json') ? await res.json() : { message: await res.text() };
 
             if (res.ok && result.company) {
                 const data = result.company;
@@ -95,16 +100,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const method = companyId ? 'PUT' : 'POST';
             const url = companyId
-                ? `https://assa-ac.onrender.com/api/companies/update-company/${companyId}`
-                : 'https://assa-ac.onrender.com/admins/create-company';
+                ? `${API_BASE}/api/companies/update-company/${companyId}`
+                : `${API_BASE}/api/admins/create-company`;
 
             const response = await fetch(url, {
                 method,
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: { 'Authorization': `Bearer ${token}`, 'x-access-token': token },
                 body: formData
             });
 
-            const result = await response.json();
+            const ct = response.headers.get('content-type') || '';
+            const result = ct.includes('application/json') ? await response.json() : { message: await response.text() };
 
             if (!response.ok) {
                 showMessage(result.message || 'Erreur serveur', 'error');
