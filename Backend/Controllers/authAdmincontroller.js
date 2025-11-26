@@ -189,17 +189,16 @@ export const createCompany = async (req, res) => {
   const newCompany = insertedData[0];
   console.log('Nouvelle compagnie créée :', newCompany);
   
-  // Mise à jour de l'admin connecté
-  const { data: adminUpdateData, error: adminUpdateError } = await supabase
-    .from('admins')
-    .update({ id_companie: newCompany.id })
-    .eq('id', adminId);
-  
-  if (adminUpdateError) {
-    console.error('Erreur liaison admin :', adminUpdateError);
-    return res.status(500).json({ message: 'Compagnie créée mais impossible d\'associer l\'admin', erreur: adminUpdateError.message });
+  // Lier via table de liaison admin_companies
+  const { error: linkError } = await supabase
+    .from('admin_companies')
+    .insert([{ admin_id: adminId, company_id: newCompany.id, role: role || 'Administrateur', created_at: new Date() }]);
+
+  if (linkError) {
+    console.error('Erreur association admin_companies :', linkError);
+    return res.status(201).json({ message: 'Compagnie créée, association admin échouée', company: newCompany, erreur_association: linkError.message });
   }
-  
+
   res.status(201).json({ message: 'Compagnie créée avec succès et admin associé', company: newCompany });
   
   
