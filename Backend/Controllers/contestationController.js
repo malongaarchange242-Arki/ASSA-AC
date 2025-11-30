@@ -1,0 +1,127 @@
+import supabase from '../Config/db.js';
+import { v4 as uuidv4 } from 'uuid';
+import multer from 'multer';
+
+// ================= Multer =================
+const storage = multer.memoryStorage();
+export const uploadMiddleware = multer({ storage }).single('file');
+
+// ================= Upload Preuves Paiement =================
+export const uploadPreuvesPaiement = async (req, res) => {
+    try {
+        const { numero_facture, commentaire } = req.body;
+        const file = req.file;
+
+        if (!file) return res.status(400).json({ message: 'Aucun fichier envoyé' });
+        if (!numero_facture) return res.status(400).json({ message: 'Numéro de facture manquant' });
+
+        // 🔹 Récupérer la facture pour obtenir son ID + id_companie
+        const { data: facture, error: factureErr } = await supabase
+            .from("factures")
+            .select("id, id_companie")
+            .eq("numero_facture", numero_facture)
+            .single();
+
+        if (factureErr) return res.status(500).json({ message: "Erreur récupération facture", error: factureErr.message });
+        if (!facture) return res.status(404).json({ message: "Facture introuvable" });
+
+        const facture_id = facture.id;
+        const id_companie = facture.id_companie;
+
+        // 🔹 Vérification accès Company
+        if (String(req.user.role || "").toLowerCase() === "company") {
+            if (req.user.id_companie !== id_companie) {
+                return res.status(403).json({ message: "Accès refusé" });
+            }
+        }
+
+        // ========================
+        //       UPLOAD STORAGE
+        // ========================
+        const ext = file.originalname.split('.').pop();
+        const safeName = file.originalname
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9.-]/g, '_');
+
+        const filename = `preuves/${uuidv4()}_${safeName}`;
+        const bucketName = "preuves-paiement";
+
+        let { error: uploadError } = await supabase
+            .storage
+            .from(bucketName)
+            .upload(filename, file.buffer, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: file.mimetype
+            });
+
+        if (uploadError) throw uploadError;
+
+        // 🔹 URL publique
+        const { data: publicUrl } = supabase
+            .storage
+            .from(bucketName)
+            .getPublicUrl(filename);
+
+        // ========================
+        //   INSERTION DANS TABLE
+        // ========================
+        const { data: preuveData, error: preuveError } = await supabase
+            .from("Contestation")
+            .insert([{
+                facture_id,           // ← CORRECT
+                id_companie,
+                fichier_nom: file.originalname,
+                fichier_url: publicUrl.publicUrl,
+                type_fichier: ext,
+                commentaire,
+                date_envoi: new Date()
+            }])
+            .select()
+            .single();
+
+        if (preuveError) throw preuveError;
+
+        res.status(201).json({
+            success: true,
+            message: "Preuve de paiement uploadée avec succès",
+            preuve: preuveData
+        });
+
+    } catch (err) {
+        console.error("Erreur uploadPreuvesPaiement:", err);
+        res.status(500).json({
+            message: "Erreur lors de l'upload de la preuve",
+            error: err.message
+        });
+    }
+};
+
+
+// ================= Récupérer une preuve par ID =================
+export const getPreuveById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data, error } = await supabase
+            .from('Contestation')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
+        if (!data) return res.status(404).json({ message: 'Preuve introuvable' });
+
+        // 🔹 Vérification accès Company
+        if (String(req.user.role || '').toLowerCase() === 'company' && data.id_companie !== (req.user.id_companie || req.user.company_id)) {
+            return res.status(403).json({ message: 'Accès refusé à cette preuve' });
+        }
+
+        res.json({ preuve: data });
+
+    } catch (err) {
+        console.error('Erreur getPreuveById:', err);
+        res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    }
+};

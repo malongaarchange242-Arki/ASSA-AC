@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 setTimeout(() => {
-                    const url = `/Frontend/Html/messagerieCompagnie.html?invoice=${encodeURIComponent(invoiceId)}${proofId ? `&proofId=${encodeURIComponent(proofId)}` : ''}`;
+                    const url = `messagerieCompagnie.html?invoice=${encodeURIComponent(invoiceId)}${proofId ? `&proofId=${encodeURIComponent(proofId)}` : ''}`;
                     window.location.href = url;
                 }, 800);
             } catch (err) {

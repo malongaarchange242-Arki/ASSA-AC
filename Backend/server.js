@@ -12,10 +12,12 @@ import { WebSocketServer } from 'ws';
 // Routes imports
 import adminRoutes from './Routes/admins.js';
 import companyRoutes from './Routes/compagnies.js';
+import ContestationRoutes from './Routes/contestation.js';
 import factureRoutes from './Routes/factureRoutes.js';
 import journalRoutes from './Routes/journalActiviteRoutes.js';
 import authRoutes from './Routes/auth.js';
 import messagesRoutesFactory from './Routes/messages.js';
+import contestationsRoutesFactory from './Routes/contestations.js';
 import preuveRoutes from './Routes/preuveRoutes.js';
 import parametreRoutes from './Routes/parametreRoutes.js';
 import archiveRoutes from './Routes/archiveRoutes.js';
@@ -60,6 +62,7 @@ app.use(express.json());
 // ==========================
 app.use('/api/admins', adminRoutes);
 app.use('/api/companies', companyRoutes);
+app.use('/api/contestation', ContestationRoutes);
 app.use('/api/factures', factureRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/auth', authRoutes);
@@ -67,6 +70,7 @@ app.use('/api/preuves', preuveRoutes);
 app.use('/api/parametres', parametreRoutes);
 app.use('/api/archives', archiveRoutes);
 app.use('/api/messages', messagesRoutesFactory(broadcastToRoom));
+app.use('/api/contestations', contestationsRoutesFactory(broadcastToRoom));
 
 
 // 404 pour toutes les routes /api/*
