@@ -94,8 +94,13 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
 // ===============================================================
 export const generateRef = async (req, res) => {
   try {
+    const role = req.user?.role;
     const id_companie = req.user?.id_companie;
-    if (!id_companie) return res.status(401).json({ message: 'Utilisateur non autorisé' });
+    const isAdminRole = ['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(role);
+    const isCompanyRole = String(role).toLowerCase() === 'company';
+    if (!isAdminRole && !(isCompanyRole && id_companie)) {
+      return res.status(401).json({ message: 'Utilisateur non autorisé' });
+    }
 
     const numero_facture = await generateNumeroFacture();
     res.status(200).json({ numero_facture });
@@ -136,17 +141,24 @@ export const createFacture = async (req, res) => {
       return res.status(401).json({ message: "Aucune compagnie spécifiée pour cette facture." });
     }
 
-    // 🔹 Vérifier que l'utilisateur a le droit sur cette compagnie
-    // (optionnel, mais conseillé)
-    const { data: authorizedCompany } = await supabase
-      .from('companies')
-      .select('id')
-      .eq('id', compagnieId)
-      .eq('id_admin', userId)
-      .single();
-
-    if (!authorizedCompany) {
-      return res.status(403).json({ message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie." });
+    if (['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(userRole)) {
+      if (['Super Admin','SuperAdmin'].includes(userRole)) {
+        // accès total
+      } else {
+        const { data: link } = await supabase
+          .from('admin_companies')
+          .select('company_id')
+          .eq('admin_id', userId)
+          .eq('company_id', compagnieId)
+          .maybeSingle();
+        if (!link) {
+          return res.status(403).json({ message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie." });
+        }
+      }
+    } else if (String(userRole).toLowerCase() === 'company') {
+      if (req.user?.id_companie !== compagnieId) {
+        return res.status(403).json({ message: "Accès refusé pour cette compagnie." });
+      }
     }
 
     // Génération du numéro de facture
@@ -186,8 +198,7 @@ export const createFacture = async (req, res) => {
       description: `Création facture ${numero_facture} pour ${nom_client}`
     }]);
 
-    // 3️⃣ Archivage via le service spécifique
-    await archiveFactureService(factureData, userId);
+    
 
     // 4️⃣ Insertion des lignes facture
     if (lignes?.length) {
@@ -217,7 +228,7 @@ export const createFacture = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Facture créée et archivée avec succès',
+      message: 'Facture créée avec succès',
       facture: factureData,
       numero_facture
     });

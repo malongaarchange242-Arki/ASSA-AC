@@ -150,7 +150,6 @@ export const createCompany = async (req, res) => {
   
     if (uploadError) {
       console.error('Erreur upload logo :', uploadError);
-      return res.status(500).json({ message: 'Impossible de téléverser le logo', erreur: uploadError.message });
     }
   
     const { data: publicData } = supabase.storage.from('company-logos').getPublicUrl(fileName);
@@ -183,7 +182,7 @@ export const createCompany = async (req, res) => {
   
   if (insertError) {
     console.error('Erreur insertion company :', insertError);
-    return res.status(500).json({ message: 'Erreur création compagnie', erreur: insertError.message });
+    return res.status(400).json({ message: 'Erreur création compagnie', erreur: insertError.message });
   }
   
   const newCompany = insertedData[0];

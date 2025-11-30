@@ -10,7 +10,7 @@ const frontendDir = path.join(__dirname, 'Frontend');
 
 app.use(express.static(frontendDir));
 
-const port = process.env.PORT || 5500;
+const port = process.env.PORT || 5002;
 app.listen(port, () => {
   console.log(`Frontend server running at http://localhost:${port}/`);
   console.log(`Open enregistrefacture: http://localhost:${port}/Frontend/Html/enregistrefacture.html`);

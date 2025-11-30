@@ -1,5 +1,8 @@
 // ------------------- CONFIG -------------------
-const API_BASE = 'http://localhost:5002';
+const API_BASE = (() => {
+    const origin = window.location.origin;
+    return origin.includes(':5002') ? origin : 'http://localhost:5002';
+})();
 let SERVER_INVOICES = [];
 
 function parseJwt(token) {
@@ -21,11 +24,16 @@ async function loadCompanyInvoices() {
             return;
         }
 
-        const url = `${API_BASE}/api/factures/company`;
-
-        const resp = await fetch(url, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
+        let base = API_BASE;
+        let url = `${base}/api/factures/company`;
+        let resp;
+        try {
+            resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+        } catch (e) {
+            base = 'https://assa-ac.onrender.com';
+            url = `${base}/api/factures/company`;
+            resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+        }
 
         if (!resp.ok) {
             console.error("Erreur serveur :", resp.status);
@@ -212,31 +220,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const readFileAsBase64 = file => new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result || '';
-                    const base64 = String(result).includes(',') ? String(result).split(',')[1] : String(result);
-                    resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-
             try {
-                const file_data = await readFileAsBase64(file);
-                const payload = {
-                    numero_facture: invoiceId,
-                    note,
-                    file_name: file.name,
-                    file_type: file.type,
-                    file_data
-                };
+                const formData = new FormData();
+                formData.append('numero_facture', invoiceId);
+                formData.append('commentaire', note);
+                formData.append('file', file);
+                const jwt = localStorage.getItem('jwtTokenCompany');
+                const payload = parseJwt(jwt) || {};
+                const cid = localStorage.getItem('id_companie') || payload.id_companie || payload.company_id;
+                if (cid) formData.append('id_companie', cid);
 
-                const resp = await fetch(`${API_BASE}/api/factures/proofs`, {
+                const resp = await fetch(`${API_BASE}/api/preuves/upload`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
                 });
 
                 const data = await resp.json().catch(() => ({}));
@@ -245,13 +242,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                const proofId = data?.preuve?.id;
+                const fileName = data?.preuve?.fichier_nom || file.name;
+                try {
+                    const meta = {
+                        id: proofId || null,
+                        url: data?.preuve?.fichier_url || null,
+                        name: data?.preuve?.fichier_nom || file.name,
+                        invoiceId
+                    };
+                    localStorage.setItem('lastProofAttachment', JSON.stringify(meta));
+                } catch {}
+                showModal('Succès', `Preuve "${fileName}" enregistrée pour la facture ${invoiceId}. Ouverture de la messagerie...`);
+
                 paiementForm.reset();
                 if(fileDisplayPaiement) {
                     fileDisplayPaiement.textContent = 'PDF, PNG, JPG (MAX. 1 fichier)';
                     fileDisplayPaiement.classList.remove('file-selected');
                 }
 
-                window.location.href = `/messa_comp.html?invoice=${encodeURIComponent(invoiceId)}`;
+                setTimeout(() => {
+                    const url = `/Frontend/Html/messagerieCompagnie.html?invoice=${encodeURIComponent(invoiceId)}${proofId ? `&proofId=${encodeURIComponent(proofId)}` : ''}`;
+                    window.location.href = url;
+                }, 800);
             } catch (err) {
                 console.error('Erreur upload preuve:', err);
                 showModal('Erreur', 'Une erreur est survenue lors de l’envoi de la preuve.');

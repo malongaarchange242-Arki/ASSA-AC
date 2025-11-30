@@ -30,7 +30,7 @@ const app = express();
 // ==========================
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://127.0.0.1:5501',
+  'http://127.0.0.1:5502',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   'https://assa-ac.onrender.com'
@@ -74,17 +74,14 @@ app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Route API introuvable' });
 });
 
-// ==========================
 // SERVE STATIC FRONT
-// ==========================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDir = path.join(__dirname, '../Frontend');
 app.use(express.static(clientDir));
 
-// ==========================
 // WEBSOCKET
-// ==========================
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 

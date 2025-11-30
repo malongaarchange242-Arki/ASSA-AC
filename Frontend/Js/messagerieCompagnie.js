@@ -12,7 +12,7 @@ const ROUTE_MAP = {
 
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'https://assa-ac.onrender.com';
+    return origin.includes(':5002') ? origin : 'http://localhost:5002';
 })();
 
 const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
@@ -71,6 +71,24 @@ function changeView(viewKey) {
         setTimeout(scrollChatToBottom, 100);
     }
 }
+
+function showPinnedInvoice(invoiceId, proofId) {
+    const box = document.getElementById('pinned-invoice');
+    const title = document.getElementById('pinned-title');
+    const proof = document.getElementById('pinned-proof');
+
+    if (!box || !title || !proof) return;
+
+    box.classList.remove('hidden');
+    title.textContent = `📌 Facture épinglée : ${invoiceId}`;
+
+    if (proofId) {
+        proof.textContent = `Preuve liée : ${proofId}`;
+    } else {
+        proof.textContent = "Aucune preuve jointe.";
+    }
+}
+
 
 // ========================
 // MESSAGERIE
@@ -296,6 +314,78 @@ document.addEventListener('DOMContentLoaded',()=>{
     attachBtn?.addEventListener('click',()=>attachmentInput.click());
     attachmentInput?.addEventListener('change', updateFilePreview);
 
-    changeView(DEFAULT_VIEW);
+    // Pré-remplissage à partir des paramètres d'URL (preuve épinglée)
+    const params = new URLSearchParams(window.location.search);
+    const proofId = params.get('proofId');
+    const invoiceId = params.get('invoice');
+
+    async function prefillProofAttachment(id) {
+        try {
+            const res = await fetch(`${API_BASE}/api/preuves/${encodeURIComponent(id)}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const data = await res.json();
+            const preuve = data?.preuve;
+            if (!res.ok || !preuve?.fichier_url) {
+                try {
+                    const raw = localStorage.getItem('lastProofAttachment');
+                    if (raw) {
+                        const meta = JSON.parse(raw);
+                        if (meta?.url) {
+                            await prefillProofAttachmentFromUrl(meta.url, meta.name);
+                        }
+                    }
+                } catch {}
+                return;
+            }
+
+            const fileRes = await fetch(preuve.fichier_url);
+            const blob = await fileRes.blob();
+            const file = new File([blob], preuve.fichier_nom || 'preuve', { type: blob.type || 'application/octet-stream' });
+
+            const attachmentInput = document.getElementById('attachmentInput');
+            if (!attachmentInput) return;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            attachmentInput.files = dt.files;
+            updateFilePreview();
+
+            const input = document.getElementById('message-input');
+            if (input && invoiceId) input.value = `Preuve de paiement pour la facture ${invoiceId}`;
+        } catch (err) { console.error('Pré-remplissage preuve échoué:', err); }
+    }
+
+    async function prefillProofAttachmentFromUrl(url, name) {
+        try {
+            if (!url) return;
+            const fileRes = await fetch(url);
+            const blob = await fileRes.blob();
+            const file = new File([blob], name || 'preuve', { type: blob.type || 'application/octet-stream' });
+            const attachmentInput = document.getElementById('attachmentInput');
+            if (!attachmentInput) return;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            attachmentInput.files = dt.files;
+            updateFilePreview();
+            const input = document.getElementById('message-input');
+            if (input && invoiceId) input.value = `Preuve de paiement pour la facture ${invoiceId}`;
+        } catch (err) { console.error('Pré-remplissage preuve (URL) échoué:', err); }
+    }
+
+    if (proofId) changeView('messagerie'); else changeView(DEFAULT_VIEW);
     if (companyId) connectWebSocket();
+    if (proofId) {
+        prefillProofAttachment(proofId);
+    } else {
+        try {
+            const raw = localStorage.getItem('lastProofAttachment');
+            if (raw) {
+                const meta = JSON.parse(raw);
+                if (meta?.url) {
+                    prefillProofAttachmentFromUrl(meta.url, meta.name);
+                }
+            }
+        } catch {}
+    }
+    try { localStorage.removeItem('lastProofAttachment'); } catch {}
 });

@@ -1,4 +1,5 @@
 // ======================= CONSTANTES =======================
+const API_BASE = 'http://localhost:5002'; // Base URL pour tous les appels API
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;
@@ -19,42 +20,46 @@ let companiesData = {}; // mapping: company_name -> { id, airport, city }
 
 // ======================= UTILITAIRES =======================
 function showMessage(msg, type='info') {
-    formMessage.textContent = msg;
-    formMessage.className = `form-message ${type}`;
-    setTimeout(() => formMessage.textContent = '', 5000);
+    formMessage.textContent = msg;
+    formMessage.className = `form-message ${type}`;
+    setTimeout(() => formMessage.textContent = '', 5000);
 }
 
 function getAdminToken() {
-    const token = localStorage.getItem('jwtTokenAdmin');
-    if (!token) throw new Error("Token admin manquant");
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const now = Date.now() / 1000;
-        if (payload.exp < now) throw new Error("Token expiré");
-        return token;
-    } catch (err) {
-        throw new Error("Token invalide");
+    // Tente de récupérer le token Admin. 
+    const token = localStorage.getItem('jwtTokenAdmin');
+    if (!token) {
+        throw new Error("Token d'administrateur manquant. Veuillez vous connecter en tant qu'administrateur.");
     }
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now() / 1000;
+        if (payload.exp < now) {
+            throw new Error("Token d'administrateur expiré. Réauthentification nécessaire.");
+        }
+        return token;
+    } catch (err) {
+        throw new Error("Token d'administrateur invalide ou corrompu: " + err.message);
+    }
 }
 
 function formatNumber(number) {
-    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
-// Convertit un nombre en lettres (simplifié)
 function numberToWords(n) {
-    // Ici, tu peux remplacer par une vraie fonction en lettres si tu veux
-    return n;
+    return n;
 }
 
 function getPriceByZone(zone) {
-    if (zone === 'CEMAC') return PRICE_CEMAC;
-    if (zone === 'HORS CEMAC') return PRICE_HORS_CEMAC;
-    return 0;
+    if (zone === 'CEMAC') return PRICE_CEMAC;
+    if (zone === 'HORS CEMAC') return PRICE_HORS_CEMAC;
+    return 0;
 }
 
 // ======================= LIGNES =======================
 function calculateTotals() {
+    // ... (Logique de calcul inchangée)
     let grandTotal = 0;
     itemsContainer.querySelectorAll('tr').forEach(row => {
         const qty = parseFloat(row.querySelector('input[name="qty"]')?.value) || 0;
@@ -74,6 +79,7 @@ function calculateTotals() {
 }
 
 function addItemRow() {
+    // ... (Logique d'ajout de ligne inchangée)
     rowCounter++;
     const newRow = document.createElement('tr');
     newRow.className = "hover:bg-gray-50 transition duration-100";
@@ -105,6 +111,7 @@ function addItemRow() {
 }
 
 function removeItemRow(btn) {
+    // ... (Logique de suppression de ligne inchangée)
     if (itemsContainer.children.length <= 1) {
         alert("Vous devez conserver au moins une ligne de redevance.");
         return;
@@ -115,61 +122,85 @@ function removeItemRow(btn) {
 
 // ======================= CLIENTS =======================
 async function loadClients() {
-    try {
-        const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/companies/all', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+    try {
+        const token = getAdminToken();
+        const response = await fetch(`${API_BASE}/api/companies/all`, { 
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-        if (!response.ok) throw new Error(`Erreur ${response.status}`);
+        if (!response.ok) {
+            // Erreur 500 ou autre
+            throw new Error(`Erreur ${response.status} lors du chargement des compagnies.`);
+        }
 
-        const resData = await response.json();
-        const companies = resData.companies || resData;
+        const resData = await response.json();
+        const companies = resData.companies || resData;
 
-        clientSelect.innerHTML = '<option value="" disabled selected>Sélectionner un client</option>';
-        companies.filter(c => c.status === 'Actif').forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.company_name;
-            opt.textContent = c.company_name;
-            clientSelect.appendChild(opt);
+        clientSelect.innerHTML = '<option value="" disabled selected>Sélectionner un client</option>';
+        companies.filter(c => c.status === 'Actif').forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.company_name;
+            opt.textContent = c.company_name;
+            clientSelect.appendChild(opt);
 
-            companiesData[c.company_name] = {
-                id: c.id,
-                airport: c.airport_code || '',
-                city: c.city || ''
-            };
-        });
-    } catch (err) {
-        console.error(err);
-        showMessage('Erreur: impossible de charger les compagnies.', 'error');
-    }
+            companiesData[c.company_name] = {
+                id: c.id,
+                airport: c.airport_code || '',
+                city: c.city || ''
+            };
+        });
+    } catch (err) {
+        console.error(err);
+        showMessage('Erreur: impossible de charger les compagnies. ' + err.message, 'error');
+    }
 }
 
 clientSelect.addEventListener('change', e => {
-    const selected = e.target.value;
-    if (companiesData[selected]) {
-        document.getElementById('airport').value = companiesData[selected].airport;
-        document.getElementById('issue-location').value = companiesData[selected].city || "N'Djamena";
-    }
+    const selected = e.target.value;
+    if (companiesData[selected]) {
+        document.getElementById('airport').value = companiesData[selected].airport;
+        document.getElementById('issue-location').value = companiesData[selected].city || "N'Djamena";
+    }
 });
 
-// ======================= NUMERO FACTURE =======================
 async function fetchNextInvoiceId() {
+    let token;
     try {
-        const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/factures/generate-ref', {
-            headers: { 'Authorization': `Bearer ${token}` }
+        // Tente d'obtenir le token ADMIN valide.
+        token = getAdminToken();
+    } catch (error) {
+        // Affiche l'erreur si le token ADMIN est manquant/invalide/expiré
+        console.error("Erreur de token lors de la génération de référence:", error.message);
+        showMessage(error.message + " La référence n'a pas pu être chargée.", 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/factures/generate-ref`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`, // Utilisation du token ADMIN
+                "Content-Type": "application/json"
+            }
         });
-        if (!response.ok) throw new Error('Impossible de générer la référence');
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Erreur 401: le token est expiré ou n'a pas les droits
+                throw new Error("Token expiré ou non autorisé (401). Réinitialisation de la connexion nécessaire.");
+            }
+            throw new Error(`Impossible de générer la référence (Statut: ${response.status})`);
+        }
 
         const data = await response.json();
         invoiceIdInput.value = data.numero_facture;
-    } catch (err) {
-        console.error(err);
-        invoiceIdInput.value = 'N°XXXX/XX/XX/ASSA-AC/DAF';
-        showMessage('Impossible de générer la référence. Vérifiez votre connexion.', 'error');
+
+    } catch (error) {
+        console.error(error);
+        showMessage("Erreur génération référence: " + error.message, 'error');
     }
 }
+// ... (suite du code de l'aperçu et de l'envoi, inchangée)
 
 // ======================= APERÇU =======================
 function validateForm() {
@@ -194,16 +225,19 @@ function showPreview() {
             const qty = row.querySelector('input[name="qty"]').value;
             const zone = row.querySelector('select[name="zone"]').value;
             const total = row.querySelector('span[name="line-total-value"]').textContent;
+            const price = row.querySelector('input[name="price_value"]').value; // Ajout du prix unitaire pour l'aperçu
             return `<tr>
                 <td class="text-center px-2 py-1 border">${idx + 1}</td>
                 <td class="px-2 py-1 border">${designation}</td>
                 <td class="text-center px-2 py-1 border">${qty}</td>
+                <td class="text-center px-2 py-1 border">${formatNumber(price)} ${CURRENCY}</td>
                 <td class="text-center px-2 py-1 border">${zone}</td>
                 <td class="text-right px-2 py-1 border font-bold">${total}</td>
             </tr>`;
         }).join('');
+        // NOTE: J'ai ajouté l'affichage du prix unitaire dans l'aperçu pour la clarté.
 
-        // HTML complet de l'aperçu
+        // HTML complet de l'aperçu (Reste inchangé après la table)
         const previewHTML = `
         <div class="p-6 font-sans text-gray-800" style="max-width:800px; margin:auto; background:white; border:1px solid #ccc;">
             <div class="flex justify-between items-center mb-6">
@@ -234,6 +268,7 @@ function showPreview() {
                         <th class="border px-2 py-1">N°</th>
                         <th class="border px-2 py-1">Désignation</th>
                         <th class="border px-2 py-1">Quantité</th>
+                        <th class="border px-2 py-1">Prix Unitaire</th>
                         <th class="border px-2 py-1">Zone</th>
                         <th class="border px-2 py-1">Total</th>
                     </tr>
@@ -278,8 +313,8 @@ function showPreview() {
 }
 
 function printPreview() {
+    // ... (Reste inchangé)
     try {
-        // Vérifie qu’il y a un aperçu
         if (!previewContent.innerHTML.trim()) {
             return alert("Aucune facture à imprimer.");
         }
@@ -312,7 +347,7 @@ function printPreview() {
 
 
 function closePreview() {
-    modalWrapper.classList.add('hidden');
+    modalWrapper.classList.add('hidden');
 }
 
 
@@ -320,32 +355,40 @@ function closePreview() {
 async function sendInvoice() {
     if (!validateForm()) return;
 
-    const items = Array.from(itemsContainer.querySelectorAll('tr')).map(row => ({
+    const items = Array.from(itemsContainer.querySelectorAll('tr')).map((row, idx) => ({
+        numero_ligne: idx + 1,
         designation: row.querySelector('input[name="designation"]').value,
-        qty: parseFloat(row.querySelector('input[name="qty"]').value),
-        zone: row.querySelector('select[name="zone"]').value,
-        price: parseFloat(row.querySelector('input[name="price_value"]').value)
+        destination: row.querySelector('select[name="zone"]').value,
+        nombre_passagers: parseFloat(row.querySelector('input[name="qty"]').value),
+        cout_unitaire: parseFloat(row.querySelector('input[name="price_value"]').value),
+        cout_total: (parseFloat(row.querySelector('input[name="qty"]').value) || 0) * (parseFloat(row.querySelector('input[name="price_value"]').value) || 0)
     }));
 
-    // Calculer le total numérique
-    const totalNumeric = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+    const totalNumeric = items.reduce((sum, item) => sum + (Number(item.cout_total) || 0), 0);
+
+    const compagnie = companiesData[clientSelect.value];
+    if (!compagnie || !compagnie.id) {
+        showMessage('Impossible de déterminer la compagnie sélectionnée. Réessayez.', 'error');
+        return;
+    }
 
     const invoiceData = {
-        invoice_id: invoiceIdInput.value || 'N°XXXX/XX/XX/ASSA-AC/DAF',
-        nom_client: clientSelect.value,       // Obligatoire
-        period: document.getElementById('period')?.value || '',
-        issue_date: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
-        items,
-        montant_total: totalNumeric,          // ✅ Total numérique pour PostgreSQL
-        currency: CURRENCY,
-        statut: 'Impayée'
+        nom_client: clientSelect.value,
+        objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
+        periode: document.getElementById('period')?.value || '',
+        aeroport: document.getElementById('airport')?.value || '',
+        date_emission: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
+        lieu_emission: document.getElementById('issue-location')?.value || '',
+        montant_total: totalNumeric,
+        devise: CURRENCY,
+        montant_en_lettres: totalInWords.textContent || '',
+        lignes: items,
+        id_companie: compagnie.id
     };
 
-    console.log('Invoice payload:', invoiceData); // Pour debug
-
     try {
-        const token = getAdminToken();
-        const response = await fetch('https://assa-ac.onrender.com/api/factures', {
+        const token = getAdminToken(); // Utilisation du token Admin
+        const response = await fetch(`${API_BASE}/api/factures`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -363,37 +406,41 @@ async function sendInvoice() {
         closePreview();
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
-        showMessage('Erreur lors de l’envoi de la facture.', 'error');
+        showMessage('Erreur lors de l’envoi de la facture: ' + err.message, 'error');
     }
 }
 
 
 // ======================= INITIALISATION =======================
 window.onload = () => {
-    try {
-        getAdminToken();
+    try {
+        // La fonction getAdminToken lance une erreur si le token est manquant.
+        // C'est le point où vous devez vous assurer que le localStorage est bien initialisé.
+        // Par exemple: localStorage.setItem('jwtTokenAdmin', 'votre_token_valide');
+        getAdminToken(); 
 
-        const today = new Date();
-        document.getElementById('issue-date').value = today.toISOString().split('T')[0];
-        document.getElementById('period').value = getPreviousMonthPeriod();
+        const today = new Date();
+        document.getElementById('issue-date').value = today.toISOString().split('T')[0];
+        document.getElementById('period').value = getPreviousMonthPeriod();
 
-        fetchNextInvoiceId();
-        loadClients();
+        // Ces appels peuvent maintenant échouer de manière plus propre
+        fetchNextInvoiceId();
+        loadClients();
 
-        if (!itemsContainer.children.length) addItemRow();
-        else calculateTotals();
+        if (!itemsContainer.children.length) addItemRow();
+        else calculateTotals();
 
-        modalWrapper.classList.add('hidden');
-    } catch (err) {
-        console.error(err);
-        showMessage('Erreur d\'initialisation: ' + err.message, 'error');
-    }
+        modalWrapper.classList.add('hidden');
+    } catch (err) {
+        console.error(err);
+        showMessage('Erreur d\'initialisation: ' + err.message, 'error');
+    }
 };
 
 function getPreviousMonthPeriod() {
-    const date = new Date();
-    date.setDate(1);
-    date.setMonth(date.getMonth() - 1);
-    const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-    return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+    return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
