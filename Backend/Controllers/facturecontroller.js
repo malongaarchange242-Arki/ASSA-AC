@@ -78,6 +78,7 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
     tls: { rejectUnauthorized: false }
   });
 
+
   const mailOptions = {
     from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
     to,
