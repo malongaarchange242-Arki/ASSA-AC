@@ -30,7 +30,7 @@ async function loadCompanyInvoices() {
         try {
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         } catch (e) {
-            base = 'https://assa-ac.onrender.com';
+            base = 'https://assa-ac-jyn4.onrender.com';
             url = `${base}/api/factures/company`;
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         }
