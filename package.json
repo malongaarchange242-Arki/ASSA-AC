@@ -20,7 +20,7 @@
      "name": "assa-ac",
      "version": "1.0.0",
      "description": "ce projet est un projet pour l'ASSA-AC pour la redevance sur les billets aériens",
-     "main": "server.js",
+     "main": "Backend/server.js",
      "devDependencies": {
           "nodemon": "^3.1.10"
      },
