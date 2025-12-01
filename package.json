@@ -25,8 +25,9 @@
           "nodemon": "^3.1.10"
      },
      "scripts": {
-          "start": "nodemon Backend/server.js"
-     },
+          "start": "node Backend/server.js",
+          "dev": "nodemon Backend/server.js"
+      },      
      "keywords": [],
      "author": "",
      "license": "ISC"
