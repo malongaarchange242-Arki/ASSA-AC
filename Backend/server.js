@@ -84,6 +84,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDir = path.join(__dirname, '../Frontend');
 app.use(express.static(clientDir));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // WEBSOCKET
 
