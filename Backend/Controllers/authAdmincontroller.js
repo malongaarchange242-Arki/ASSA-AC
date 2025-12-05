@@ -170,7 +170,9 @@ export const createCompany = async (req, res) => {
     logo_url: logoUrl,
     created_at: new Date(),
     updated_at: new Date(),
+    id_admin: adminId  //  <-- IMPORTANT
   };
+  
   
   console.log('Données à insérer :', companyData);
   

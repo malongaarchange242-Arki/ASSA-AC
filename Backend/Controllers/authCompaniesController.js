@@ -36,73 +36,140 @@ export const uploadLogo = multer({
 // ----------------- Configuration Nodemailer -----------------
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  port: Number(process.env.SMTP_PORT),
+  secure: process.env.SMTP_SECURE === 'true', // true pour SSL (465), false pour STARTTLS (587)
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
 });
-
 const isSmtpConfigured = () => !!(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+// Vérification SMTP au démarrage
+transporter.verify((err, success) => {
+  if (err) {
+    console.error("SMTP non fonctionnel :", err.message);
+  } else {
+    console.log(" SMTP prêt : connexion réussie");
+  }
+});
 
 // ----------------- Génération OTP / mot de passe -----------------
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 const generateTempPassword = () => Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
 
 const sendFirstLoginEmail = async (to, otp, tempPassword) => {
-  await transporter.sendMail({
-    from: `"UniverseSearch" <${process.env.SMTP_USER}>`,
-    to,
-    subject: 'Première connexion - ASSA-AC',
-    text: `Bonjour,\n\nVotre code OTP : ${otp}\nMot de passe temporaire : ${tempPassword}\nValable 10 minutes.\n\nMerci.`
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: `"UniverseSearch" <${process.env.SMTP_USER}>`,
+      to,
+      subject: 'Première connexion - ASSA-AC',
+      text: `Bonjour,\n\nVotre code OTP : ${otp}\nMot de passe temporaire : ${tempPassword}\nValable 10 minutes.\n\nMerci.`
+    });
+
+    console.log("📧 Email envoyé avec succès :", info);
+    return { success: true, info };
+
+  } catch (err) {
+    console.error("❌ ERREUR SMTP :");
+    console.error("Message :", err.message);
+    console.error("Code :", err.code);
+    console.error("Complet :", err);
+
+    return { success: false, error: err };
+  }
 };
+
 
 // ----------------- OTP première connexion -----------------
 export const requestFirstLoginOtp = async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'Email requis' });
+    if (!email) {
+      return res.status(400).json({ message: "Email requis" });
+    }
 
-    const { data: companies, error } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('email', email);
+    // Vérifier si la compagnie existe
+    const { data: companies, error: findError } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("email", email);
 
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
-    if (!companies?.length) return res.status(404).json({ message: 'Compagnie introuvable' });
+    if (findError) {
+      return res.status(500).json({
+        message: "Erreur serveur (recherche compagnie)",
+        erreur: findError.message,
+      });
+    }
+
+    if (!companies?.length) {
+      return res.status(404).json({ message: "Compagnie introuvable" });
+    }
 
     const company = companies[0];
+
+    // Génération OTP et mot de passe temporaire
     const otp = generateOtp();
     const tempPassword = generateTempPassword();
     const otp_hash = await bcrypt.hash(otp, 10);
     const password_hash = await bcrypt.hash(tempPassword, 10);
-    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    // Mise à jour dans la base
     const { data: updatedCompany, error: updateError } = await supabase
-      .from('companies')
-      .update({ otp: otp_hash, otp_expiry, password_hash, status: 'Inactif' })
-      .eq('id', company.id)
+      .from("companies")
+      .update({
+        otp: otp_hash,
+        otp_expiry,
+        password_hash,
+        status: "Inactif",
+      })
+      .eq("id", company.id)
       .select();
 
-    if (updateError) return res.status(500).json({ message: 'Erreur serveur', erreur: updateError.message });
+    if (updateError) {
+      return res.status(500).json({
+        message: "Erreur serveur (mise à jour OTP)",
+        erreur: updateError.message,
+      });
+    }
 
-    try {
-      if (isSmtpConfigured()) {
-        await sendFirstLoginEmail(email, otp, tempPassword);
+    // Envoi de l'email
+    let emailSent = false;
+
+    if (isSmtpConfigured()) {
+      try {
+        emailSent = await sendFirstLoginEmail(email, otp, tempPassword);
+      } catch (mailErr) {
+        console.error("❌ Erreur d'envoi email :", mailErr.message);
       }
-    } catch {}
+    } else {
+      console.warn("⚠️ SMTP non configuré, email non envoyé.");
+    }
 
+    // Log activité
     await logActivite({
-      module: 'Système',
-      type_activite: 'create',
+      module: "Système",
+      type_activite: "create",
       description: `OTP généré pour ${company.company_name}`,
-      id_companie: company.id
+      id_companie: company.id,
     });
 
-    res.json({ message: 'OTP généré', email_sent: isSmtpConfigured(), company: updatedCompany[0] });
+    return res.json({
+      message: "OTP généré",
+      email_sent: emailSent,
+      company: updatedCompany[0],
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    console.error("❌ ERREUR requestFirstLoginOtp :", err.message);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      erreur: err.message,
+    });
   }
 };
+
 
 // ----------------- Valider OTP et définir mot de passe -----------------
 export const validateOtpAndSetPassword = async (req, res) => {

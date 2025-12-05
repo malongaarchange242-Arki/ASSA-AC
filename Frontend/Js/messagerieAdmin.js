@@ -100,11 +100,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!token) return null;
         try {
             const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+            const rawRole = (payload.role || payload.profile || '').toLowerCase();
+            const isAdmin = ['administrateur','superviseur','super admin','admin'].includes(rawRole);
             return {
                 token,
                 adminId: payload.id || payload.admin_id || localStorage.getItem('adminId'),
                 id_companie: payload.id_companie || localStorage.getItem('id_companie'),
-                role: ['Administrateur', 'Superviseur'].includes(payload.profile) ? 'admin' : 'company'
+                role: isAdmin ? 'admin' : 'company'
             };
         } catch (e) { console.error('JWT parse error', e); return null; }
     }
@@ -126,9 +128,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return res.json();
     }
 
-    // -----------------------
-    // RENDER MESSAGE
-    // -----------------------
     function renderMessage(payload, { returnElement = false, temp = false, sending = false, failed = false } = {}) {
         const m = payload.message || payload;
         if (!m.id) m.id = 'temp-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
@@ -136,36 +135,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayedMessages.add(m.id);
     
         // -----------------------
-        // Déterminer si le message est "à moi"
+        // SENT / RECEIVED
         // -----------------------
-        const session = getSessionInfo();
-        let isMine = false;
-    
-        if (session) {
-            if (session.role === 'admin') {
-                // Message envoyé par l'admin connecté
-                isMine = m.admin_id && m.admin_id === session.adminId;
-            } else if (session.role === 'company') {
-                // Message envoyé par la compagnie connectée
-                isMine = m.id_companie && m.id_companie === session.id_companie;
-            }
-        }
+        const isSent = m.sender_role === 'admin';
     
         // -----------------------
-        // Création de l'élément message
+        // RENDER
         // -----------------------
         const wrapper = document.createElement('div');
-        wrapper.className = `message ${isMine ? 'message-admin' : 'message-client'}`; // admin = droite, client = gauche
+        wrapper.className = `message ${isSent ? 'message-admin' : 'message-client'}`;
         wrapper.dataset.msgId = m.id;
     
-        if (temp) {
-            wrapper.classList.add('message-temp', 'message-sending');
-            wrapper.style.display = 'none'; // cacher temporaire
-        }
+        if (temp) wrapper.classList.add('message-temp', 'message-sending');
         if (sending) wrapper.classList.add('message-sending');
         if (failed) wrapper.classList.add('message-failed');
     
-        // Contenu texte
+        // Content
         if (m.content) {
             const p = document.createElement('div');
             p.className = 'message-content';
@@ -173,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             wrapper.appendChild(p);
         }
     
-        // Pièces jointes
+        // Attachments
         const attachments = payload.attachments || [];
         attachments.forEach(att => {
             const a = document.createElement('a');
@@ -207,6 +192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // WEBSOCKET
     // -----------------------
     function connectWebSocket(id_companie) {
+        if (!id_companie) return;
         if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
         const session = getSessionInfo();
         if (!session) return;
@@ -214,26 +200,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
-            try { ws.send(JSON.stringify({ type: 'join', company_id: id_companie, token: session.token })); }
-            catch (e) { console.error('WS join failed', e); }
+            try {
+                const joinPayload = { type: 'join', token: session.token };
+                if (id_companie) {
+                    joinPayload.id_companie = id_companie;
+                    joinPayload.company_id = id_companie;
+                }
+                if (session.adminId) joinPayload.admin_id = session.adminId;
+                ws.send(JSON.stringify(joinPayload));
+            } catch (e) { console.error('WS join failed', e); }
         };
 
         ws.onmessage = evt => {
             try {
                 const payload = JSON.parse(evt.data);
-                if (payload.type === 'message' && payload.message?.id_companie === id_companie) {
-                    if (displayedMessages.has(payload.message.id)) return;
+                if (payload.type === 'message') {
+                    // accepter soit id_companie soit company_id dans le message
+                    const msg = payload.message || payload;
+                    const msgCompanyId = msg?.id_companie || msg?.company_id || null;
+                    if (!msgCompanyId) return;
 
-                    const clientTempId = payload.message.client_temp_id || payload.message.temp_id;
+                    if (String(msgCompanyId) !== String(id_companie)) return;
+                    if (displayedMessages.has(msg.id)) return;
+
+                    const clientTempId = msg.client_temp_id || msg.temp_id;
                     if (clientTempId && tempMessageMap.has(clientTempId)) {
                         const tempEl = tempMessageMap.get(clientTempId);
-                        const realEl = renderMessage(payload.message, { returnElement: true });
+                        const realEl = renderMessage(msg, { returnElement: true });
                         if (realEl && tempEl && tempEl.parentNode) tempEl.parentNode.replaceChild(realEl, tempEl);
                         tempMessageMap.delete(clientTempId);
                         displayedMessages.delete(clientTempId);
                         return;
                     }
-                    renderMessage(payload.message);
+                    renderMessage(msg);
                 }
             } catch (e) { console.warn('WS message non valide', e); }
         };
@@ -303,18 +302,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     attachBtn.addEventListener('click', () => attachmentInput.click());
     attachmentInput.addEventListener('change', (e) => { selectedFiles = Array.from(e.target.files || []); updatePreview(); });
 
-    // -----------------------
-    // SEND MESSAGE
-    // -----------------------
+        // Remplace ta fonction sendMessage par celle-ci
     async function sendMessage(text, files) {
         if ((!text || text.trim().length === 0) && (!files || files.length === 0)) return;
+
         const session = getSessionInfo();
-        if (!session || !session.id_companie) { showModal('Erreur', 'id_companie manquant'); return; }
-        const { adminId, id_companie, role } = session;
-        if (role === 'admin' && !adminId) { showModal('Erreur', 'admin_id manquant'); return; }
+        if (!session) { showModal('Session expirée', 'Veuillez vous reconnecter'); return; }
+        const { role, adminId } = session;
+
+        let id_companie;
+        if (role === "company" || role === "Company") {
+            id_companie = session.id_companie;
+        } else if (role === "admin") {
+            id_companie = selectedIdCompanie;
+            if (!id_companie) {
+                showModal("Erreur", "Veuillez sélectionner une compagnie");
+                return;
+            }
+        }
+
+        if (role === 'admin' && !adminId) {
+            showModal('Erreur', 'admin_id manquant');
+            return;
+        }
 
         const tempId = 'temp-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-        const tempPayload = { id: tempId, content: text, attachments: files, sender_role: role, created_at: new Date().toISOString() };
+        const tempPayload = {
+            id: tempId,
+            content: text,
+            attachments: files,
+            sender_role: role,
+            created_at: new Date().toISOString()
+        };
+
+        // afficher temporaire
         const tempEl = renderMessage(tempPayload, { returnElement: true, temp: true, sending: true });
         if (tempEl) tempMessageMap.set(tempId, tempEl);
 
@@ -322,9 +343,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         fd.append('sender_role', role);
         fd.append('id_companie', id_companie);
         if (role === 'admin') fd.append('admin_id', adminId);
+        fd.append('temp_id', tempId); // très important
         if (text) fd.append('content', text);
         (files || []).forEach(f => fd.append('attachments', f, f.name));
 
+        // DEBUG: lister les champs envoyés (utile si devtools montre "formdata" vide)
+        try {
+            for (const pair of fd.entries()) {
+                console.debug('[sendMessage] formdata ->', pair[0], pair[1]);
+            }
+        } catch (e) { console.warn('Impossible lister FormData', e); }
+
+        // reset UI
         messageInput.value = '';
         attachmentInput.value = '';
         selectedFiles = [];
@@ -335,6 +365,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetchWithAuth(`${API_BASE}/api/messages`, { method: 'POST', body: fd });
             if (!res) throw new Error('Réponse vide du serveur');
 
+            console.debug('[sendMessage] server response:', res);
+
+            // On attend que le serveur renvoie l'objet message sauvegardé.
+            // Si le serveur renvoie autre chose, on fait fallback -> reload history
             const serverMessage = res.message || res;
             const clientTempId = serverMessage.client_temp_id || serverMessage.temp_id;
 
@@ -344,9 +378,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (realEl && tempNode && tempNode.parentNode) tempNode.parentNode.replaceChild(realEl, tempNode);
                 tempMessageMap.delete(clientTempId);
                 displayedMessages.delete(clientTempId);
-            } else if (tempMessageMap.has(tempId)) {
-                removeTempMessage(tempId);
-                renderMessage(serverMessage);
+                return;
+            }
+
+            // Si le serveur renvoie au moins l'objet complet (avec id) mais sans temp id :
+            if (serverMessage && serverMessage.id) {
+                // remplacer le temp si toujours présent
+                if (tempMessageMap.has(tempId)) {
+                    const tempNode = tempMessageMap.get(tempId);
+                    const realEl = renderMessage(serverMessage, { returnElement: true });
+                    if (realEl && tempNode && tempNode.parentNode) tempNode.parentNode.replaceChild(realEl, tempNode);
+                    tempMessageMap.delete(tempId);
+                    displayedMessages.delete(tempId);
+                    return;
+                } else {
+                    // aucun temp à remplacer, afficher direct
+                    renderMessage(serverMessage);
+                    return;
+                }
+            }
+
+            // --- FALLBACK CRITIQUE ---
+            // Le serveur n'a pas renvoyé l'objet message attendu (ou ne contient pas id).
+            // On recharge l'historique (garantit que le message sauvegardé apparaisse si la DB est bonne).
+            console.warn('[sendMessage] server did not return message with id -> reloading history as fallback');
+            if (role === 'admin') {
+                await loadHistory(adminId, id_companie);
+            } else {
+                await loadHistory(null, id_companie);
             }
         } catch (err) {
             console.error('Échec envoi message:', err);

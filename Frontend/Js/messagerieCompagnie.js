@@ -110,22 +110,30 @@ function renderMessage(message, attachments){
     const isCompany = message.sender_role === 'company';
     const isAdmin = message.sender_role === 'admin';
 
+    // Wrapper = ligne de chat
     const wrapper = document.createElement('div');
     wrapper.className = isCompany ? 'flex justify-end' : 'flex justify-start';
     wrapper.setAttribute('data-id', message.id);
 
+    // Bulle de message
     const bubble = document.createElement('div');
-    // Styles selon l'expéditeur
+
+    // 🎨 Correction des couleurs
     if(isCompany){
-        bubble.className = 'p-3 rounded-xl rounded-br-none bg-gray-300 text-gray-900 max-w-xs shadow';
+        // Message envoyé par la Compagnie → à droite → bulle bleue
+        bubble.className =
+            'p-3 rounded-xl rounded-br-none bg-blue-600 text-white max-w-xs shadow';
     } else if(isAdmin){
-        bubble.className = 'p-3 rounded-xl rounded-bl-none bg-blue-500 text-white max-w-xs shadow';
+        // Message envoyé par l'Admin → à gauche → bulle blanche
+        bubble.className =
+            'p-3 rounded-xl rounded-bl-none bg-gray-200 text-gray-900 max-w-xs shadow';
     } else {
-        bubble.className = 'p-3 rounded-xl max-w-xs shadow'; // fallback
+        bubble.className = 'p-3 rounded-xl max-w-xs shadow';
     }
 
     bubble.innerHTML = `<p class="text-sm">${safe(message.content)}</p>`;
 
+    // Pièces jointes
     if (attachments?.length){
         const list = document.createElement('div');
         list.className = 'mt-2 space-y-1';
@@ -145,6 +153,7 @@ function renderMessage(message, attachments){
     chatWindow.appendChild(wrapper);
     scrollChatToBottom();
 }
+
 
 
 // ========================

@@ -10,23 +10,24 @@ const getCompanyRoomKey = (companyId) => `company:${companyId}`;
 // ---------------------------
 async function findAdminForCompany(companyId) {
   try {
-    const { data: admins, error } = await supabase
-      .from('admins')
-      .select('id')
-      .eq('id_companie', companyId)
-      .limit(1);
+    const { data, error } = await supabase
+      .from('companies')
+      .select('id_admin')
+      .eq('id', companyId)
+      .single();
 
     if (error) {
-      console.warn('Erreur recherche admin pour company:', error.message);
+      console.warn('Erreur récupération admin depuis companies:', error.message);
       return null;
     }
 
-    return admins?.length ? admins[0].id : null;
+    return data?.id_admin || null;
   } catch (err) {
     console.error('findAdminForCompany error:', err);
     return null;
   }
 }
+
 
 // ---------------------------
 // Historique messages
@@ -36,7 +37,7 @@ export const getMessagesHistory = async (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
 
-    const companyId = req.query.id_companie || user.company_id;
+    const companyId = req.query.id_companie || user.id_companie || user.company_id;
     if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
 
     const { data: messages, error } = await supabase
@@ -73,80 +74,141 @@ export const getMessagesHistory = async (req, res) => {
   }
 };
 
-// ---------------------------
+/// ---------------------------
 // Envoi message
 // ---------------------------
 export const postMessage = async (req, res, broadcastToRoom) => {
   try {
     const user = req.user;
-    if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
-
-    const isCompany = user.profile === 'Company';
-    const companyId = req.body.id_companie || user.company_id;
-    if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
-
-    // Trouver l'admin uniquement si le sender est la compagnie
-    const adminId = isCompany ? await findAdminForCompany(companyId) : user.id;
-    if (isCompany && !adminId) return res.status(400).json({ message: 'Aucun admin trouvé pour cette compagnie' });
-
-    const content = (req.body.content || '').trim();
-    if (!content && (!req.files || req.files.length === 0)) {
-      return res.status(400).json({ message: 'Message vide sans pièce jointe' });
+    if (!user) {
+      return res.status(401).json({ message: "Token invalide ou expiré" });
     }
 
+    // Vérification rôle
+    const isCompany = ["Company", "Compagnie"].includes(user.role);
+
+    // ID compagnie
+    const companyId = req.body.id_companie || user.id_companie;
+    if (!companyId) {
+      return res.status(400).json({ message: "id_companie requis" });
+    }
+
+    // Contenu texte
+    const content = req.body.content ? req.body.content.trim() : "";
+
+    // Trouver l'admin si c’est une compagnie
+    const adminId = isCompany ? await findAdminForCompany(companyId) : user.id;
+    if (isCompany && !adminId) {
+      return res.status(400).json({ message: "Aucun admin trouvé pour cette compagnie" });
+    }
+
+    // Message vide
+    if (!content && (!req.files || req.files.length === 0)) {
+      return res.status(400).json({ message: "Message vide sans pièce jointe" });
+    }
+
+    // Insertion DB
     const insertObj = {
       id_companie: companyId,
-      sender_role: isCompany ? 'company' : 'admin',
+      sender_role: isCompany ? "company" : "admin",
       content,
-      admin_id: isCompany ? adminId : null // admin_id null si l'envoyeur est admin
+      admin_id: adminId,
     };
 
     const { data: msg, error } = await supabase
-      .from('messages')
+      .from("messages")
       .insert([insertObj])
-      .select('*')
+      .select("*")
       .single();
+
     if (error) throw error;
 
+    // -----------------------
+    // GESTION DES FICHIERS
+    // -----------------------
     const uploaded = [];
+
     if (req.files?.length) {
       for (const file of req.files) {
-        const ext = file.originalname.split('.').pop() || 'bin';
+        const ext = file.originalname.split(".").pop() || "bin";
         const filename = `${uuidv4()}.${ext}`;
-        const storagePath = `${isCompany ? 'companies' : 'admins'}/${companyId}/${msg.id}/${filename}`;
+        const storagePath = `${isCompany ? "companies" : "admins"}/${companyId}/${msg.id}/${filename}`;
 
+        // Upload storage
         const { error: upErr } = await supabase.storage
           .from(ATTACH_BUCKET)
-          .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
+          .upload(storagePath, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
+
         if (upErr) throw upErr;
 
-        const { data: pub } = supabase.storage.from(ATTACH_BUCKET).getPublicUrl(storagePath);
+        const { data: pub } = supabase.storage
+          .from(ATTACH_BUCKET)
+          .getPublicUrl(storagePath);
 
+        // Enregistrement BDD
         const { data: att, error: attErr } = await supabase
-          .from('attachments')
-          .insert([{ message_id: msg.id, file_url: pub.publicUrl, file_name: file.originalname, uploaded_at: new Date() }])
-          .select('*')
+          .from("attachments")
+          .insert([
+            {
+              message_id: msg.id,
+              file_url: pub.publicUrl,
+              file_name: file.originalname,
+              uploaded_at: new Date(),
+            },
+          ])
+          .select("*")
           .single();
+
         if (attErr) throw attErr;
 
         uploaded.push(att);
       }
     }
 
-    const payload = { type: 'message', message: msg, attachments: uploaded };
+    // -----------------------
+    // PAYLOAD FINAL
+    // -----------------------
+
+    const serverMsg = {
+      ...msg,
+      id_companie: companyId, // 🔥 OBLIGATOIRE pour le WebSocket
+      attachments: uploaded,
+      client_temp_id: req.body?.temp_id || req.body?.client_temp_id,
+    };
+
+    const payload = {
+      type: "message",
+      message: serverMsg,
+      attachments: uploaded,
+    };
+
+    // -----------------------
+    // BROADCAST WEBSOCKET
+    // -----------------------
 
     if (broadcastToRoom) {
-      if (isCompany) broadcastToRoom(getRoomKey(adminId, companyId), payload);
+      const adminRoomId = adminId;
+
+      // Room admin + compagnie
+      broadcastToRoom(getRoomKey(adminRoomId, companyId), payload);
       broadcastToRoom(getCompanyRoomKey(companyId), payload);
     }
 
     res.status(201).json(payload);
 
   } catch (err) {
-    console.error('postMessage error:', err);
-    res.status(500).json({ message: 'Erreur envoi message', erreur: err.message });
+    console.error("postMessage error:", err);
+    res.status(500).json({
+      message: "Erreur envoi message",
+      erreur: err.message,
+    });
   }
 };
+
+
 
 // ---------------------------
 // Upload preuve + message automatique
