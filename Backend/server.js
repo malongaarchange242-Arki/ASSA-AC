@@ -35,8 +35,10 @@ const allowedOrigins = [
   'http://127.0.0.1:5502',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
-  'https://assa-ac.onrender.com'
+  'https://assa-ac.onrender.com',
+  'https://comforting-sfogliatella-8608e9.netlify.app'  // ← ajouter ici
 ];
+
 
 const corsOptions = {
   origin: (origin, callback) => {
