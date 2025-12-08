@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                const data = await fetchWithAdmin(' https://assa-ac-jyn4.onrender.com/api/admins/update-password', {
+                const data = await fetchWithAdmin('https://assa-ac-jyn4.onrender.com/api/admins/update-password', {
                     method: 'POST',
                     body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
                 });

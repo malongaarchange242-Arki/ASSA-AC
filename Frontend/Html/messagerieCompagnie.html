@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr" class="bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Portail Client - Messagerie</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5', // Indigo (Main Accent)
+                        'secondary': '#10b981', // Emerald (Success)
+                        'assa-ac': '#1e40af', // Dark Blue for Branding
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="/Frontend/Css/messagerieCompagnie.css">
+</head>
+
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+
+    <div class="flex h-full">
+
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-xl transition-transform duration-300 ease-in-out transform -translate-x-full lg:translate-x-0 lg:sticky lg:h-screen lg:flex lg:flex-col p-4 border-r border-gray-200 dark:border-gray-700">
+            <div class="text-2xl font-extrabold text-assa-ac dark:text-primary mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
+                ASSA-AC Client
+            </div>
+
+            <nav class="space-y-2 flex-grow" id="nav-links">
+                
+                <a href="AccueilCompagnie.html" data-view="factures" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    Factures (Consultation)
+                </a>
+                
+                <a href="TeleverserCompagnie.html" data-view="paiements" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Téléverser Preuve
+                </a>
+                
+                <a href="ContestationCompagnie.html" data-view="contestations" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.508-1.656 1.745-2.99l-6.928-12c-.76-1.31-2.69-1.31-3.45 0l-6.928 12c-.763 1.334.204 2.99 1.745 2.99z"></path></svg>
+                    Soumettre Contestation
+                </a>
+                
+                <a href="#" data-view="messagerie" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-2 4v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7"></path></svg>
+                    Messagerie
+                </a>
+
+                <a href="ParamètreCompagnie.html" data-view="profil" class="nav-link flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover:shadow-md hover:shadow-indigo-500/20">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Mon Compte
+                </a>
+            </nav>
+            
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                
+                <button onclick="toggleTheme()" class="w-full flex items-center p-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover-neon-glow hover:shadow-indigo-500/50">
+                    <svg id="theme-icon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        </svg>
+                    <span id="theme-text">Mode Jour</span>
+                </button>
+
+                <a href="#" onclick="showModal('Déconnexion', 'Vous avez été déconnecté avec succès. Simulation: redirection vers la page de connexion.')" class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Déconnexion
+                </a>
+            </div>
+
+            <button id="close-sidebar-btn" class="absolute top-4 right-4 lg:hidden text-gray-500 dark:text-gray-400 focus:outline-none z-40">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </aside>
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto">
+
+            <header id="main-header" class="bg-white dark:bg-gray-800 p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                
+                <div class="flex items-center justify-between w-full md:w-auto mb-4 md:mb-0">
+                    <h1 id="main-title" class="text-2xl font-bold text-gray-900 dark:text-white">Messagerie</h1>
+                    <button id="open-sidebar-btn" class="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-4 w-full md:w-auto">
+                    
+                    <div class="relative w-full md:max-w-xs">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="text" id="search-input" placeholder="Rechercher..." class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150">
+                    </div>
+                    
+                    <button class="relative p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition hidden sm:block" title="Notifications">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-gray-800 bg-red-500"></span>
+                    </button>
+                    
+                    <button class="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="Mon Compte">
+                        <span class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100">Air France</span>
+                        <img class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary" src="https://placehold.co/40x40/1e40af/ffffff?text=AF" alt="Logo Compagnie">
+                    </button>
+                    
+                </div>
+            </header>
+
+            <div id="main-content-scroll">
+                <div id="content-area" class="chat-container-full-height">
+                    
+                    <div id="messagerie-view" class="w-full chat-container-full-height flex">
+                        
+                        <div id="chat-window-active" class="flex flex-col w-full h-full bg-white dark:bg-gray-800 overflow-hidden">
+                            
+                            <div id="chat-header" class="p-4 border-b border-gray-200 dark:border-gray-700 
+                                    bg-white dark:bg-gray-800 flex-shrink-0 shadow-sm flex flex-col">
+                                <h3 class="font-semibold text-gray-900 dark:text-white" id="active-chat-title">
+                                    Support ASSA-AC
+                                </h3>
+                                <p class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                    En ligne
+                                </p>
+                            </div>
+
+
+                            <div id="id-setup" class="p-3 border border-yellow-200 bg-yellow-50 text-yellow-800 hidden flex-shrink-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <input id="company-id-input" type="text" placeholder="company_id (UUID)" 
+                                        class="px-2 py-1 border rounded w-full md:w-64">
+                                    <input id="admin-id-input" type="text" placeholder="admin_id (optionnel)" 
+                                        class="px-2 py-1 border rounded w-full md:w-64">
+                                    <button id="id-save-btn" 
+                                            class="px-3 py-1 bg-primary text-white rounded hover:bg-indigo-600 transition">
+                                        Valider
+                                    </button>
+                                </div>
+                                <p class="text-xs mt-2">Renseignez au moins company_id pour recevoir les messages en direct.</p>
+                            </div>
+
+                            <div id="chat-messages" 
+                                class="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+                                </div>
+                            
+                            <div id="file-preview-area" class="p-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0 hidden">
+                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Fichiers à envoyer :</p>
+                                <div class="flex flex-wrap gap-2 text-sm" id="file-preview-list">
+                                    </div>
+                            </div>
+
+
+                            <form id="message-form" 
+                                class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                                <div class="flex items-center space-x-3">
+                                    <button type="button" id="attach-btn" 
+                                            class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 
+                                                rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition 
+                                                duration-150 shadow-md flex-shrink-0" title="Joindre un fichier">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" 
+                                            viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                        </svg>
+                                    </button>
+
+                                    <input type="file" id="attachmentInput" multiple class="hidden">
+
+                                    <input type="text" id="message-input" placeholder="Écrivez votre message..." 
+                                        class="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 
+                                                bg-white dark:bg-gray-700 dark:text-gray-100 rounded-full 
+                                                focus:ring-primary focus:border-primary transition duration-150" 
+                                        autocomplete="off">
+
+                                    <button type="submit" 
+                                            class="p-2 bg-primary text-white rounded-full hover:bg-indigo-600 
+                                                transition duration-150 shadow-md flex-shrink-0">
+                                        <svg class="w-5 h-5 transform rotate-90" fill="currentColor" 
+                                            viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 16.5V3a1 1 0 00-.106-.447z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                    </div>
+                    
+                    <div id="home-view" class="hidden p-4 sm:p-6 lg:p-8 w-full">...</div>
+                    <div id="paiements-view" class="hidden p-4 sm:p-6 lg:p-8 w-full">...</div>
+                    <div id="contestations-view" class="hidden p-4 sm:p-6 lg:p-8 w-full">...</div>
+                    <div id="profil-view" class="hidden p-4 sm:p-6 lg:p-8 w-full">...</div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="status-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 dark:bg-opacity-75 z-50 flex items-center justify-center opacity-0 invisible" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-primary dark:text-white">Opération Réussie</h3>
+            <p id="modal-message" class="text-gray-700 dark:text-gray-300 mb-6"></p>
+            <button onclick="closeModal()" class="w-full px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-indigo-600 transition shadow-md">Fermer</button>
+        </div>
+    </div>
+
+    <div id="pinned-invoice" class="hidden bg-yellow-100 dark:bg-yellow-800 p-3 rounded-lg mb-3 border border-yellow-300">
+        <p id="pinned-title" class="font-bold text-sm text-yellow-900 dark:text-yellow-100"></p>
+        <p id="pinned-proof" class="text-xs mt-1"></p>
+    </div>
+    
+
+    <script>
+        // Fonctions modales et de thème rendues globales
+        window.showModal = function(title, message) {
+            const modal = document.getElementById('status-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').innerHTML = message;
+            modal.classList.remove('invisible', 'opacity-0');
+            modal.classList.add('visible', 'opacity-100');
+            modal.querySelector('button').focus();
+        };
+
+        window.closeModal = function() {
+            const modal = document.getElementById('status-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('invisible'), 300);
+        };
+    </script>
+    <script src="/Frontend/Js/messagerieCompagnie.js"></script>
+</body>
+</html>

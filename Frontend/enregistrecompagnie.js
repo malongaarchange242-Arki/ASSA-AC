@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const API_BASE = 'https://assa-ac-jyn4.onrender.com';
     const form = document.getElementById('company-registration-form');
     const saveButton = document.getElementById('save-button');
-    const REDIRECT_DELAY_MS = 2000;
+    const REDIRECT_DELAY_MS = 1000;
     const messageDiv = document.getElementById('form-message');
 
     const logoInput = document.getElementById('logo-file'); // ✔ correspond à ton HTML

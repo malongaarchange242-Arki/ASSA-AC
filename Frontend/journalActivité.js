@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function chargerActivites() {
         try {
-            const response = await fetch('https://assa-ac.onrender.com/api/journal/', {
+            const response = await fetch('https://assa-ac-jyn4.onrender.com/api/journal/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

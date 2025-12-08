@@ -40,6 +40,53 @@ function toggleTheme() {
     setTheme(currentTheme === 'dark' ? 'light' : 'dark');
 }
 
+// ====================================================================
+//  CHARGER NOM + LOGO DE LA COMPAGNIE CONNECTÉE
+// ====================================================================
+async function loadCompanyInfo() {
+    const token = localStorage.getItem("jwtTokenCompany");
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/companies/me`, {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        if (!response.ok) {
+            console.error("❌ Erreur API /companies/me :", response.status);
+            return;
+        }
+
+        const data = await response.json();
+        console.log("🏢 Compagnie connectée :", data);
+
+        //  Les vrais données sont dans data.company
+        const company = data.company;
+
+        const nameEl = document.getElementById("company-name");
+        const logoEl = document.getElementById("company-logo");
+
+        if (nameEl) {
+            nameEl.textContent = company.company_name || "Compagnie";
+        }
+
+        if (logoEl) {
+            //  TON logo_url est déjà une URL complète => NE PAS prefixer API_BASE
+            logoEl.src = company.logo_url
+                ? company.logo_url
+                : "https://placehold.co/40x40/1e40af/ffffff?text=?";
+
+            logoEl.alt = company.company_name || "Logo compagnie";
+        }
+
+    } catch (err) {
+        console.error("❌ Erreur loadCompanyInfo() :", err);
+    }
+}
+
+
 
 /**
  * Remplit le menu déroulant de la vue Contestations avec les factures contestables.
@@ -221,4 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    loadCompanyInfo();  // ⬅️ ICI AJOUTÉ
 });

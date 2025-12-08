@@ -66,6 +66,52 @@ async function loadCompanyInvoices() {
     }
 }
 
+// ====================================================================
+//  CHARGER NOM + LOGO DE LA COMPAGNIE CONNECTÉE
+// ====================================================================
+async function loadCompanyInfo() {
+    const token = localStorage.getItem("jwtTokenCompany");
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/companies/me`, {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        if (!response.ok) {
+            console.error("❌ Erreur API /companies/me :", response.status);
+            return;
+        }
+
+        const data = await response.json();
+        console.log("🏢 Compagnie connectée :", data);
+
+        //  Les vrais données sont dans data.company
+        const company = data.company;
+
+        const nameEl = document.getElementById("company-name");
+        const logoEl = document.getElementById("company-logo");
+
+        if (nameEl) {
+            nameEl.textContent = company.company_name || "Compagnie";
+        }
+
+        if (logoEl) {
+            //  TON logo_url est déjà une URL complète => NE PAS prefixer API_BASE
+            logoEl.src = company.logo_url
+                ? company.logo_url
+                : "https://placehold.co/40x40/1e40af/ffffff?text=?";
+
+            logoEl.alt = company.company_name || "Logo compagnie";
+        }
+
+    } catch (err) {
+        console.error("❌ Erreur loadCompanyInfo() :", err);
+    }
+}
+
 
 // ------------------- RENDER FACTURES -------------------
 function renderInvoiceSelect(viewId, filterFn = inv => true) {
@@ -82,6 +128,28 @@ function renderInvoiceSelect(viewId, filterFn = inv => true) {
 
     select.innerHTML = options;
 }
+
+// Auto-sélection facture passée via URL
+function autoSelectInvoiceFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    const factureId = params.get("facture");
+
+    if (!factureId) return;
+
+    // On attend que SERVER_INVOICES soit rempli
+    const interval = setInterval(() => {
+        const select = document.getElementById('invoice-select-paiement');
+        if (!select || SERVER_INVOICES.length === 0) return;
+
+        // Si la facture existe → on la sélectionne
+        const option = Array.from(select.options).find(o => o.value == factureId);
+        if (option) {
+            select.value = factureId;
+            clearInterval(interval);
+        }
+    }, 150);
+}
+
 
 // ------------------- THÈME -------------------
 function setTheme(mode) {
@@ -284,9 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
     // 5. Vue initiale
     changeView('paiements');
 
     // 6. Charger les factures
-    loadCompanyInvoices();
+    loadCompanyInvoices().then(() => {
+        autoSelectInvoiceFromURL();
+    });
+    loadCompanyInfo();  // ⬅️ ICI AJOUTÉ
 });

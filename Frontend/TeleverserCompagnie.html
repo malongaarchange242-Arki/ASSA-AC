@@ -67,7 +67,7 @@
                     <span id="theme-text">Mode Jour</span>
                 </button>
 
-                <a href="#" onclick="showModal('Déconnexion', 'Vous avez été déconnecté avec succès. Simulation: redirection vers la page de connexion.')" class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
+                <a href="Index.html" onclick="showModal('Déconnexion', 'Vous avez été déconnecté avec succès. Simulation: redirection vers la page de connexion.')" class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     Déconnexion
                 </a>
@@ -99,9 +99,14 @@
                         <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-gray-800 bg-red-500"></span>
                     </button>
                     
-                    <button class="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="Mon Compte">
-                        <span class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100">Air France</span>
-                        <img class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary" src="https://placehold.co/40x40/1e40af/ffffff?text=AF" alt="Logo Compagnie">
+                    <button class="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <span id="company-name" 
+                              class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100"></span>
+                    
+                        <img id="company-logo"
+                             class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary"
+                             src=""
+                             alt="Logo compagnie">
                     </button>
                 </div>
             </header>

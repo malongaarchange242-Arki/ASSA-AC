@@ -79,6 +79,25 @@ body {
     font-size: 1.2em;
 }
 
+ /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
+        .header-logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px; 
+        }
+        
+        /* Style du texte "ASSA-AC PORTAL" */
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0dace0;
+            margin-left: 15px; 
+            letter-spacing: 1px;
+        }
+
+        /* STYLE LOGO ASSA-AC (40px) */
+        #assaac-logo { height: 70px; width: auto; }
+
 .nav-menu {
     flex-grow: 1;
     overflow-y: auto;
