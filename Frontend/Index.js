@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('id_companie', data.id_companie);
     
             alert('OTP validé ! Mot de passe défini. Vous êtes connecté.');
-            window.location.href = '/Frontend/Html/AccueilCompagnie.html';
+            window.location.href = 'AccueilCompagnie.html';
         } catch (err) {
             console.error(err);
             alert(err.message || 'Erreur validation OTP');
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('userRoleCompany', 'company');
                 localStorage.setItem('userEmailCompany', currentEmail);
                 localStorage.setItem('id_companie', data.id_companie);
-                window.location.href = '/Frontend/Html/AccueilCompagnie.html';
+                window.location.href = 'AccueilCompagnie.html';
             } else {
                 const adminToken = data.jwtTokenAdmin || data.token || data.accessToken || data.access_token;
                 const adminRefresh = data.refreshTokenAdmin || data.refreshToken || data.refresh_token;
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('userRoleAdmin', currentRole);
                 localStorage.setItem('userEmailAdmin', currentEmail);
                 localStorage.setItem('adminId', data.adminId || data.id || data.adminId);
-                window.location.href = '/Frontend/Html/AccueilAdmin.html';
+                window.location.href = 'AccueilAdmin.html';
             }
     
             alert(`Connexion réussie ! Bienvenue ${currentRole}.`);
