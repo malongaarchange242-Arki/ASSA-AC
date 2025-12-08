@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             showMessage(`Compagnie "${result.company.company_name}" ${companyId ? 'modifiée' : 'créée'} avec succès !`, 'success');
-            setTimeout(() => window.location.href = '/Frontend/Html/gestioncompagnie.html', REDIRECT_DELAY_MS);
+            setTimeout(() => window.location.href = 'gestioncompagnie.html', REDIRECT_DELAY_MS);
 
         } catch (err) {
             console.error('Erreur API:', err);
