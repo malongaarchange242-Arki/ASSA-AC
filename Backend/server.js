@@ -35,7 +35,8 @@ const allowedOrigins = [
   'http://127.0.0.1:5502',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
-  'https://assa-ac.onrender.com',
+  'https://assa-ac-jyn4.onrender.com',  
+  'https://assa-ac.onrender.com',      
   'https://assa-ac.netlify.app',
   'https://assa-ac-test.netlify.app'
 ];
