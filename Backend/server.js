@@ -37,7 +37,7 @@ const allowedOrigins = [
   'http://127.0.0.1:5500',
   'https://assa-ac.onrender.com',
   'https://assa-ac.netlify.app',
-  'https://assa-ac-test.netlify.app'  // ← ajouter ici
+  'https://assa-ac-test.netlify.app'
 ];
 
 
