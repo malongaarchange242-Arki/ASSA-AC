@@ -79,30 +79,22 @@ async function saveCompanyInfo() {
     form.append("phone_number", document.getElementById("company_phone").value);
     form.append("full_address", document.getElementById("company_address").value);
 
-    // Logo (le vrai nom attendu par Multer)
+    // Logo (nom EXACT Multer)
     const logoFile = document.getElementById("company-logo-input")?.files?.[0];
     if (logoFile) {
-        console.log("🖼️ Fichier logo détecté :", logoFile);
-        form.append("logo_url", logoFile);  // <-- CHANGÉ !
-    } else {
-        console.log("⚠️ Aucun nouveau logo sélectionné");
+        form.append("logo_url", logoFile);
     }
-
-    console.log("📤 Données envoyées :", [...form.entries()]);
 
     try {
         const res = await fetch(`${API_BASE}/api/companies/update`, {
             method: "PUT",
             headers: {
                 Authorization: "Bearer " + token
-                // PAS de "Content-Type": fetch le gère automatiquement pour FormData
             },
             body: form
         });
 
         const data = await res.json();
-
-        console.log("📥 Réponse serveur :", data);
 
         if (!res.ok) {
             showModal("Erreur", data.message || "Impossible de sauvegarder");
@@ -110,7 +102,7 @@ async function saveCompanyInfo() {
         }
 
         showModal("Succès", "Informations mises à jour avec succès !");
-        loadCompanyInfo(); // recharge les infos immédiatement
+        loadCompanyInfo(); // Recharger immédiatement les infos
 
     } catch (err) {
         console.error("❌ Erreur saveCompanyInfo():", err);
@@ -119,6 +111,10 @@ async function saveCompanyInfo() {
 }
 
 document.getElementById("profil-logo-form").addEventListener("submit", uploadLogo);
+
+/* ============================================================
+    C) UPLOAD EXCLUSIF DU LOGO
+============================================================ */
 
 async function uploadLogo(e) {
     e.preventDefault();
@@ -138,22 +134,16 @@ async function uploadLogo(e) {
     }
 
     const form = new FormData();
-    form.append("logo_url", file); // 🔥 NOM EXACT pour Multer
-
-    console.log("📤 Envoi du logo :", file);
+    form.append("logo_url", file);
 
     try {
         const res = await fetch(`${API_BASE}/api/companies/update`, {
             method: "PUT",
-            headers: {
-                Authorization: "Bearer " + token,
-                // ❌ NE SURTOUT PAS mettre Content-Type ici
-            },
+            headers: { Authorization: "Bearer " + token },
             body: form
         });
 
         const data = await res.json();
-        console.log("📥 Réponse serveur :", data);
 
         if (!res.ok) {
             showModal("Erreur", data.message || "Erreur lors de l'envoi du logo");
@@ -162,10 +152,9 @@ async function uploadLogo(e) {
 
         showModal("Succès", "Logo mis à jour avec succès !");
 
-        // 🔥 Mise à jour instantanée de l’avatar
+        // 🔥 Mise à jour instantanée
         if (data.company?.logo_url) {
-            document.getElementById("header-avatar").src =
-                `${API_BASE}/uploads/${data.company.logo_url}`;
+            document.getElementById("header-avatar").src = data.company.logo_url;
         }
 
     } catch (err) {
@@ -174,11 +163,8 @@ async function uploadLogo(e) {
     }
 }
 
-
-
-
 /* ============================================================
-    C) FORMULAIRE PROFIL → APPEL saveCompanyInfo()
+    D) FORMULAIRE PROFIL → APPEL saveCompanyInfo()
 ============================================================ */
 
 document.getElementById("profil-info-form")?.addEventListener("submit", (e) => {
@@ -187,7 +173,7 @@ document.getElementById("profil-info-form")?.addEventListener("submit", (e) => {
 });
 
 /* ============================================================
-    D) MISE À JOUR MOT DE PASSE
+    E) MISE À JOUR MOT DE PASSE
 ============================================================ */
 
 document.getElementById("security-form").addEventListener("submit", async (e) => {
@@ -197,7 +183,6 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
     const newPassword = document.getElementById("new-password").value.trim();
     const confirmPassword = document.getElementById("confirm-password").value.trim();
 
-    // Validation frontend
     if (!currentPassword || !newPassword || !confirmPassword) {
         alert("Veuillez remplir tous les champs.");
         return;
@@ -214,9 +199,9 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
     }
 
     try {
-        const token = localStorage.getItem("jwtTokenCompany");
+        const token = getToken();
 
-        const response = await fetch("http://localhost:5002/api/companies/update-password", {
+        const response = await fetch(`${API_BASE}/api/companies/update-password`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -245,7 +230,7 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
 });
 
 /* ============================================================
-    E) THEME + SIDEBAR + MODAL
+    F) THEME + SIDEBAR + MODAL
 ============================================================ */
 
 function toggleTheme() {
@@ -280,7 +265,7 @@ function togglePasswordVisibility(inputId, button) {
 
     if (input.type === "password") {
         input.type = "text";
-        button.textContent = "🙈"; // Changer l'icône
+        button.textContent = "🙈";
     } else {
         input.type = "password";
         button.textContent = "👁️";
