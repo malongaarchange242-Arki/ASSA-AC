@@ -456,7 +456,7 @@ export const updateCompanyInfo = async (req, res) => {
       const fileName = `company_${companyId}_${Date.now()}${path.extname(req.file.originalname)}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("logos")
+        .from("company-logos")
         .upload(fileName, req.file.buffer, {
           contentType: req.file.mimetype,
           upsert: true
@@ -468,7 +468,7 @@ export const updateCompanyInfo = async (req, res) => {
       }
 
       publicLogoUrl = supabase.storage
-        .from("logos")
+        .from("company-logos")
         .getPublicUrl(fileName).data.publicUrl;
 
       console.log("🌍 URL publique du logo :", publicLogoUrl);
