@@ -97,9 +97,8 @@ app.use(express.static(clientDir));
 // ==========================
 // SERVE UPLOADS
 // ==========================
-const uploadPath = isRender ? '/var/data' : path.join(process.cwd(), 'uploads');
-
-
+// Toujours utiliser /uploads du projet
+const uploadPath = path.join(process.cwd(), 'uploads');
 app.use('/uploads', express.static(uploadPath));
 
 // ==========================

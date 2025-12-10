@@ -164,8 +164,7 @@ async function uploadLogo(e) {
 
         // 🔥 Mise à jour instantanée de l’avatar
         if (data.company?.logo_url) {
-            document.getElementById("header-avatar").src =
-                `${API_BASE}/uploads/${data.company.logo_url}`;
+            document.getElementById("header-avatar").src = data.company.logo_url;
         }
 
     } catch (err) {
