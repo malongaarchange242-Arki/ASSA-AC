@@ -1,3 +1,4 @@
+// controllers/authCompaniesController.js
 import jwt from 'jsonwebtoken';
 import supabase from '../Config/db.js';
 import bcrypt from 'bcryptjs';
@@ -5,43 +6,18 @@ import nodemailer from 'nodemailer';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { logActivite } from '../Services/journalService.js';
-import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js';
+import { logActivite } from '../Services/journalService.js'; // journal d'activité
+import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js'; // archivage
 
-// Detecter Render
-const isRender = !!process.env.RENDER || !!process.env.RENDER_EXTERNAL_URL;
-
-// Chemin d'upload
-const uploadDir = isRender
-  ? '/var/data'
-  : path.join(process.cwd(), 'uploads');
-
-// ---------------------------
-// Création du dossier (local + Render)
-// ---------------------------
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log("📁 Dossier upload créé :", uploadDir);
-}
-
-// ---------------------------
-// Correction des permissions (nécessaire sur Render)
-// ---------------------------
-try {
-  fs.chmodSync(uploadDir, 0o775);
-  console.log("✔ Permissions appliquées sur :", uploadDir);
-} catch (e) {
-  console.log("⚠ Impossible de changer permissions :", e.message);
-}
-
-// ----------------- Multer storage -----------------
+// ----------------- Configuration Multer (upload logo) -----------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    const uploadPath = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix =
-      Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
@@ -54,11 +30,8 @@ export const uploadLogo = multer({
     if (allowedTypes.includes(file.mimetype)) cb(null, true);
     else cb(new Error('Format non autorisé. Seuls PNG, JPEG et GIF sont acceptés.'));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 }).single('logo_url');
-
-export default uploadLogo;
-
 
 // ----------------- Configuration Nodemailer -----------------
 const transporter = nodemailer.createTransport({
