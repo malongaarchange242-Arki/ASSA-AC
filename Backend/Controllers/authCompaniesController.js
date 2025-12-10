@@ -451,40 +451,72 @@ export const updateCompanyInfo = async (req, res) => {
     console.log("➡️ req.file :", req.file);
 
     if (!req.user) {
-      console.log("❌ Utilisateur non authentifié !");
       return res.status(401).json({ message: "Utilisateur non authentifié" });
     }
 
     const companyId = req.user.id_companie;
-    console.log("🏢 ID Société :", companyId);
-
     const { company_name, email, phone_number, full_address, status } = req.body;
 
-    // Gestion du logo
-    let newLogoUrl = null;
+    // =============================
+    // 🔥 1) UPLOAD DU LOGO
+    // =============================
+    let publicLogoUrl = null;
+
     if (req.file) {
-      newLogoUrl = req.file.filename;
-      console.log("🖼️ Nouveau logo détecté :", newLogoUrl);
-    } else {
-      console.log("⚠️ Aucun fichier logo envoyé !");
+      console.log("🖼️ Nouveau fichier reçu :", req.file.filename);
+
+      // ⛔ AVEC diskStorage → on lit le fichier depuis le disque
+      const localFilePath = req.file.path; // Exemple: /uploads/173645334-logo.png
+      const fileBuffer = fs.readFileSync(localFilePath);
+
+      const fileName = `company_${companyId}_${Date.now()}${path.extname(req.file.originalname)}`;
+
+      // Upload Supabase
+      const { error: uploadError } = await supabase.storage
+        .from("logos")
+        .upload(fileName, fileBuffer, {
+          contentType: req.file.mimetype,
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error("❌ Erreur upload Supabase:", uploadError);
+        return res.status(500).json({ message: "Erreur upload logo" });
+      }
+
+      // URL publique
+      publicLogoUrl = supabase.storage
+        .from("logos")
+        .getPublicUrl(fileName).data.publicUrl;
+
+      console.log("🌍 URL logo publique :", publicLogoUrl);
+
+      // ❗ Supprimer le fichier local pour éviter d'accumuler des fichiers
+      try {
+        fs.unlinkSync(localFilePath);
+        console.log("🧹 Fichier local supprimé :", localFilePath);
+      } catch (err) {
+        console.log("⚠️ Impossible de supprimer le fichier local :", err);
+      }
     }
 
-    // Champs à mettre à jour
-    const updateFields = {
-      updated_at: new Date(),
-    };
+    // =============================
+    // 🔧 2) CHAMPS À METTRE À JOUR
+    // =============================
+    const updateFields = { updated_at: new Date() };
 
     if (company_name) updateFields.company_name = company_name;
     if (email) updateFields.email = email;
     if (phone_number) updateFields.phone_number = phone_number;
     if (full_address) updateFields.full_address = full_address;
     if (status) updateFields.status = status;
-    if (newLogoUrl) updateFields.logo_url = `/uploads/${newLogoUrl}`;
-
+    if (publicLogoUrl) updateFields.logo_url = publicLogoUrl;
 
     console.log("📦 Champs envoyés à Supabase :", updateFields);
 
-    // Mise à jour SUPABASE
+    // =============================
+    // 💾 3) MISE À JOUR SUPABASE
+    // =============================
     const { data, error } = await supabase
       .from("companies")
       .update(updateFields)
@@ -493,26 +525,18 @@ export const updateCompanyInfo = async (req, res) => {
       .single();
 
     if (error) {
-      console.log("❌ Erreur Supabase :", error);
-      return res.status(400).json({
-        message: "Échec de la mise à jour",
-        erreur: error.message,
-      });
+      console.error("❌ Erreur Supabase :", error);
+      return res.status(400).json({ message: "Échec de la mise à jour" });
     }
-
-    console.log("✅ Mise à jour réussie — données renvoyées :", data);
 
     return res.status(200).json({
       message: "Informations mises à jour avec succès",
-      company: data,
+      company: data
     });
 
   } catch (err) {
     console.log("🔥 Erreur serveur :", err);
-    return res.status(500).json({
-      message: "Erreur serveur",
-      erreur: err.message,
-    });
+    return res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
