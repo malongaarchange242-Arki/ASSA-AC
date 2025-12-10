@@ -1,4 +1,3 @@
-// controllers/authCompaniesController.js
 import jwt from 'jsonwebtoken';
 import supabase from '../Config/db.js';
 import bcrypt from 'bcryptjs';
@@ -6,24 +5,24 @@ import nodemailer from 'nodemailer';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { logActivite } from '../Services/journalService.js'; // journal d'activité
-import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js'; // archivage
+import { logActivite } from '../Services/journalService.js';
+import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js';
 
 
-// On détecte si on est sur Render
-const isRender = process.env.RENDER === 'true';
+// Detecter Render
+const isRender = !!process.env.RENDER || !!process.env.RENDER_EXTERNAL_URL;
 
-// Chemin d'upload dynamiquement choisi
-const uploadDir = isRender 
-  ? '/var/data'                               // Render → chemin du disque
-  : path.join(process.cwd(), 'uploads');       // Local → dossier local
+// Chemin d'upload
+const uploadDir = isRender
+  ? '/var/data'
+  : path.join(process.cwd(), 'uploads');
 
-// Création du dossier si absent
-if (!fs.existsSync(uploadDir)) {
+// Création du dossier local uniquement
+if (!isRender && !fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ----------------- Configuration Multer (upload logo) -----------------
+// ----------------- Multer storage -----------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -43,7 +42,7 @@ export const uploadLogo = multer({
     if (allowedTypes.includes(file.mimetype)) cb(null, true);
     else cb(new Error('Format non autorisé. Seuls PNG, JPEG et GIF sont acceptés.'));
   },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }
 }).single('logo_url');
 
 export default uploadLogo;

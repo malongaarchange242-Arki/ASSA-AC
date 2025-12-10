@@ -9,10 +9,12 @@ import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 
+// Detect if running on Render
+const isRender = !!process.env.RENDER || !!process.env.RENDER_EXTERNAL_URL;
+
 // Routes imports
 import adminRoutes from './Routes/admins.js';
 import companyRoutes from './Routes/compagnies.js';
-// import ContestationRoutes from './Routes/contestation.js';
 import factureRoutes from './Routes/factureRoutes.js';
 import journalRoutes from './Routes/journalActiviteRoutes.js';
 import authRoutes from './Routes/auth.js';
@@ -36,12 +38,11 @@ const allowedOrigins = [
   'http://127.0.0.1:5501',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
-  'https://assa-ac-jyn4.onrender.com',  
-  'https://assa-ac.onrender.com',      
+  'https://assa-ac-jyn4.onrender.com',
+  'https://assa-ac.onrender.com',
   'https://assa-ac.netlify.app',
   'https://assa-ac-test.netlify.app'
 ];
-
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -49,17 +50,15 @@ const corsOptions = {
       callback(null, true);
     } else {
       console.error('CORS non autorisé pour cet origin :', origin);
-      callback(new Error('CORS non autorisé pour cet origin'), false);
+      callback(new Error('CORS non autorisé'), false);
     }
   },
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','x-access-token'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
   credentials: true
 };
 
-// Appliquer CORS pour toutes les routes
 app.use(cors(corsOptions));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -68,7 +67,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ==========================
 app.use('/api/admins', adminRoutes);
 app.use('/api/companies', companyRoutes);
-// app.use('/api/contestation', ContestationRoutes);
 app.use('/api/factures', factureRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/auth', authRoutes);
@@ -78,58 +76,72 @@ app.use('/api/archives', archiveRoutes);
 app.use('/api/messages', messagesRoutesFactory(broadcastToRoom));
 app.use('/api/contestations', contestationsRoutesFactory(broadcastToRoom));
 
-
-// 404 pour toutes les routes /api/*
+// 404 route
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Route API introuvable' });
 });
 
-// SERVE STATIC FRONT
+// ==========================
+// STATIC FRONTEND
+// ==========================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const clientDir = path.join(__dirname, '../Frontend');
 app.use(express.static(clientDir));
 
-// 👉 SERVE UPLOADS CORRECTEMENT
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/uploads', express.static(isRender ? '/var/data' : path.join(process.cwd(), 'uploads')));
+// ==========================
+// SERVE UPLOADS
+// ==========================
+const uploadPath = isRender ? '/var/data' : path.join(process.cwd(), 'uploads');
 
+app.use('/uploads', express.static(uploadPath));
 
-
-
+// ==========================
 // WEBSOCKET
-
+// ==========================
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 const rooms = new Map();
+
 const getRoomKey = (adminId, companyId) => `${adminId}:${companyId}`;
 const getCompanyRoomKey = (companyId) => `company:${companyId}`;
 
 function addClientToRoom(ws, roomKey) {
   let set = rooms.get(roomKey);
-  if (!set) { set = new Set(); rooms.set(roomKey, set); }
+  if (!set) {
+    set = new Set();
+    rooms.set(roomKey, set);
+  }
   set.add(ws);
-  ws.on('close', () => { try { set.delete(ws); if (set.size === 0) rooms.delete(roomKey); } catch {} });
+
+  ws.on('close', () => {
+    try {
+      set.delete(ws);
+      if (set.size === 0) rooms.delete(roomKey);
+    } catch {}
+  });
 }
 
 function broadcastToRoom(roomKey, payload) {
   const set = rooms.get(roomKey);
   if (!set) return;
+
   const data = JSON.stringify(payload);
   for (const client of set) {
-    if (client.readyState === 1) { try { client.send(data); } catch {} }
+    if (client.readyState === 1) {
+      try {
+        client.send(data);
+      } catch {}
+    }
   }
 }
-
-app.use('/api/messages', messagesRoutesFactory(broadcastToRoom));
 
 wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let data = null;
     try { data = JSON.parse(raw); } catch { return; }
-    if (!data || !data.type) return;
 
     if (data.type === 'join') {
       if (data.admin_id && data.company_id) {
@@ -146,15 +158,18 @@ wss.on('connection', (ws) => {
 });
 
 // ==========================
-// ERROR MIDDLEWARE
+// ERROR HANDLER
 // ==========================
 app.use((err, req, res, next) => {
   console.error('Erreur backend :', err);
-  res.status(500).json({ message: 'Erreur interne du serveur', erreur: err.message });
+  res.status(500).json({
+    message: 'Erreur interne du serveur',
+    erreur: err.message
+  });
 });
 
 // ==========================
-// LANCEMENT SERVEUR
+// START SERVER
 // ==========================
 const PORT = process.env.PORT || 5002;
 server.listen(PORT, () => {
