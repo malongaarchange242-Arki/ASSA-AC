@@ -9,29 +9,17 @@ import path from 'path';
 import { logActivite } from '../Services/journalService.js'; // journal d'activité
 import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js'; // archivage
 
-// ----------------- Configuration Multer (upload logo) -----------------
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
-
-export const uploadLogo = multer({
-  storage,
+// ----------------- Configuration Multer (upload logo en mémoire) -----------------
+const uploadLogo = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (allowedTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Format non autorisé. Seuls PNG, JPEG et GIF sont acceptés.'));
-  },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+    else cb(new Error('Format non autorisé'));
+  }
 }).single('logo_url');
+
 
 // ----------------- Configuration Nodemailer -----------------
 const transporter = nodemailer.createTransport({
@@ -457,24 +445,19 @@ export const updateCompanyInfo = async (req, res) => {
     const companyId = req.user.id_companie;
     const { company_name, email, phone_number, full_address, status } = req.body;
 
-    // =============================
-    // 🔥 1) UPLOAD DU LOGO
-    // =============================
     let publicLogoUrl = null;
 
+    // =============================
+    // 🔥 Upload direct vers Supabase
+    // =============================
     if (req.file) {
-      console.log("🖼️ Nouveau fichier reçu :", req.file.filename);
-
-      // ⛔ AVEC diskStorage → on lit le fichier depuis le disque
-      const localFilePath = req.file.path; // Exemple: /uploads/173645334-logo.png
-      const fileBuffer = fs.readFileSync(localFilePath);
+      console.log("🖼️ Nouveau logo reçu :", req.file.originalname);
 
       const fileName = `company_${companyId}_${Date.now()}${path.extname(req.file.originalname)}`;
 
-      // Upload Supabase
       const { error: uploadError } = await supabase.storage
         .from("logos")
-        .upload(fileName, fileBuffer, {
+        .upload(fileName, req.file.buffer, {
           contentType: req.file.mimetype,
           upsert: true
         });
@@ -484,24 +467,15 @@ export const updateCompanyInfo = async (req, res) => {
         return res.status(500).json({ message: "Erreur upload logo" });
       }
 
-      // URL publique
       publicLogoUrl = supabase.storage
         .from("logos")
         .getPublicUrl(fileName).data.publicUrl;
 
-      console.log("🌍 URL logo publique :", publicLogoUrl);
-
-      // ❗ Supprimer le fichier local pour éviter d'accumuler des fichiers
-      try {
-        fs.unlinkSync(localFilePath);
-        console.log("🧹 Fichier local supprimé :", localFilePath);
-      } catch (err) {
-        console.log("⚠️ Impossible de supprimer le fichier local :", err);
-      }
+      console.log("🌍 URL publique du logo :", publicLogoUrl);
     }
 
     // =============================
-    // 🔧 2) CHAMPS À METTRE À JOUR
+    // 🔧 Champs à mettre à jour
     // =============================
     const updateFields = { updated_at: new Date() };
 
@@ -515,7 +489,7 @@ export const updateCompanyInfo = async (req, res) => {
     console.log("📦 Champs envoyés à Supabase :", updateFields);
 
     // =============================
-    // 💾 3) MISE À JOUR SUPABASE
+    // 💾 Mise à jour Supabase
     // =============================
     const { data, error } = await supabase
       .from("companies")
@@ -535,7 +509,7 @@ export const updateCompanyInfo = async (req, res) => {
     });
 
   } catch (err) {
-    console.log("🔥 Erreur serveur :", err);
+    console.error("🔥 Erreur serveur :", err);
     return res.status(500).json({ message: "Erreur serveur" });
   }
 };
