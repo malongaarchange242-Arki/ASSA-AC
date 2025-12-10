@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'http://localhost:5002';
+        return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
     })();
     const adminTokenKey = 'jwtTokenAdmin';
     const adminRefreshKey = 'refreshTokenAdmin';

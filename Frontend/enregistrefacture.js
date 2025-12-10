@@ -1,5 +1,5 @@
 // ======================= CONSTANTES =======================
-const API_BASE = 'http://localhost:5002'; // Base URL pour tous les appels API
+const API_BASE = 'https://assa-ac-jyn4.onrender.com'; // Base URL pour tous les appels API
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;

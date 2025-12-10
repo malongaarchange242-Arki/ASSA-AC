@@ -2,7 +2,7 @@
     CONFIG
 ============================================================ */
 
-window.API_BASE = "http://localhost:5002";
+window.API_BASE = "https://assa-ac-jyn4.onrender.com";
 
 function getToken() {
     return localStorage.getItem("jwtTokenCompany");

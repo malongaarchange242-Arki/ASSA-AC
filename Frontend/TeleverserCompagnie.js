@@ -1,7 +1,7 @@
 // ------------------- CONFIG -------------------
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'http://localhost:5002';
+    return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
 })();
 let SERVER_INVOICES = [];
 
@@ -30,7 +30,7 @@ async function loadCompanyInvoices() {
         try {
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         } catch (e) {
-            base = 'http://localhost:5002';
+            base = 'https://assa-ac-jyn4.onrender.com';
             url = `${base}/api/factures/company`;
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         }
