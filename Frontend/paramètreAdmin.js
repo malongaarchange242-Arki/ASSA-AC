@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                const data = await fetchWithAdmin(' https://assa-ac-jyn4.onrender.com/api/parametres', {
+                const data = await fetchWithAdmin('https://assa-ac-jyn4.onrender.com/api/parametres', {
                     method: 'PUT',
                     body: JSON.stringify({ companyName, address, email })
                 });

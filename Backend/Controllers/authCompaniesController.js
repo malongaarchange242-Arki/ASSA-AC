@@ -517,16 +517,69 @@ export const updateCompanyInfo = async (req, res) => {
 
 
 // ----------------- Mettre à jour une compagnie -----------------
+
 export const updateCompany = async (req, res) => {
   try {
     const { id } = req.params;
-    const { company_name, representative_name, phone_number, email, full_address, country, city, airport_code } = req.body;
 
-    let logo_url = null;
-    if (req.file) logo_url = `/uploads/${req.file.filename}`;
+    const {
+      company_name,
+      representative_name,
+      phone_number,
+      email,
+      full_address,
+      country,
+      city,
+      airport_code
+    } = req.body;
 
+    let newLogoUrl = null;
+
+    // ================================
+    // 1️⃣ SI UN LOGO A ÉTÉ ENVOYÉ
+    // ================================
+    if (req.file) {
+      console.log("📥 Nouveau logo reçu :", req.file.originalname);
+
+      const bucket = "company-logos";
+
+      // Nom fixe = ID compagnie → permet d'écraser l’ancien
+      const fileExt = req.file.originalname.split(".").pop();
+      const filename = `${id}.${fileExt}`;
+
+      // Upload dans Supabase
+      const { error: uploadErr } = await supabase.storage
+        .from(bucket)
+        .upload(filename, req.file.buffer, {
+          cacheControl: "0",
+          upsert: true, // 🔥 remplace l’ancien logo
+          contentType: req.file.mimetype,
+        });
+
+      if (uploadErr) {
+        console.error("❌ SUPABASE UPLOAD ERROR :", uploadErr);
+        return res.status(500).json({
+          message: "Erreur upload logo",
+          erreur: uploadErr.message,
+        });
+      }
+
+      // Récupérer l’URL publique
+      const { data: publicUrlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filename);
+
+      // Anti-cache navigateur
+      newLogoUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+      console.log("🌍 Nouveau logo URL =", newLogoUrl);
+    }
+
+    // ================================
+    // 2️⃣ UPDATE DATABASE
+    // ================================
     const { data: updatedCompany, error } = await supabase
-      .from('companies')
+      .from("companies")
       .update({
         company_name,
         representative_name,
@@ -536,25 +589,41 @@ export const updateCompany = async (req, res) => {
         country,
         city,
         airport_code,
-        ...(logo_url && { logo_url })
+        ...(newLogoUrl && { logo_url: newLogoUrl }),
       })
-      .eq('id', id)
+      .eq("id", id)
       .select();
 
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
-    if (!updatedCompany || !updatedCompany.length) return res.status(404).json({ message: 'Compagnie introuvable' });
+    if (error) {
+      console.error("❌ UPDATE ERROR :", error);
+      return res.status(500).json({ message: "Erreur serveur", erreur: error.message });
+    }
 
+    if (!updatedCompany.length) {
+      return res.status(404).json({ message: "Compagnie introuvable" });
+    }
+
+    // ================================
+    // 3️⃣ LOG ACTIVITÉ
+    // ================================
     await logActivite({
-      module: 'Compagnies',
-      type_activite: 'update',
+      module: "Compagnies",
+      type_activite: "update",
       description: `Compagnie ${updatedCompany[0].company_name} mise à jour`,
       id_admin: req.user?.id,
-      id_companie: updatedCompany[0].id
+      id_companie: updatedCompany[0].id,
     });
 
-    res.json({ message: 'Compagnie mise à jour avec succès', company: updatedCompany[0] });
+    // ================================
+    // 4️⃣ RÉPONSE API
+    // ================================
+    res.json({
+      message: "Compagnie mise à jour avec succès",
+      company: updatedCompany[0],
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    console.error("⛔ ERROR updateCompany:", err);
+    res.status(500).json({ message: "Erreur serveur", erreur: err.message });
   }
 };
 

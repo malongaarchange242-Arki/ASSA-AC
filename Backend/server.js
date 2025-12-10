@@ -172,6 +172,36 @@ app.use((err, req, res, next) => {
   });
 });
 
+// import nodemailer from "nodemailer";
+
+// const transporter = nodemailer.createTransport({
+//     host: process.env.SMTP_HOST,
+//     port: Number(process.env.SMTP_PORT),
+//     secure: process.env.SMTP_SECURE === "true",
+//     auth: {
+//         user: process.env.SMTP_USER,
+//         pass: process.env.SMTP_PASS
+//     }
+// });
+
+
+// app.get("/test-email", async (req, res) => {
+//   try {
+//     await transporter.sendMail({
+//       from: process.env.SMTP_USER,
+//       to: process.env.SMTP_USER,
+//       subject: "TEST | SMTP fonctionne 🎉",
+//       text: "Ceci est un email de test depuis Nodemailer."
+//     });
+
+//     res.send("Email envoyé !");
+//   } catch (err) {
+//     console.error("❌ TEST EMAIL ERROR :", err);
+//     res.status(500).send(err.message);
+//   }
+// });
+
+
 // ==========================
 // START SERVER
 // ==========================

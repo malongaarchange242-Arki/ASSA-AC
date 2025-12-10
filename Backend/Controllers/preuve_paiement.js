@@ -129,37 +129,49 @@ export const uploadPreuvesPaiement = async (req, res) => {
         console.log("📌 UPDATE RESULT =", updateData);
         console.log("🟥 UPDATE ERROR =", updateError);
 
-        // ==========================
-        // 6️⃣ EMAIL ADMIN
-        // ==========================
-        const adminId = facture.id_admin || facture.admin_id;
+    // ==========================
+    // 6️⃣ EMAIL ADMIN
+    // ==========================
+    const adminId = facture.id_admin || facture.admin_id;
 
-        console.log("👤 ADMIN ID =", adminId);
+    console.log("👤 ADMIN ID =", adminId);
 
-        if (adminId) {
-            const { data: adminData } = await supabase
-                .from("admins")
-                .select("email, nom")
-                .eq("id", adminId)
-                .single();
+    if (adminId) {
 
-            console.log("📧 ADMIN:", adminData);
+        const { data: adminData, error: adminErr } = await supabase
+            .from("admins")
+            .select("email, nom_complet")
+            .eq("id", adminId)
+            .single();
 
-            if (adminData?.email) {
+        console.log("📧 ADMIN DATA =", adminData);
+        console.log("🟥 ADMIN ERR =", adminErr);
+
+        if (adminErr) {
+            console.error("❌ ERREUR RECUP ADMIN :", adminErr);
+        }
+
+        if (adminData?.email) {
+            try {
                 await transporter.sendMail({
                     from: process.env.SMTP_USER,
                     to: adminData.email,
                     subject: "Nouvelle preuve de paiement reçue",
                     html: `
-                        <p>Bonjour ${adminData.nom || ""},</p>
+                        <p>Bonjour ${adminData.nom_complet || ""},</p>
                         <p>Une nouvelle preuve de paiement a été téléversée pour la facture <b>${numero_facture}</b>.</p>
                         <p>Statut mis à jour : <b>En Attente</b></p>
                         <p>Veuillez vous connecter pour la valider.</p>
                     `
                 });
                 console.log("📨 Email envoyé !");
+            } catch (e) {
+                console.error("❌ ERREUR SMTP :", e);
             }
+        } else {
+            console.warn("⚠️ Aucun email admin trouvé !");
         }
+    }
 
         // ==========================
         // 7️⃣ RÉPONSE API
