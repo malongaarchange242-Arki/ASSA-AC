@@ -10,7 +10,8 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 
 // Detect if running on Render
-const isRender = !!process.env.RENDER || !!process.env.RENDER_EXTERNAL_URL;
+// Detect if running on Render
+const isRender = !!process.env.RENDER_SERVICE_ID;
 
 // Routes imports
 import adminRoutes from './Routes/admins.js';
