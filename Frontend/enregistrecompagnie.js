@@ -5,20 +5,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const REDIRECT_DELAY_MS = 1000;
     const messageDiv = document.getElementById('form-message');
 
-    const logoInput = document.getElementById('logo-file'); // ✔ correspond à ton HTML
+    const logoInput = document.getElementById('logo-file');
     const currentLogo = document.getElementById('current-logo');
 
-    // ---------------- Afficher un message ----------------
     function showMessage(message, type = 'info') {
         messageDiv.textContent = message;
         messageDiv.className = 'text-center p-3 mb-6 rounded-xl font-medium border transition-opacity duration-300';
-        if (type === 'error') messageDiv.classList.add('bg-red-50','text-red-800','border-red-500');
-        else if (type === 'success') messageDiv.classList.add('bg-green-50','text-green-800','border-green-500');
-        else messageDiv.classList.add('bg-blue-50','text-blue-800','border-blue-500');
+        if (type === 'error') messageDiv.classList.add('bg-red-50', 'text-red-800', 'border-red-500');
+        else if (type === 'success') messageDiv.classList.add('bg-green-50', 'text-green-800', 'border-green-500');
+        else messageDiv.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-500');
         messageDiv.classList.remove('hidden');
     }
 
-    // ---------------- Vérifier connexion ----------------
     const token = localStorage.getItem('jwtTokenAdmin');
     if (!token) {
         alert('Vous devez être connecté !');
@@ -26,7 +24,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // ---------------- Récupérer ID depuis URL ----------------
     const urlParams = new URLSearchParams(window.location.search);
     const companyId = urlParams.get('id');
 
@@ -65,7 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ---------------- Prévisualisation logo ----------------
     logoInput.addEventListener('change', () => {
         const file = logoInput.files[0];
         if (file) {
@@ -75,14 +71,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // ---------------- Gestion du submit ----------------
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         saveButton.disabled = true;
         saveButton.textContent = companyId ? 'Modification en cours...' : 'Enregistrement en cours...';
 
         try {
-            const formData = new FormData(form);
+            // 🔥 Création manuelle du FormData pour inclure le fichier correctement
+            const formData = new FormData();
+            formData.append('company_name', form.company_name.value.trim());
+            formData.append('representative_name', form.representative_name.value.trim());
+            formData.append('email', form.email.value.trim());
+            formData.append('phone_number', form.phone_number.value.trim());
+            formData.append('full_address', form.full_address.value.trim());
+            formData.append('country', form.country.value.trim());
+            formData.append('city', form.city.value.trim());
+            formData.append('airport_code', form.airport_code.value.trim());
+
+            // 🔥 AJOUT OBLIGATOIRE DU FICHIER
+            if (logoInput.files[0]) {
+                formData.append('logo_url', logoInput.files[0]);
+            }
+
+            console.log("DEBUG fichier envoyé →", formData.get("logo_url"));
 
             const requiredFields = ['company_name', 'representative_name', 'email', 'full_address', 'country', 'city'];
             for (const field of requiredFields) {
@@ -115,7 +126,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Mise à jour du logo après enregistrement
             if (result.company.logo_url) {
                 currentLogo.src = result.company.logo_url.startsWith('http')
                     ? result.company.logo_url
