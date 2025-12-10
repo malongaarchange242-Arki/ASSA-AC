@@ -8,7 +8,6 @@ import path from 'path';
 import { logActivite } from '../Services/journalService.js';
 import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js';
 
-
 // Detecter Render
 const isRender = !!process.env.RENDER || !!process.env.RENDER_EXTERNAL_URL;
 
@@ -17,9 +16,22 @@ const uploadDir = isRender
   ? '/var/data'
   : path.join(process.cwd(), 'uploads');
 
-// Création du dossier local uniquement
-if (!isRender && !fs.existsSync(uploadDir)) {
+// ---------------------------
+// Création du dossier (local + Render)
+// ---------------------------
+if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("📁 Dossier upload créé :", uploadDir);
+}
+
+// ---------------------------
+// Correction des permissions (nécessaire sur Render)
+// ---------------------------
+try {
+  fs.chmodSync(uploadDir, 0o775);
+  console.log("✔ Permissions appliquées sur :", uploadDir);
+} catch (e) {
+  console.log("⚠ Impossible de changer permissions :", e.message);
 }
 
 // ----------------- Multer storage -----------------
@@ -46,6 +58,7 @@ export const uploadLogo = multer({
 }).single('logo_url');
 
 export default uploadLogo;
+
 
 // ----------------- Configuration Nodemailer -----------------
 const transporter = nodemailer.createTransport({
