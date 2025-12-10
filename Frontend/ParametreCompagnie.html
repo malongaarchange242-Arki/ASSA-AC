@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="fr" class="bg-gray-100"> 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Portail Client - Mon Compte</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5',
+                        'secondary': '#10b981',
+                        'assa-ac': '#1e40af',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="ParametreCompagnie.css">
+</head>
+
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+
+<div class="flex h-full">
+
+    <!-- ----------------------- SIDEBAR ---------------------------- -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-xl 
+               transition-transform duration-300 ease-in-out transform -translate-x-full 
+               lg:translate-x-0 lg:sticky lg:h-screen lg:flex lg:flex-col p-4 
+               border-r border-gray-200 dark:border-gray-700">
+
+        <div class="text-2xl font-extrabold text-assa-ac dark:text-primary mb-8 border-b 
+                    border-gray-200 dark:border-gray-700 pb-4">
+            ASSA-AC Client
+        </div>
+
+        <nav class="space-y-2 flex-grow">
+            <a href="AccueilCompagnie.html"
+               class="nav-link flex items-center p-3 text-sm font-medium rounded-lg 
+                      hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                    </path>
+                </svg>
+                Factures (Consultation)
+            </a>
+
+            <a href="TeleverserCompagnie.html"
+               class="nav-link flex items-center p-3 text-sm font-medium rounded-lg 
+                      hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 10v-1m-4-3H9m2-2h-1.5M15 11h2.5m-2.5 0a1.5 1.5 0 003 0m0 0a1.5 1.5 0 01-3 0M6 12h.01M18 12h.01">
+                    </path>
+                </svg>
+                Téléverser Preuve
+            </a>
+
+            <a href="ContestationCompagnie.html"
+               class="nav-link flex items-center p-3 text-sm font-medium rounded-lg 
+                      hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.508-1.656 1.745-2.99l-6.928-12c-.76-1.31-2.69-1.31-3.45 0l-6.928 12c-.763 1.334.204 2.99 1.745 2.99z">
+                    </path>
+                </svg>
+                Soumettre Contestation
+            </a>
+
+            <a href="messagerieCompagnie.html"
+               class="nav-link flex items-center p-3 text-sm font-medium rounded-lg 
+                      hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-2 4v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7">
+                    </path>
+                </svg>
+                Messagerie
+            </a>
+
+            <a href="ParametreComp.html"
+               class="nav-link flex items-center p-3 text-sm rounded-lg bg-indigo-100 
+                      dark:bg-indigo-900/50 font-semibold text-primary shadow-sm">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z">
+                    </path>
+                </svg>
+                Mon Compte
+            </a>
+        </nav>
+
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+
+            <button onclick="toggleTheme()"
+                    class="w-full flex items-center p-3 text-sm font-medium rounded-lg 
+                           text-gray-700 dark:text-gray-300 hover:bg-gray-100 
+                           dark:hover:bg-gray-700 transition">
+                <svg id="theme-icon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24"></svg>
+                <span id="theme-text">Mode Jour</span>
+            </button>
+
+            <a href="#" onclick="showModal('Déconnexion', 'Simulation: Redirection vers la page de login...')"
+               class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 
+                      dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                    </path>
+                </svg>
+                Déconnexion
+            </a>
+        </div>
+
+        <button id="close-sidebar-btn"
+                class="absolute top-4 right-4 lg:hidden text-gray-500 dark:text-gray-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor"
+                 viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </aside>
+
+    <!-- ----------------------- MAIN ---------------------------- -->
+    <main class="flex-1 overflow-x-hidden overflow-y-auto">
+
+        <header id="main-header"
+                class="bg-white dark:bg-gray-800 p-4 sm:p-6 flex flex-col md:flex-row 
+                       items-start md:items-center justify-between border-b 
+                       border-gray-200 dark:border-gray-700">
+
+            <div class="flex items-center justify-between w-full md:w-auto mb-4 md:mb-0">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                    Mon Compte & Paramètres
+                </h1>
+
+                <button id="open-sidebar-btn"
+                        class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300
+                               hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor"
+                         viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <button class="flex items-center space-x-2 p-1 rounded-lg 
+                           hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+
+                <span id="company-name"
+                      class="text-sm font-medium hidden sm:inline 
+                             text-gray-900 dark:text-gray-100"></span>
+
+                <img id="company-logo"
+                     class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac 
+                            dark:ring-primary"
+                     src=""
+                     alt="Logo compagnie">
+            </button>
+        </header>
+
+        <!-- ---------------------- CONTENT -------------------------- -->
+
+        <div id="main-content-scroll" class="p-4 sm:p-6 lg:p-8">
+            <div class="space-y-8 max-w-5xl mx-auto">
+
+                <!-- LOGO FORM -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-secondary">
+                    <h2 class="text-xl font-semibold mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L15 15m-2-6l4.586-4.586a2 2 0 012.828 0L19 9m-2 2l-2 2m-2-4l4-4"></path>
+                        </svg>
+                        Logo de la Compagnie (Avatar)
+                    </h2>
+
+                    <form id="profil-logo-form">
+                        <div class="flex items-center space-x-6">
+                            <div class="shrink-0">
+                                <img id="header-avatar"
+                                     class="h-20 w-20 object-cover rounded-full ring-4 
+                                            ring-secondary dark:ring-green-400"
+                                     src="https://placehold.co/80x80/1e40af/ffffff?text=AF"
+                                     alt="Logo Actuel">
+                            </div>
+
+                            <label class="block">
+                                <span class="sr-only">Choisir le logo</span>
+                                <input type="file" id="file-input" accept="image/*"
+                                       class="block w-full text-sm text-gray-500
+                                              file:mr-4 file:py-2 file:px-4
+                                              file:rounded-full file:border-0
+                                              file:text-sm file:font-semibold
+                                              file:bg-primary file:text-white
+                                              hover:file:bg-indigo-600 transition duration-150 
+                                              cursor-pointer dark:file:bg-primary 
+                                              dark:file:hover:bg-indigo-600" />
+                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    JPG, PNG ou SVG (max. 1MB)
+                                </p>
+                            </label>
+                        </div>
+
+                        <div class="mt-6 flex justify-end">
+                            <button type="submit"
+                                    class="px-6 py-2.5 text-sm font-medium text-white 
+                                           bg-secondary rounded-lg hover:bg-emerald-600 
+                                           transition shadow-md">
+                                Enregistrer le Nouveau Logo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+
+                <!-- CONTACT FORM -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-primary">
+                    <h2 class="text-xl font-semibold mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                            </path>
+                        </svg>
+                        Informations de Contact et Facturation
+                    </h2>
+
+                    <form id="profil-info-form">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                            <!-- Nom compagnie -->
+                            <div>
+                                <label class="block mb-2 font-medium">Nom de la compagnie</label>
+                                <input id="company_name" type="text"
+                                       class="w-full px-4 py-2 text-sm rounded-lg border 
+                                              bg-gray-50 dark:bg-gray-700">
+                            </div>
+                    
+                            <!-- Numéro Client ASSA-AC -->
+                            <div>
+                                <label class="block mb-2 font-medium">Numéro Client ASSA-AC</label>
+                                <input id="client_number" type="text" disabled
+                                       class="w-full px-4 py-2 text-sm rounded-lg bg-gray-200 
+                                              dark:bg-gray-900 text-gray-500 cursor-not-allowed">
+                            </div>
+                    
+                            <!-- Email -->
+                            <div>
+                                <label class="block mb-2 font-medium">Email de Contact</label>
+                                <input id="company_email" type="email"
+                                       class="w-full px-4 py-2 text-sm rounded-lg border 
+                                              bg-gray-50 dark:bg-gray-700">
+                            </div>
+                    
+                            <!-- Téléphone -->
+                            <div>
+                                <label class="block mb-2 font-medium">Téléphone</label>
+                                <input id="company_phone" type="tel"
+                                       class="w-full px-4 py-2 text-sm rounded-lg border 
+                                              bg-gray-50 dark:bg-gray-700">
+                            </div>
+                    
+                            <!-- Adresse -->
+                            <div class="md:col-span-2">
+                                <label class="block mb-2 font-medium">Adresse du Siège</label>
+                                <input id="company_address" type="text"
+                                       class="w-full px-4 py-2 text-sm rounded-lg border 
+                                              bg-gray-50 dark:bg-gray-700">
+                            </div>
+                    
+                        </div>
+                    
+
+                            <!-- ... tes inputs ... -->
+                        
+                            <div class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                                <button type="submit"
+                                        class="px-6 py-2.5 text-sm font-medium text-white bg-primary 
+                                               rounded-lg hover:bg-indigo-600 transition shadow-md">
+                                   Sauvegarder les Informations
+                                </button>
+                            </div>
+                        
+                    </form>
+                        
+                </div>
+
+
+                <!-- SECURITY FORM -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                    <h2 class="text-xl font-semibold mb-6 border-b pb-3 flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        Sécurité
+                    </h2>
+
+                    <form id="security-form">
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- Mot de passe actuel -->
+    <div>
+        <label class="block mb-2 font-medium">Mot de passe actuel</label>
+        <div class="relative">
+            <input type="password" id="current-password"
+                   class="w-full px-4 py-2 text-sm rounded-lg border bg-gray-50 dark:bg-gray-700 pr-10">
+            <button type="button" 
+                    class="absolute inset-y-0 right-3 flex items-center text-gray-500"
+                    onclick="togglePasswordVisibility('current-password', this)">
+                👁️
+            </button>
+        </div>
+    </div>
+
+    <!-- Nouveau mot de passe -->
+    <div>
+        <label class="block mb-2 font-medium">Nouveau mot de passe</label>
+        <div class="relative">
+            <input type="password" id="new-password"
+                   class="w-full px-4 py-2 text-sm rounded-lg border bg-gray-50 dark:bg-gray-700 pr-10">
+            <button type="button" 
+                    class="absolute inset-y-0 right-3 flex items-center text-gray-500"
+                    onclick="togglePasswordVisibility('new-password', this)">
+                👁️
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirmer mot de passe -->
+    <div>
+        <label class="block mb-2 font-medium">Confirmer mot de passe</label>
+        <div class="relative">
+            <input type="password" id="confirm-password"
+                   class="w-full px-4 py-2 text-sm rounded-lg border bg-gray-50 dark:bg-gray-700 pr-10">
+            <button type="button" 
+                    class="absolute inset-y-0 right-3 flex items-center text-gray-500"
+                    onclick="togglePasswordVisibility('confirm-password', this)">
+                👁️
+            </button>
+        </div>
+    </div>
+
+</div>
+
+
+                        <div class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <button type="submit"
+                                    class="px-6 py-2.5 text-sm font-medium text-white bg-yellow-500 
+                                           rounded-lg hover:bg-yellow-600 transition shadow-md">
+                               Mettre à jour le mot de passe
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- MODAL -->
+<div id="status-modal"
+     class="modal fixed inset-0 bg-gray-900 bg-opacity-50 dark:bg-opacity-75 
+            z-50 flex items-center justify-center opacity-0 invisible">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm 
+                transform scale-95 transition-transform duration-300">
+        <h3 id="modal-title"
+            class="text-xl font-bold mb-4 text-primary dark:text-white">
+            Info
+        </h3>
+        <p id="modal-message" class="text-gray-700 dark:text-gray-300 mb-6">
+            Message...
+        </p>
+        <button onclick="closeModal()"
+                class="w-full px-4 py-2 text-sm font-medium text-white bg-primary 
+                       rounded-lg hover:bg-indigo-600 transition shadow-md">
+            Fermer
+        </button>
+    </div>
+</div>
+
+<script src="ParametreCompagnie.js"></script>
+
+</body>
+</html>

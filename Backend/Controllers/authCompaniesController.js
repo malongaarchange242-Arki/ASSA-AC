@@ -272,20 +272,48 @@ export const loginCompany = async (req, res) => {
 // ----------------- Profil de la compagnie -----------------
 export const me = async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    }
+
     const companyId = req.user.id_companie;
+
     const { data, error } = await supabase
       .from('companies')
-      .select('id, company_name, email, status, logo_url')
+      .select(`
+        id,
+        company_name,
+        representative_name,
+        email,
+        phone_number,
+        full_address,
+        country,
+        city,
+        airport_code,
+        logo_url,
+        status,
+        created_at,
+        updated_at
+      `)
       .eq('id', companyId)
       .single();
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
 
-    res.status(200).json({ message: 'Profil compagnie', user: req.user, company: data });
+    if (error) {
+      return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
+    }
+
+    return res.status(200).json({
+      message: 'Profil compagnie',
+      user: req.user,
+      company: data
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    return res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
+
 
 // ----------------- Lister toutes les compagnies -----------------
 export const listCompanies = async (req, res) => {
@@ -413,6 +441,81 @@ export const getCompanyById = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
+
+export const updateCompanyInfo = async (req, res) => {
+  try {
+    console.log("📩 Requête reçue pour updateCompanyInfo");
+    console.log("➡️ req.user :", req.user);
+    console.log("➡️ req.body :", req.body);
+    console.log("➡️ req.file :", req.file);
+
+    if (!req.user) {
+      console.log("❌ Utilisateur non authentifié !");
+      return res.status(401).json({ message: "Utilisateur non authentifié" });
+    }
+
+    const companyId = req.user.id_companie;
+    console.log("🏢 ID Société :", companyId);
+
+    const { company_name, email, phone_number, full_address, status } = req.body;
+
+    // Gestion du logo
+    let newLogoUrl = null;
+    if (req.file) {
+      newLogoUrl = req.file.filename;
+      console.log("🖼️ Nouveau logo détecté :", newLogoUrl);
+    } else {
+      console.log("⚠️ Aucun fichier logo envoyé !");
+    }
+
+    // Champs à mettre à jour
+    const updateFields = {
+      updated_at: new Date(),
+    };
+
+    if (company_name) updateFields.company_name = company_name;
+    if (email) updateFields.email = email;
+    if (phone_number) updateFields.phone_number = phone_number;
+    if (full_address) updateFields.full_address = full_address;
+    if (status) updateFields.status = status;
+    if (newLogoUrl) updateFields.logo_url = `/uploads/${newLogoUrl}`;
+
+
+    console.log("📦 Champs envoyés à Supabase :", updateFields);
+
+    // Mise à jour SUPABASE
+    const { data, error } = await supabase
+      .from("companies")
+      .update(updateFields)
+      .eq("id", companyId)
+      .select()
+      .single();
+
+    if (error) {
+      console.log("❌ Erreur Supabase :", error);
+      return res.status(400).json({
+        message: "Échec de la mise à jour",
+        erreur: error.message,
+      });
+    }
+
+    console.log("✅ Mise à jour réussie — données renvoyées :", data);
+
+    return res.status(200).json({
+      message: "Informations mises à jour avec succès",
+      company: data,
+    });
+
+  } catch (err) {
+    console.log("🔥 Erreur serveur :", err);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      erreur: err.message,
+    });
+  }
+};
+
 
 
 // ----------------- Mettre à jour une compagnie -----------------
@@ -543,5 +646,53 @@ export const deleteCompanySafe = async (req, res) => {
   } catch (err) {
     console.error('Erreur deleteCompanySafe:', err);
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+  }
+};
+
+
+export const updateCompanyPassword = async (req, res) => {
+  try {
+    console.log("🔍 TOKEN :", req.user);
+
+    const companyId = req.user.id;   // ✅ Correction importante
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ message: "Champs manquants" });
+    }
+
+    // Lire la compagnie
+    const { data: company, error } = await supabase
+      .from("companies")
+      .select("password_hash")
+      .eq("id", companyId)
+      .single();
+
+    if (error || !company) {
+      return res.status(404).json({ message: "Société introuvable" });
+    }
+
+    console.log("🔐 Mot de passe hash trouvé :", company.password_hash);
+
+    // Vérifier le mot de passe actuel
+    const valid = await bcrypt.compare(current_password, company.password_hash);
+
+    if (!valid) {
+      return res.status(401).json({ message: "Mot de passe incorrect" });
+    }
+
+    // Hacher le nouveau
+    const newHash = await bcrypt.hash(new_password, 10);
+
+    await supabase
+      .from("companies")
+      .update({ password_hash: newHash, updated_at: new Date() })
+      .eq("id", companyId);
+
+    return res.status(200).json({ message: "Mot de passe mis à jour avec succès" });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erreur serveur" });
   }
 };

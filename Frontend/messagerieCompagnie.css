@@ -34,11 +34,11 @@ body {
 }
 
 @media (min-width: 768px) { /* md breakpoint */
-     #main-content-scroll {
+    #main-content-scroll {
         margin-top: 5.5rem; /* Rétablit pour le header md qui est sur une ligne */
         /* Définir une hauteur minimale pour remplir l'écran moins le header */
         min-height: calc(100vh - 5.5rem);
-     }
+    }
 }
 
 /* Effet "neon" (shadow glow) */

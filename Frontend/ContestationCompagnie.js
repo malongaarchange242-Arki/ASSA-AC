@@ -1,6 +1,6 @@
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
+    return origin.includes(':5002') ? origin : 'http://localhost:5002';
 })();
 let SERVER_INVOICES = [];
 
@@ -185,69 +185,99 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // 4. Gestionnaire pour le formulaire de Contestations
+        // 4. Gestionnaire pour le formulaire de Contestations
     const contestationForm = document.getElementById('contestations-form');
     const fileInputContestation = document.getElementById('file-upload-contestation');
     const fileDisplayContestation = document.getElementById('file-upload-display-contestation');
 
     if (contestationForm) {
-    contestationForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const invoiceId = document.getElementById('invoice-select-contestation').value;
-        // Suppression de la référence à dispute-category.value
-        const explanation = document.getElementById('dispute-explanation').value;
-        const files = fileInputContestation.files ? Array.from(fileInputContestation.files) : [];
+        contestationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const invoiceId = document.getElementById('invoice-select-contestation').value;
+            const explanation = document.getElementById('dispute-explanation').value;
+            const files = fileInputContestation.files ? Array.from(fileInputContestation.files) : [];
 
-        if (!invoiceId || !explanation) {
-            showModal('Erreur de Formulaire', 'Veuillez remplir tous les champs obligatoires (Facture, Explication).');
-            return;
-        }
-
-        const token = localStorage.getItem('jwtTokenCompany');
-        if (!token) { showModal('Authentification requise', 'Veuillez vous reconnecter.'); return; }
-
-        try {
-            const fd = new FormData();
-            fd.append('numero_facture', invoiceId);
-            fd.append('explication', explanation);
-            const jwt = localStorage.getItem('jwtTokenCompany');
-            let cid = localStorage.getItem('id_companie');
-            if (!cid) {
-                try { const payload = JSON.parse(decodeURIComponent(escape(atob(jwt.split('.')[1])))); cid = payload.id_companie || payload.company_id; } catch {}
+            if (!invoiceId || !explanation) {
+                showModal('Erreur de Formulaire', 'Veuillez remplir tous les champs obligatoires (Facture, Explication).');
+                return;
             }
-            if (cid) fd.append('id_companie', cid);
-            files.forEach(f => fd.append('files', f));
 
-            let resp;
-            try {
-                resp = await fetch(`${API_BASE}/api/contestations`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
-            } catch (e) {
-                resp = await fetch(`http://localhost:5002/api/contestations`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
+            const token = localStorage.getItem('jwtTokenCompany');
+            if (!token) { 
+                showModal('Authentification requise', 'Veuillez vous reconnecter.'); 
+                return; 
             }
-            const payload = await resp.json().catch(()=>({}));
-            if (!resp.ok) { showModal('Erreur', payload.message || 'Échec de la soumission'); return; }
 
             try {
-                const atts = (payload?.payload?.attachments || []).map(a => ({ url: a.file_url, name: a.file_name }));
-                const ctx = { invoiceId, text: `Contestation pour la facture ${invoiceId}` };
-                localStorage.setItem('lastProofAttachments', JSON.stringify(atts));
-                localStorage.setItem('lastProofContext', JSON.stringify(ctx));
-            } catch {}
+                const fd = new FormData();
+                fd.append('numero_facture', invoiceId);
+                fd.append('explication', explanation);
 
-            showModal('Contestation Soumise', `Votre contestation pour la facture <strong>${invoiceId}</strong> a été soumise.`);
-            contestationForm.reset();
-            if (fileDisplayContestation) { fileDisplayContestation.textContent = 'PDF, PNG, JPG (MAX. 5 fichiers)'; fileDisplayContestation.classList.remove('file-selected'); }
+                const jwt = localStorage.getItem('jwtTokenCompany');
+                let cid = localStorage.getItem('id_companie');
 
-            setTimeout(() => {
-                const url = `messagerieCompagnie.html?invoice=${encodeURIComponent(invoiceId)}`;
-                window.location.href = url;
-            }, 800);
-        } catch (err) {
-            console.error('Erreur soumission contestation:', err);
-            showModal('Erreur', 'Une erreur est survenue lors de la soumission.');
-        }
-    });
+                if (!cid) {
+                    try {
+                        const payload = JSON.parse(decodeURIComponent(escape(atob(jwt.split('.')[1]))));
+                        cid = payload.id_companie || payload.company_id;
+                    } catch {}
+                }
+
+                if (cid) fd.append('id_companie', cid);
+                files.forEach(f => fd.append('files', f));
+
+                let resp;
+                try {
+                    resp = await fetch(`${API_BASE}/api/contestations/upload_contestation`, { 
+                        method: 'POST', 
+                        headers: { 'Authorization': `Bearer ${token}` }, 
+                        body: fd 
+                    });
+                } catch (e) {
+                    resp = await fetch(`http://localhost:5002/api/contestations/upload_contestation`, { 
+                        method: 'POST', 
+                        headers: { 'Authorization': `Bearer ${token}` }, 
+                        body: fd 
+                    });
+                }
+
+                const payload = await resp.json().catch(() => ({}));
+                if (!resp.ok) { 
+                    showModal('Erreur', payload.message || 'Échec de la soumission'); 
+                    return; 
+                }
+
+                try {
+                    const atts = (payload?.payload?.attachments || []).map(a => ({
+                        url: a.file_url,
+                        name: a.file_name
+                    }));
+                    const ctx = { invoiceId, text: `Contestation pour la facture ${invoiceId}` };
+                    localStorage.setItem('lastProofAttachments', JSON.stringify(atts));
+                    localStorage.setItem('lastProofContext', JSON.stringify(ctx));
+                } catch {}
+
+                showModal(
+                    'Contestation Soumise',
+                    `Votre contestation pour la facture <strong>${invoiceId}</strong> a été soumise.`
+                );
+
+                contestationForm.reset();
+                if (fileDisplayContestation) {
+                    fileDisplayContestation.textContent = 'PDF, PNG, JPG (MAX. 5 fichiers)';
+                    fileDisplayContestation.classList.remove('file-selected');
+                }
+
+                // 🚫 Suppression de la redirection
+                // (plus de window.location.href)
+
+            } catch (err) {
+                console.error('Erreur soumission contestation:', err);
+                showModal('Erreur', 'Une erreur est survenue lors de la soumission.');
+            }
+        });
     }
+
 
     // 5. Affichage du nom du fichier (Contestations)
     if (fileInputContestation && fileDisplayContestation) {

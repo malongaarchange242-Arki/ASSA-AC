@@ -1,18 +1,20 @@
-import express from 'express';
-import { verifyToken, checkRole } from '../Middleware/auth.js';
-import { uploadContestationFiles, submitContestation } from '../Controllers/contestationCompagnie.js';
+import express from "express";
+import {
+  uploadContestationFiles,
+  uploadContestation
+} from "../Controllers/contestationCompagnie.js";
+
+import { verifyToken } from "../Middleware/auth.js";
 
 export default function contestationsRoutesFactory(broadcastToRoom) {
   const router = express.Router();
 
   router.post(
-    '/',
+    "/upload_contestation",
     verifyToken,
-    checkRole(['Company', 'Administrateur']),
-    uploadContestationFiles,
-    (req, res) => submitContestation(req, res, broadcastToRoom)
+    uploadContestationFiles,   // <-- 🟩 Multer GÈRE req.body + req.files
+    uploadContestation,        // <-- 🟩 Ton controller reçoit tout proprement
   );
 
   return router;
 }
-

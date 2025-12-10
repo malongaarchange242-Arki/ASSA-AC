@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ================== Constants ==================
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
-    const API_BASE = 'https://assa-ac-jyn4.onrender.com';
+    const API_BASE = 'http://localhost:5002';
 
     // ================== Token Management ==================
     let token = localStorage.getItem(TOKEN_KEY);

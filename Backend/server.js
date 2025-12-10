@@ -12,7 +12,7 @@ import { WebSocketServer } from 'ws';
 // Routes imports
 import adminRoutes from './Routes/admins.js';
 import companyRoutes from './Routes/compagnies.js';
-import ContestationRoutes from './Routes/contestation.js';
+// import ContestationRoutes from './Routes/contestation.js';
 import factureRoutes from './Routes/factureRoutes.js';
 import journalRoutes from './Routes/journalActiviteRoutes.js';
 import authRoutes from './Routes/auth.js';
@@ -33,6 +33,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:5502',
+  'http://127.0.0.1:5501',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   'https://assa-ac-jyn4.onrender.com',  
@@ -67,7 +68,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ==========================
 app.use('/api/admins', adminRoutes);
 app.use('/api/companies', companyRoutes);
-app.use('/api/contestation', ContestationRoutes);
+// app.use('/api/contestation', ContestationRoutes);
 app.use('/api/factures', factureRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/auth', authRoutes);
@@ -86,9 +87,12 @@ app.use('/api', (req, res) => {
 // SERVE STATIC FRONT
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const clientDir = path.join(__dirname, '../Frontend');
 app.use(express.static(clientDir));
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// 👉 SERVE UPLOADS CORRECTEMENT
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // WEBSOCKET
 

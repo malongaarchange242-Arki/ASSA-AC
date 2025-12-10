@@ -1,7 +1,7 @@
 // ------------------- CONFIG -------------------
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
+    return origin.includes(':5002') ? origin : 'http://localhost:5002';
 })();
 let SERVER_INVOICES = [];
 
@@ -30,7 +30,7 @@ async function loadCompanyInvoices() {
         try {
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         } catch (e) {
-            base = 'https://assa-ac-jyn4.onrender.com';
+            base = 'http://localhost:5002';
             url = `${base}/api/factures/company`;
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         }
@@ -265,14 +265,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if(openBtn) openBtn.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
     if(closeBtn) closeBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
 
-    // 4. Formulaire paiements
+        // 4. Formulaire paiements
     const paiementForm = document.getElementById('paiements-form');
     const fileInputPaiement = document.getElementById('file-upload-paiement');
     const fileDisplayPaiement = document.getElementById('file-upload-display-paiement');
 
-    if(paiementForm) {
+    if (paiementForm) {
         paiementForm.addEventListener('submit', async e => {
             e.preventDefault();
+
             const invoiceId = document.getElementById('invoice-select-paiement').value;
             const note = document.getElementById('paiement-note').value || '';
             const file = fileInputPaiement.files[0];
@@ -293,6 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('numero_facture', invoiceId);
                 formData.append('commentaire', note);
                 formData.append('file', file);
+
+                // Récupération company_id
                 const jwt = localStorage.getItem('jwtTokenCompany');
                 const payload = parseJwt(jwt) || {};
                 const cid = localStorage.getItem('id_companie') || payload.id_companie || payload.company_id;
@@ -305,34 +308,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const data = await resp.json().catch(() => ({}));
-                if(!resp.ok) {
+                if (!resp.ok) {
                     showModal('Erreur', data.message || "Échec de l’envoi de la preuve");
                     return;
                 }
 
-                const proofId = data?.preuve?.id;
-                const fileName = data?.preuve?.fichier_nom || file.name;
-                try {
-                    const meta = {
-                        id: proofId || null,
-                        url: data?.preuve?.fichier_url || null,
-                        name: data?.preuve?.fichier_nom || file.name,
-                        invoiceId
-                    };
-                    localStorage.setItem('lastProofAttachment', JSON.stringify(meta));
-                } catch {}
-                showModal('Succès', `Preuve "${fileName}" enregistrée pour la facture ${invoiceId}. Ouverture de la messagerie...`);
+                // ================================
+                // 🔥 Mise à jour du statut EN LOCAL
+                // ================================
+                const invoice = SERVER_INVOICES.find(f => f.numero_facture == invoiceId);
+                if (invoice) invoice.statut = "En Attente";
 
+                // 🔥 Mise à jour du select (retirer la facture)
+                renderInvoiceSelect('paiement', inv =>
+                    inv.statut === 'Impayée' || inv.statut === 'En Retard'
+                );
+
+                // Message succès
+                showModal(
+                    'Succès',
+                    `Votre preuve de paiement a été envoyée.<br>
+                    Le statut de la facture <b>${invoiceId}</b> est maintenant <span class="text-yellow-600 font-semibold">"En Attente"</span>.`
+                );
+
+                // Reset UI
                 paiementForm.reset();
-                if(fileDisplayPaiement) {
+                if (fileDisplayPaiement) {
                     fileDisplayPaiement.textContent = 'PDF, PNG, JPG (MAX. 1 fichier)';
                     fileDisplayPaiement.classList.remove('file-selected');
                 }
 
-                setTimeout(() => {
-                    const url = `messagerieCompagnie.html?invoice=${encodeURIComponent(invoiceId)}${proofId ? `&proofId=${encodeURIComponent(proofId)}` : ''}`;
-                    window.location.href = url;
-                }, 800);
             } catch (err) {
                 console.error('Erreur upload preuve:', err);
                 showModal('Erreur', 'Une erreur est survenue lors de l’envoi de la preuve.');
@@ -340,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if(fileInputPaiement) {
+    if (fileInputPaiement) {
         fileInputPaiement.addEventListener('change', () => {
             if (fileInputPaiement.files.length > 0) {
                 fileDisplayPaiement.textContent = fileInputPaiement.files[0].name;

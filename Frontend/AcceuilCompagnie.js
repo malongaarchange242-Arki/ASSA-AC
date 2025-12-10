@@ -2,7 +2,7 @@
 // ====================================================================
 // 📌 CONFIG API
 // ====================================================================
-const API_BASE = "https://assa-ac-jyn4.onrender.com";
+const API_BASE = "http://localhost:5002";
 
 let ALL_INVOICES = []; 
 let currentSortColumn = null;
@@ -262,13 +262,39 @@ function renderInvoices(INVOICES = []) {
         }
 
         rowsHTML += `
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                <td class="px-6 py-4 text-sm font-medium">${inv.id || '-'}</td>
-                <td class="px-6 py-4 text-sm">${inv.date || '-'}</td>
-                <td class="px-6 py-4 text-sm">${formattedXAF}</td>
-                <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">${displayStatus}</span></td>
-                <td class="px-6 py-4 text-center font-medium">${actionButton}</td>
-            </tr>`;
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+    <td class="px-6 py-4 text-sm font-medium">${inv.id || '-'}</td>
+    <td class="px-6 py-4 text-sm">${inv.date || '-'}</td>
+    <td class="px-6 py-4 text-sm">${formattedXAF}</td>
+    <td class="px-6 py-4">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+            ${displayStatus}
+        </span>
+    </td>
+    <td class="px-6 py-4 text-center font-medium">${actionButton}</td>
+
+    <!-- ⭐ Icône de l'œil -->
+    <td class="px-6 py-4 text-center">
+    
+        <button onclick="openInvoicePage('${inv.id}', '${inv.status}')"
+
+
+            class="text-blue-600 hover:text-blue-900 dark:text-blue-400 font-medium">
+
+            <!-- Icône œil (Heroicons) -->
+            <svg xmlns="http://www.w3.org/2000/svg" 
+                 fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+                 class="w-6 h-6 inline">
+                <path stroke-linecap="round" stroke-linejoin="round" 
+                    d="M2.25 12s3.75-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.75 7.5-9.75 7.5S2.25 12 2.25 12z" />
+                <path stroke-linecap="round" stroke-linejoin="round" 
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+
+        </button>
+    </td>
+</tr>`;
+
     });
 
     tableBody.innerHTML = rowsHTML;
@@ -285,6 +311,32 @@ function renderInvoices(INVOICES = []) {
     document.getElementById('kpi-overdue-count').textContent = totalInvoices;
     document.getElementById('kpi-dispute-count').textContent = disputeCount;
 }
+
+function formatNumber(num) {
+    if (num === null || num === undefined || num === "") return "0";
+    const value = Number(num);
+    if (isNaN(value)) return num;
+    return value.toLocaleString("fr-FR");
+}
+
+
+function openInvoicePage(numero, status) {
+    if (!numero) {
+        console.error("Numéro de facture manquant !");
+        return;
+    }
+
+    const s = (status || "").toLowerCase();
+    const encodedNumero = encodeURIComponent(numero);
+
+    if (s === "payée" || s === "payee") {
+        window.location.href = `FacturePreview_certifier.html?numero=${encodedNumero}`;
+    } else {
+        window.location.href = `FacturePreview.html?numero=${encodedNumero}`;
+    }
+}
+
+
 
 
 // ====================================================================
@@ -303,6 +355,12 @@ function closeModal(modalId) {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
+
+function closeInvoicePreview() {
+    const modal = document.getElementById("invoice-preview-modal");
+    if (modal) modal.classList.add("hidden");
+}
+
 
 
 // ====================================================================

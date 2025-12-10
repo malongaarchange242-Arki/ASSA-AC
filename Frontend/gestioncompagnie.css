@@ -30,6 +30,25 @@ body { font-family: 'Arial', sans-serif; margin:0; padding:0; background-color: 
     z-index:1000;
     box-sizing:border-box;
 }
+
+        /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
+        .header-logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px; 
+        }
+        
+        /* Style du texte "ASSA-AC PORTAL" */
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0dace0;
+            margin-left: 15px; 
+            letter-spacing: 1px;
+        }
+
+        /* STYLE LOGO ASSA-AC (40px) */
+        #assaac-logo { height: 70px; width: auto; }
 .nav-menu { flex-grow:1; }
 .sidebar-header { text-align:center; padding:0 20px 30px; font-size:1.8em; font-weight:bold; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:white; }
 .sidebar-bottom { padding:10px 0; border-top:1px solid rgba(255,255,255,0.1); flex-shrink:0; }

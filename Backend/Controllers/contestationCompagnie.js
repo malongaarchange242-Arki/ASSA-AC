@@ -2,114 +2,125 @@ import supabase from '../Config/db.js';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 
-const ATTACH_BUCKET = 'Attachement_message';
-
+// ================= Multer =================
 const storage = multer.memoryStorage();
 export const uploadContestationFiles = multer({ storage }).array('files', 5);
 
-async function findAdminForCompany(companyId) {
+const BUCKET = "Attachement_message";
+
+// ================= Controller Contestation =================
+export const uploadContestation = async (req, res) => {
   try {
-    const { data: links, error: linksErr } = await supabase
-      .from('admin_companies')
-      .select('admin_id')
-      .eq('company_id', companyId)
-      .limit(1);
-    if (!linksErr && links?.length && links[0]?.admin_id) return links[0].admin_id;
+    console.log("📥 Reçu contestation :", req.body, "files:", req.files?.length);
 
-    const { data: company, error: compErr } = await supabase
-      .from('companies')
-      .select('id_admin')
-      .eq('id', companyId)
-      .maybeSingle();
-    if (!compErr && company?.id_admin) return company.id_admin;
-
-    const { data: admins, error: adminsErr } = await supabase
-      .from('admins')
-      .select('id')
-      .eq('id_companie', companyId)
-      .limit(1);
-    if (!adminsErr && admins?.length) return admins[0].id;
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export const submitContestation = async (req, res, broadcastToRoom) => {
-  try {
     const user = req.user;
-    if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
+    if (!user) return res.status(401).json({ message: "Token invalide" });
 
     const companyId = req.body.id_companie || user.id_companie || user.company_id;
-    if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
+    if (!companyId) return res.status(400).json({ message: "id_companie requis" });
 
-    const numero_facture = req.body.numero_facture || req.body.invoice || req.body.invoiceId;
-    const explication = (req.body.explication || req.body.explanation || '').trim();
+    const numero_facture = req.body.numero_facture;
+    const explication = (req.body.explication || "").trim();
+
     if (!numero_facture || !explication) {
-      return res.status(400).json({ message: 'numero_facture et explication requis' });
+      return res.status(400).json({
+        message: "numero_facture et explication requis"
+      });
     }
 
-    let facture;
-    try {
-      const { data, error } = await supabase
-        .from('factures')
-        .select('id,id_companie')
-        .eq('numero_facture', numero_facture)
-        .maybeSingle();
-      if (error) throw error;
-      facture = data || null;
-      if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
-      if (String(user.role || '').toLowerCase() === 'company' && facture.id_companie !== companyId) {
-        return res.status(403).json({ message: 'Accès refusé à cette facture' });
-      }
-    } catch (e) {
-      return res.status(500).json({ message: 'Erreur récupération facture', erreur: e.message });
+    // ==========================
+    // 1️⃣ Vérifier facture
+    // ==========================
+    const { data: facture, error: factureErr } = await supabase
+      .from("factures")
+      .select("id, id_companie")
+      .eq("numero_facture", numero_facture)
+      .maybeSingle();
+
+    if (factureErr) return res.status(500).json({ message: "Erreur récupération facture", erreur: factureErr.message });
+    if (!facture) return res.status(404).json({ message: "Facture introuvable" });
+
+    if (String(user.role).toLowerCase() === "company" && facture.id_companie !== companyId) {
+      return res.status(403).json({ message: "Accès refusé à cette facture" });
     }
 
-    const adminId = await findAdminForCompany(companyId);
-    if (!adminId) return res.status(400).json({ message: 'Aucun admin attribué pour cette compagnie' });
+    const facture_id = facture.id;
 
-    const { data: msg, error: msgErr } = await supabase
-      .from('messages')
-      .insert([{ id_companie: companyId, sender_role: 'company', content: `Contestation facture ${numero_facture}: ${explication}`, admin_id: adminId }])
-      .select('*')
-      .single();
-    if (msgErr) throw msgErr;
-
-    const uploaded = [];
+    // ==========================
+    // 2️⃣ Upload fichiers
+    // ==========================
+    const uploadedFiles = [];
     const files = req.files || [];
+
+    console.log("📎 Fichiers reçus :", files.length);
+
     for (const file of files) {
-      const ext = file.originalname.split('.').pop() || 'bin';
-      const filename = `${uuidv4()}.${ext}`;
-      const storagePath = `companies/${companyId}/messages/${msg.id}/${filename}`;
+      const ext = file.originalname.split(".").pop();
+      const safeName = file.originalname
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9.-]/g, "_");
 
-      const { error: upErr } = await supabase.storage
-        .from(ATTACH_BUCKET)
-        .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
-      if (upErr) throw upErr;
+      const filename = `contestation/${uuidv4()}_${safeName}`;
 
-      const { data: pub } = supabase.storage.from(ATTACH_BUCKET).getPublicUrl(storagePath);
-      const { data: att, error: attErr } = await supabase
-        .from('attachments')
-        .insert([{ message_id: msg.id, file_url: pub.publicUrl, file_name: file.originalname, uploaded_at: new Date() }])
-        .select('*')
-        .single();
-      if (attErr) throw attErr;
-      uploaded.push(att);
+      const { error: uploadErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(filename, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false
+        });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlObj } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+
+      uploadedFiles.push({
+        file_name: file.originalname,
+        file_url: urlObj.publicUrl
+      });
     }
 
-    const payload = { type: 'message', message: msg, attachments: uploaded };
-    if (broadcastToRoom) {
-      const getRoomKey = (aId, cId) => `${aId}:${cId}`;
-      const getCompanyRoomKey = (cId) => `company:${cId}`;
-      broadcastToRoom(getCompanyRoomKey(companyId), payload);
-      broadcastToRoom(getRoomKey(adminId, companyId), payload);
-    }
+    // ==========================
+    // 3️⃣ Enregistrement DB
+    // ==========================
+    const { data: contestData, error: contestErr } = await supabase
+      .from("contestation")
+      .insert([{
+        facture_id,
+        id_companie: companyId,
+        explication,
+        fichiers: uploadedFiles,
+        date_contestation: new Date()
+      }])
+      .select()
+      .single();
 
-    res.status(201).json({ message: 'Contestation soumise', payload });
+    if (contestErr) throw contestErr;
+
+    // ==========================
+    // 4️⃣ Statut facture
+    // ==========================
+    console.log("🔄 Mise à jour facture → Contestée");
+
+    await supabase
+      .from("factures")
+      .update({ statut: "Contestée" })
+      .eq("id", facture_id);
+
+    // ==========================
+    // 5️⃣ Réponse
+    // ==========================
+    res.status(201).json({
+      success: true,
+      message: "Contestation enregistrée",
+      contestation: contestData
+    });
 
   } catch (err) {
-    res.status(500).json({ message: 'Erreur soumission contestation', erreur: err.message });
+    console.error("⛔ ERREUR uploadContestation :", err);
+    return res.status(500).json({
+      message: "Erreur soumission contestation",
+      erreur: err.message
+    });
   }
 };

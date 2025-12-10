@@ -13,8 +13,10 @@ import {
   archiveCompany,      // archivage au lieu de suppression
   restoreCompany,      // restauration si nécessaire
   getCompanyById,
+  updateCompanyInfo,
   updateCompany,
   deleteCompanySafe,
+  updateCompanyPassword,
   me
 } from '../Controllers/authCompaniesController.js';
 
@@ -52,6 +54,24 @@ router.put(
   upload.single('logo_url'),
   updateCompany
 );
+
+router.put(
+  '/update',
+  verifyToken,
+  checkRole(['Company']),
+  upload.single('logo_url'),
+  updateCompanyInfo
+);
+
+// Modifier le mot de passe (compagnie connectée)
+router.put(
+  '/update-password',
+  verifyToken,
+  checkRole(['Company']),
+  updateCompanyPassword
+);
+
+
 
 // Archiver une compagnie
 router.delete(

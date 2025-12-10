@@ -329,20 +329,26 @@ export const getFactureByNumero = async (req, res) => {
     const { numero_facture } = req.params;
     const id_companie = req.user?.id_companie;
 
+    const numero_decoded = decodeURIComponent(numero_facture);
+
+    console.log("🔍 Numéro reçu :", numero_facture);
+    console.log("🔓 Numéro décodé :", numero_decoded);
+
     const { data: facture, error } = await supabase
       .from('factures')
       .select('*')
-      .eq('numero_facture', numero_facture)
+      .eq('numero_facture', numero_decoded)
       .eq('id_companie', id_companie)
       .eq('archived', false)
       .single();
 
-    if (error || !facture) return res.status(404).json({ message: 'Facture non trouvée' });
+    if (error || !facture)
+      return res.status(404).json({ message: 'Facture non trouvée' });
 
     const { data: lignes, error: lignesError } = await supabase
       .from('lignes_facture')
       .select('*')
-      .eq('numero_facture', numero_facture)
+      .eq('numero_facture', numero_decoded)
       .order('numero_ligne');
 
     if (lignesError) throw lignesError;
@@ -350,7 +356,10 @@ export const getFactureByNumero = async (req, res) => {
     res.status(200).json({ facture, lignes });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Erreur récupération facture', error: err.message });
+    res.status(500).json({
+      message: 'Erreur récupération facture',
+      error: err.message
+    });
   }
 };
 
