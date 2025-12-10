@@ -93,6 +93,9 @@ app.use(express.static(clientDir));
 
 // 👉 SERVE UPLOADS CORRECTEMENT
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(isRender ? '/var/data' : path.join(process.cwd(), 'uploads')));
+
+
 
 // WEBSOCKET
 

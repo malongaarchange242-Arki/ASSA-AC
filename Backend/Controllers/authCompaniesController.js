@@ -9,15 +9,28 @@ import path from 'path';
 import { logActivite } from '../Services/journalService.js'; // journal d'activité
 import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js'; // archivage
 
+
+// On détecte si on est sur Render
+const isRender = process.env.RENDER === 'true';
+
+// Chemin d'upload dynamiquement choisi
+const uploadDir = isRender 
+  ? '/var/data'                               // Render → chemin du disque
+  : path.join(process.cwd(), 'uploads');       // Local → dossier local
+
+// Création du dossier si absent
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // ----------------- Configuration Multer (upload logo) -----------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
-    cb(null, uploadPath);
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix =
+      Date.now() + '-' + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
@@ -32,6 +45,8 @@ export const uploadLogo = multer({
   },
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 }).single('logo_url');
+
+export default uploadLogo;
 
 // ----------------- Configuration Nodemailer -----------------
 const transporter = nodemailer.createTransport({
