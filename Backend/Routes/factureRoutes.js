@@ -61,17 +61,15 @@ router.delete(
     archiveFacture
 );
 
-// CONFIRMER FACTURE (PAYÉE)
 router.put(
-    '/confirm/:numero_facture',
+    '/confirm/:numero_facture(*)',
     verifyToken,
     checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
     confirmerFacture
 );
 
-// SUPPRIMER DEFINITIVEMENT
 router.delete(
-    '/delete/:numero_facture',
+    '/delete/:numero_facture(*)',
     verifyToken,
     checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
     deleteFacture
