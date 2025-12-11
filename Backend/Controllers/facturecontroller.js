@@ -251,73 +251,90 @@ export const getInvoicesByCompany = async (req, res) => {
     const id_companie = req.user?.id_companie;
 
     let companyIds = [];
-    if (String(userRole).toLowerCase() === 'company') {
+
+    // --- Récupération des company accessibles selon le rôle ---
+    if (String(userRole).toLowerCase() === "company") {
       if (id_companie) companyIds = [id_companie];
-    } else if (['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(userRole)) {
-      // Essayer via table de liaison admin_companies
+    } 
+    else if (["Admin", "Administrateur", "Superviseur", "Super Admin", "SuperAdmin"].includes(userRole)) {
+
       const { data: links, error: linksError } = await supabase
-        .from('admin_companies')
-        .select('company_id')
-        .eq('admin_id', userId);
-      if (!linksError && Array.isArray(links) && links.length) {
+        .from("admin_companies")
+        .select("company_id")
+        .eq("admin_id", userId);
+
+      if (!linksError && links?.length) {
         companyIds = links.map(l => l.company_id).filter(Boolean);
       }
-      // Fallback: champ direct id_admin dans companies
+
       if (!companyIds.length) {
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from('companies')
-          .select('id')
-          .eq('id_admin', userId);
-        if (!ownedError && Array.isArray(ownedCompanies) && ownedCompanies.length) {
+        const { data: ownedCompanies } = await supabase
+          .from("companies")
+          .select("id")
+          .eq("id_admin", userId);
+
+        if (ownedCompanies?.length) {
           companyIds = ownedCompanies.map(c => c.id).filter(Boolean);
         }
       }
-      // Si toujours rien et un id_companie existe dans le JWT, l'ajouter
+
       if (!companyIds.length && id_companie) companyIds = [id_companie];
     }
 
+    // --- Query factures ---
     let query = supabase
-      .from('factures')
-      .select('*')
-      .eq('archived', false);
+      .from("factures")
+      .select("*")
+      .eq("archived", false);
 
-    // Filtrage selon rôle
-    if (['Super Admin','SuperAdmin'].includes(userRole)) {
-      // Pas de filtre supplémentaire
-    } else if (companyIds.length) {
-      query = query.in('id_companie', companyIds);
-    } else {
-      // Aucun périmètre accessible
-      return res.status(200).json([]);
+    if (!["Super Admin", "SuperAdmin"].includes(userRole)) {
+      if (companyIds.length) query = query.in("id_companie", companyIds);
+      else return res.status(200).json([]);
     }
 
-    // Récupération et tri par date d'émission décroissante
-    const { data: invoices, error } = await query.order('date_emission', { ascending: false });
+    const { data: invoices, error } = await query.order("date_emission", { ascending: false });
 
     if (error) throw error;
+    if (!invoices) return res.status(404).json({ message: "Aucune facture trouvée" });
 
-    // Vérification du résultat
-    if (!invoices) return res.status(404).json({ message: 'Aucune facture trouvée' });
+    // --- Récupérer les preuves de paiement (fichier_url) ---
+    const { data: proofs } = await supabase
+      .from("preuve_paiement")
+      .select("numero_facture, fichier_url");
 
-    // Formatage pour le frontend
+    const proofMap = {};
+    if (proofs?.length) {
+      proofs.forEach(p => {
+        proofMap[p.numero_facture] = p.fichier_url;
+      });
+    }
+
+    // --- Construire le résultat envoyé au frontend ---
     const result = invoices.map(f => ({
-      id: f.numero_facture,
-      date: f.date_emission || '',
+      numero_facture: f.numero_facture,
+      date: f.date_emission || "",
       amount: Number(f.montant_total || 0),
-      status: f.statut || 'Impayée',
-      due_date: f.date_limite || '',
-      client: f.nom_client
+      status: f.statut || "Impayée",
+      due_date: f.date_limite || "",
+      client: f.nom_client,
+      fichier_url: proofMap[f.numero_facture] || null // 🔥 ajouté ici
     }));
 
-    console.log('Factures récupérées pour compagnie', id_companie, ':', invoices.map(f => f.id_companie));
+    console.log(
+      "Factures récupérées pour compagnie", 
+      id_companie, 
+      ":", 
+      invoices.map(f => f.id_companie)
+    );
 
-    res.status(200).json(result);
+    return res.status(200).json(result);
 
   } catch (err) {
     console.error("Erreur getInvoicesByCompany:", err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+    return res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 };
+
 
 
 
@@ -517,54 +534,38 @@ export const updateFactureStatut = async (req, res) => {
 
 export const confirmerFacture = async (req, res) => {
   try {
-    // Récupération correcte du numéro
-    let numero_facture = req.params.numero_facture;
-    numero_facture = decodeURIComponent(numero_facture);
+    let numero_facture = decodeURIComponent(req.params.numero_facture);
 
-    console.log("➡ NUM FACTURE REÇU :", numero_facture);
-
-    const id_companie = req.user?.id_companie;
-
-    // Vérifier si la facture existe
     const { data: facture, error } = await supabase
-      .from('factures')
-      .select('*')
-      .eq('numero_facture', numero_facture)
-      .eq('id_companie', id_companie)
-      .eq('archived', false)
+      .from("factures")
+      .select("*")
+      .eq("numero_facture", numero_facture)
       .single();
 
     if (error || !facture) {
-      return res.status(404).json({ message: "Facture introuvable ou accès refusé." });
+      return res.status(404).json({ message: "Facture introuvable." });
     }
 
-    // Mise à jour statut
     const { data: updated, error: updateError } = await supabase
-      .from('factures')
-      .update({ statut: 'Payée' })
-      .eq('numero_facture', numero_facture)
+      .from("factures")
+      .update({ statut: "Payée", updated_at: new Date() })
+      .eq("numero_facture", numero_facture)
       .select()
       .single();
 
-    if (updateError) throw updateError;
-
-    // Journal
-    await supabase.from('journal_activite').insert([{
-      id_admin: req.user?.id,
-      id_companie,
-      type_activite: 'Confirmation',
-      categorie: 'Facture',
-      reference: numero_facture,
-      description: `La facture ${numero_facture} a été confirmée (Payée).`
-    }]);
-
-    res.status(200).json({ success: true, message: "Facture confirmée (Payée)", facture: updated });
+    res.json({
+      success: true,
+      message: "Facture confirmée",
+      facture: updated
+    });
 
   } catch (err) {
-    console.error("Erreur confirmation facture:", err);
-    res.status(500).json({ message: "Erreur confirmation facture", error: err.message });
+    res.status(500).json({ message: "Erreur confirmation facture" });
   }
 };
+
+
+
 
 // ===============================================================
 // SUPPRESSION DÉFINITIVE d'une facture

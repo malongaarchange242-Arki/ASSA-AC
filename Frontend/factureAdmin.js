@@ -66,18 +66,21 @@ function remplirListeCompagnies() {
 
 /* ============================================================
    4️⃣ REMPLIR LE TABLEAU
-   ============================================================ */
+============================================================ */
 function remplirTableau(factures) {
     const tbody = document.getElementById("factureTableBody");
     tbody.innerHTML = "";
 
     factures.forEach(fact => {
 
-        const id = fact.id;
+        console.log("FACTURE RÉÉLLE :", fact);
+
+        const numeroFacture = fact.numero_facture;
         const compagnie = fact.client;
         const dateEmission = fact.date;
         const montant = fact.amount;
         const statut = fact.status;
+        const fichierUrl = fact.fichier_url || "";
 
         const statutClass =
             statut === "Payée" ? "payee" :
@@ -88,31 +91,31 @@ function remplirTableau(factures) {
             statut === "Payée"
                 ? `<span class="action-btn-confirmed">Confirmée</span>`
                 : statut === "Contestée"
-                    ? `<button class="action-btn-delete" onclick="supprimerFacture('${id}')">Supprimer</button>`
-                    : `<button class="action-btn-confirm" onclick="confirmerFacture('${id}')">Confirmer</button>`;
+                    ? `<button class="action-btn-delete" onclick="supprimerFacture('${numeroFacture}')">Supprimer</button>`
+                    : `<button class="action-btn-confirm" onclick="confirmerFacture('${numeroFacture}')">Confirmer</button>`;
 
         tbody.innerHTML += `
-            <tr data-facture-id="${id}" data-statut="${statut.toLowerCase()}">
+            <tr data-facture-id="${numeroFacture}" data-statut="${statut.toLowerCase()}">
 
-                <td>${id}</td>
+                <td>${numeroFacture}</td>
                 <td>${compagnie}</td>
                 <td>${dateEmission}</td>
                 <td>${Number(montant).toLocaleString()} XAF</td>
 
                 <td>
-                    <span class="status-badge ${statutClass}" id="statut-${id}">
+                    <span class="status-badge ${statutClass}" id="statut-${numeroFacture}">
                         ${statut}
                     </span>
                 </td>
 
                 <td style="text-align:center;">
-                    <button class="action-btn-view" onclick="voirFacture('${id}')">
+                    <button class="action-btn-view" onclick="voirFacture('${numeroFacture}', '${fichierUrl}')">
                         <i class="fas fa-eye"></i>
                     </button>
                 </td>
 
                 <td style="text-align:right;">
-                    <div class="action-button-group" id="actions-${id}">
+                    <div class="action-button-group" id="actions-${numeroFacture}">
                         ${action}
                     </div>
                 </td>
@@ -121,10 +124,12 @@ function remplirTableau(factures) {
     });
 }
 
+
+
 /* ============================================================
    5️⃣ FILTRAGE LOCAL PAR COMPAGNIE + RECHERCHE
    ============================================================ */
-function filtrerFactures() {
+   function filtrerFactures() {
     const selectComp = document.querySelectorAll(".report-select")[1];
     const recherche = document.getElementById("searchInput").value.toLowerCase();
 
@@ -134,7 +139,7 @@ function filtrerFactures() {
         const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
         const matchRecherche =
             f.client.toLowerCase().includes(recherche) ||
-            f.id.toLowerCase().includes(recherche) ||
+            f.numero_facture.toLowerCase().includes(recherche) ||   // ✅ correction ici
             f.date.toLowerCase().includes(recherche);
 
         return matchComp && matchRecherche;
@@ -143,21 +148,21 @@ function filtrerFactures() {
     remplirTableau(result);
 }
 
+
 // Quand on tape dans la recherche
 function appliquerRecherche() {
     filtrerFactures();
 }
 
+
 /* ============================================================
    6️⃣ CONFIRMER FACTURE
    ============================================================ */
-   async function confirmerFacture(numero) {
+   async function confirmerFacture(id) {
     if (!confirm("Confirmer cette facture comme payée ?")) return;
 
     try {
-        const encoded = encodeURIComponent(numero);
-
-        const res = await fetch(`${API_URL}/confirm/${encoded}`, {
+        const res = await fetch(`${API_URL}/confirm/${encodeURIComponent(id)}`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -171,7 +176,7 @@ function appliquerRecherche() {
 
     } catch (err) {
         console.error("Erreur confirmation:", err);
-        alert("Erreur lors de la confirmation.");
+        alert(err.message);
     }
 }
 
@@ -201,12 +206,46 @@ async function supprimerFacture(numero) {
     }
 }
 
-/* ============================================================
-   8️⃣ VOIR FACTURE
-   ============================================================ */
-function voirFacture(numero) {
-    window.location.href = `detailsFactureAdmin.html?facture=${numero}`;
+// /* ============================================================
+//    8️⃣ VOIR FACTURE
+//    ============================================================ */
+async function voirFacture(numeroFacture) {
+    const token = localStorage.getItem("jwtTokenAdmin");
+
+    try {
+        const response = await fetch(
+            `https://assa-ac-jyn4.onrender.com/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
+            { headers: { "Authorization": `Bearer ${token}` } }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.message || "Erreur lors de la récupération de la preuve.");
+            return;
+        }
+
+        if (!result.preuves || result.preuves.length === 0) {
+            alert("Aucune preuve de paiement n’a été téléversée pour cette facture.");
+            return;
+        }
+
+        const preuve = result.preuves[result.preuves.length - 1];
+
+        if (!preuve.fichier_url) {
+            alert("Cette preuve ne contient pas de fichier.");
+            return;
+        }
+
+        window.open(preuve.fichier_url, "_blank");
+
+    } catch (err) {
+        console.error("Erreur voirFacture :", err);
+        alert("Impossible d'ouvrir la preuve.");
+    }
 }
+
+
 
 /* ============================================================
    9️⃣ LANCEMENT

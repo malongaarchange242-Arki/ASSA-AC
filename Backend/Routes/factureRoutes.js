@@ -15,16 +15,12 @@ import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
 
+// ===========================================================
+// ROUTES SPÉCIFIQUES (toujours avant les routes génériques)
+// ===========================================================
+
 // GENERER REF
 router.get('/generate-ref', verifyToken, generateRef);
-
-// CREER FACTURE
-router.post(
-    '/',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
-    createFacture
-);
 
 // LISTE FACTURES
 router.get(
@@ -40,6 +36,42 @@ router.get(
     verifyToken,
     checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
     getInvoicesByCompany
+);
+
+// CONFIRMER FACTURE (PAYÉE)  ⭐ IMPORTANT : avant /:numero_facture
+router.put(
+    '/confirm/:numero_facture',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
+    confirmerFacture
+);
+
+// SUPPRIMER DÉFINITIVEMENT  ⭐ IMPORTANT
+router.delete(
+    '/delete/:numero_facture',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    deleteFacture
+);
+
+// MISE À JOUR DU STATUT  ⭐ IMPORTANT
+router.put(
+    '/statut',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    updateFactureStatut
+);
+
+// ===========================================================
+// ROUTES GÉNÉRIQUES (à mettre après les spécifiques)
+// ===========================================================
+
+// CRÉER FACTURE
+router.post(
+    '/',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
+    createFacture
 );
 
 // FACTURE PAR NUMERO
@@ -59,30 +91,6 @@ router.delete(
     verifyToken,
     checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
     archiveFacture
-);
-
-// CONFIRMER FACTURE (PAYÉE)
-router.put(
-    '/confirm/:numero_facture',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
-    confirmerFacture
-);
-
-// SUPPRIMER DEFINITIVEMENT
-router.delete(
-    '/delete/:numero_facture',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
-    deleteFacture
-);
-
-// MISE À JOUR STATUT
-router.put(
-    '/statut',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
-    updateFactureStatut
 );
 
 export default router;

@@ -1,5 +1,11 @@
 import express from 'express';
-import { uploadMiddleware, uploadPreuvesPaiement, getPreuveById } from '../Controllers/preuve_paiement.js';
+import { 
+    uploadMiddleware, 
+    uploadPreuvesPaiement, 
+    getPreuveById,
+    getPreuvesByFacture
+} from '../Controllers/preuve_paiement.js';
+
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
@@ -13,7 +19,15 @@ router.post(
     uploadPreuvesPaiement
 );
 
-// Récupérer preuve par ID
+// Récupérer preuves par numéro facture
+router.get(
+    '/by-facture/:numero_facture',
+    verifyToken,
+    checkRole(['Company', 'Administrateur']),
+    getPreuvesByFacture
+);
+
+// Récupérer une preuve par ID
 router.get(
     '/:id',
     verifyToken,

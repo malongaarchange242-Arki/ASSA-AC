@@ -17,7 +17,7 @@ export const verifyToken = (req, res, next) => {
     token = String(req.headers['x-access-token']).trim();
   }
 
-  // 3) Cookie 'token' (si cookie-parser est utilisé)
+  // 3) Cookie 'token'
   if (!token && req.cookies && req.cookies.token) {
     token = req.cookies.token;
   }
@@ -27,7 +27,8 @@ export const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Reconstruit req.user
+    console.log("🔥 TOKEN DECODED :", decoded);
+
     req.user = buildUserObject(decoded);
     req.userId = req.user.id;
 
@@ -47,6 +48,7 @@ const buildUserObject = (decoded) => {
   const adminRoles = ['Admin', 'Administrateur', 'Superviseur', 'Super Admin'];
   const companyRoles = ['Company', 'Compagnie'];
 
+  // 🔹 ADMIN
   if (adminRoles.includes(decoded.role)) {
     return {
       id: decoded.id,
@@ -54,10 +56,11 @@ const buildUserObject = (decoded) => {
       email: decoded.email,
       nom_complet: decoded.nom_complet || null,
       permissions: decoded.permissions || [],
-      id_companie: decoded.id_companie || null,  // <- harmonisé avec controller
+      id_companie: decoded.id_companie || decoded.company_id || null,
     };
   }
 
+  // 🔹 COMPANY
   if (companyRoles.includes(decoded.role)) {
     return {
       id: decoded.id,
@@ -65,7 +68,8 @@ const buildUserObject = (decoded) => {
       email: decoded.email,
       nom_complet: decoded.nom_complet || null,
       permissions: decoded.permissions || [],
-      id_companie: decoded.id_companie ?? decoded.company_id ?? null, // fallback
+      // Pour les compagnies, c’est forcément leur ID
+      id_companie: decoded.id_companie ?? decoded.company_id ?? decoded.id ?? null,
       company_name: decoded.company_name || null,
     };
   }
@@ -76,15 +80,11 @@ const buildUserObject = (decoded) => {
 /* ---------------------------------------------------------
    🔹 Vérification des rôles
 ----------------------------------------------------------*/
-/* ---------------------------------------------------------
-   🔹 Vérification des rôles optimisée
-----------------------------------------------------------*/
 export const checkRole = (allowedRoles = []) => (req, res, next) => {
   const role = req.user?.role;
 
   if (!role) return res.status(401).json({ message: 'Utilisateur non authentifié' });
 
-  // Si aucun rôle n'est passé, autoriser tous les rôles admin par défaut
   const defaultAdminRoles = ['Admin', 'Administrateur', 'Superviseur', 'Super Admin'];
 
   const rolesToCheck = allowedRoles.length > 0 ? allowedRoles : defaultAdminRoles;

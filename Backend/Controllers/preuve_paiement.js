@@ -191,6 +191,63 @@ export const uploadPreuvesPaiement = async (req, res) => {
     }
 };
 
+// ================= GET PREUVES BY NUMERO_FACTURE =================
+export const getPreuvesByFacture = async (req, res) => {
+    try {
+        const { numero_facture } = req.params;
+
+        console.log("🔍 Recherche preuves pour facture :", numero_facture);
+
+        // Récupérer la facture pour valider existence + sécurité
+        const { data: facture, error: factureErr } = await supabase
+            .from("factures")
+            .select("id, id_companie")
+            .eq("numero_facture", numero_facture)
+            .single();
+
+        if (factureErr) {
+            console.error("❌ ERREUR FACTURE :", factureErr);
+            return res.status(500).json({ message: "Erreur récupération facture" });
+        }
+
+        if (!facture) {
+            return res.status(404).json({ message: "Facture introuvable" });
+        }
+
+        // Vérification sécurité (si company → ne peut voir QUE ses propres factures)
+        if (String(req.user.role).toLowerCase() === "company") {
+            if (facture.id_companie !== req.user.id_companie) {
+                return res.status(403).json({ message: "Accès refusé" });
+            }
+        }
+
+        // Récupérer les preuves
+        const { data: preuves, error } = await supabase
+            .from("preuve_paiement")
+            .select("*")
+            .eq("facture_id", facture.id)
+            .order("date_envoi", { ascending: false });
+
+        if (error) {
+            console.error("❌ ERREUR PREUVES :", error);
+            return res.status(500).json({ message: "Erreur récupération preuves" });
+        }
+
+        return res.json({
+            facture: numero_facture,
+            preuves: preuves || []
+        });
+
+    } catch (err) {
+        console.error("⛔ ERREUR getPreuvesByFacture:", err);
+        return res.status(500).json({
+            message: "Erreur serveur",
+            erreur: err.message
+        });
+    }
+};
+
+
 // ================= GET PREUVE BY ID =================
 export const getPreuveById = async (req, res) => {
     try {
@@ -217,3 +274,4 @@ export const getPreuveById = async (req, res) => {
         return res.status(500).json({ message: "Erreur serveur", erreur: err.message });
     }
 };
+
