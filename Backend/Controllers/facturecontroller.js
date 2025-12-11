@@ -515,14 +515,13 @@ export const updateFactureStatut = async (req, res) => {
   }
 };
 
-// ===============================================================
-// CONFIRMER une facture : statut → Payée
-// ===============================================================
 export const confirmerFacture = async (req, res) => {
   try {
-    // 🔥 OBLIGATOIRE : décoder les slashes
-    let { numero_facture } = req.params;
+    // Récupération correcte du numéro
+    let numero_facture = req.params.numero_facture;
     numero_facture = decodeURIComponent(numero_facture);
+
+    console.log("➡ NUM FACTURE REÇU :", numero_facture);
 
     const id_companie = req.user?.id_companie;
 
@@ -567,13 +566,16 @@ export const confirmerFacture = async (req, res) => {
   }
 };
 
-
 // ===============================================================
 // SUPPRESSION DÉFINITIVE d'une facture
 // ===============================================================
 export const deleteFacture = async (req, res) => {
   try {
-    const { numero_facture } = req.params;
+    let numero_facture = req.params[0];
+    numero_facture = decodeURIComponent(numero_facture);
+
+    console.log("➡ NUM FACTURE À SUPPRIMER :", numero_facture);
+
     const id_companie = req.user?.id_companie;
 
     // Vérifier si la facture existe
@@ -617,4 +619,5 @@ export const deleteFacture = async (req, res) => {
     res.status(500).json({ message: "Erreur suppression facture", error: err.message });
   }
 };
+
 
