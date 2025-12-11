@@ -62,18 +62,20 @@ router.delete(
 );
 
 router.put(
-    '/confirm/:numero_facture(*)',
+    '/confirm/:numero_facture*',
     verifyToken,
     checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
     confirmerFacture
 );
 
+
 router.delete(
-    '/delete/:numero_facture(*)',
+    '/delete/:numero_facture*',
     verifyToken,
     checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
     deleteFacture
 );
+
 
 // MISE À JOUR STATUT
 router.put(
