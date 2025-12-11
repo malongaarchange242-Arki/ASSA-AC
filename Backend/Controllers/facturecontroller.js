@@ -520,7 +520,10 @@ export const updateFactureStatut = async (req, res) => {
 // ===============================================================
 export const confirmerFacture = async (req, res) => {
   try {
-    const { numero_facture } = req.params;
+    // 🔥 OBLIGATOIRE : décoder les slashes
+    let { numero_facture } = req.params;
+    numero_facture = decodeURIComponent(numero_facture);
+
     const id_companie = req.user?.id_companie;
 
     // Vérifier si la facture existe
@@ -563,6 +566,7 @@ export const confirmerFacture = async (req, res) => {
     res.status(500).json({ message: "Erreur confirmation facture", error: err.message });
   }
 };
+
 
 // ===============================================================
 // SUPPRESSION DÉFINITIVE d'une facture
