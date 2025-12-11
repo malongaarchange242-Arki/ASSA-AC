@@ -514,3 +514,103 @@ export const updateFactureStatut = async (req, res) => {
     res.status(500).json({ message: 'Erreur mise à jour statut', error: err.message });
   }
 };
+
+// ===============================================================
+// CONFIRMER une facture : statut → Payée
+// ===============================================================
+export const confirmerFacture = async (req, res) => {
+  try {
+    const { numero_facture } = req.params;
+    const id_companie = req.user?.id_companie;
+
+    // Vérifier si la facture existe
+    const { data: facture, error } = await supabase
+      .from('factures')
+      .select('*')
+      .eq('numero_facture', numero_facture)
+      .eq('id_companie', id_companie)
+      .eq('archived', false)
+      .single();
+
+    if (error || !facture) {
+      return res.status(404).json({ message: "Facture introuvable ou accès refusé." });
+    }
+
+    // Mise à jour statut
+    const { data: updated, error: updateError } = await supabase
+      .from('factures')
+      .update({ statut: 'Payée' })
+      .eq('numero_facture', numero_facture)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Journal
+    await supabase.from('journal_activite').insert([{
+      id_admin: req.user?.id,
+      id_companie,
+      type_activite: 'Confirmation',
+      categorie: 'Facture',
+      reference: numero_facture,
+      description: `La facture ${numero_facture} a été confirmée (Payée).`
+    }]);
+
+    res.status(200).json({ success: true, message: "Facture confirmée (Payée)", facture: updated });
+
+  } catch (err) {
+    console.error("Erreur confirmation facture:", err);
+    res.status(500).json({ message: "Erreur confirmation facture", error: err.message });
+  }
+};
+
+// ===============================================================
+// SUPPRESSION DÉFINITIVE d'une facture
+// ===============================================================
+export const deleteFacture = async (req, res) => {
+  try {
+    const { numero_facture } = req.params;
+    const id_companie = req.user?.id_companie;
+
+    // Vérifier si la facture existe
+    const { data: facture, error } = await supabase
+      .from('factures')
+      .select('*')
+      .eq('numero_facture', numero_facture)
+      .eq('id_companie', id_companie)
+      .single();
+
+    if (error || !facture) {
+      return res.status(404).json({ message: "Facture introuvable ou accès refusé." });
+    }
+
+    // Supprimer les lignes
+    await supabase
+      .from('lignes_facture')
+      .delete()
+      .eq('numero_facture', numero_facture);
+
+    // Supprimer la facture
+    await supabase
+      .from('factures')
+      .delete()
+      .eq('numero_facture', numero_facture);
+
+    // Journal
+    await supabase.from('journal_activite').insert([{
+      id_admin: req.user?.id,
+      id_companie,
+      type_activite: 'Suppression',
+      categorie: 'Facture',
+      reference: numero_facture,
+      description: `La facture ${numero_facture} a été supprimée définitivement.`
+    }]);
+
+    res.status(200).json({ success: true, message: `Facture ${numero_facture} supprimée définitivement.` });
+
+  } catch (err) {
+    console.error("Erreur suppression facture:", err);
+    res.status(500).json({ message: "Erreur suppression facture", error: err.message });
+  }
+};
+

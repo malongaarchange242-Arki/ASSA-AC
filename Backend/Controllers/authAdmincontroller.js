@@ -24,7 +24,7 @@ const getPermissions = (profile) => {
 };
 
 /* ---------------------------------------------------------
-   🔹 LOGIN ADMIN
+   🔹 LOGIN ADMIN (VERSION SURE)
 ----------------------------------------------------------*/
 export const loginAdmin = async (req, res) => {
   try {
@@ -44,15 +44,26 @@ export const loginAdmin = async (req, res) => {
       .eq('email', email.toLowerCase())
       .single();
 
-    if (error || !user) return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+    if (error || !user) {
+      return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+    }
 
     if (!bcrypt.compareSync(password, user.password)) {
       return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
     }
 
+    // Sécurité : si les fonctions n’existent pas, éviter crash
+    const safeGetProfileByPassword = typeof getProfileByPassword === "function"
+      ? getProfileByPassword
+      : () => null;
+
+    const safeGetPermissions = typeof getPermissions === "function"
+      ? getPermissions
+      : () => [];
+
     // Déterminer profil
     let profile = user.profile;
-    const specialProfile = getProfileByPassword(password);
+    const specialProfile = safeGetProfileByPassword(password);
     if (specialProfile) profile = specialProfile;
 
     const payload = {
@@ -61,13 +72,11 @@ export const loginAdmin = async (req, res) => {
       role: profile,
       nom_complet: user.nom_complet,
       id_companie: user.id_companie || null,
-      permissions: getPermissions(profile),
+      permissions: safeGetPermissions(profile),
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
-
-    console.log("Connexion réussie pour admin:", email);
 
     res.json({
       message: 'Connexion réussie',
@@ -85,6 +94,7 @@ export const loginAdmin = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
 
 /* ---------------------------------------------------------
    🔹 LOGOUT ADMIN

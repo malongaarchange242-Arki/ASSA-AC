@@ -6,21 +6,19 @@ import {
     archiveFacture,
     updateFactureStatut,
     generateRef,
-    getInvoicesByCompany   // <-- fonction existante dans le controller
+    getInvoicesByCompany,
+    confirmerFacture,
+    deleteFacture
 } from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
 
-// ==========================
-// GENERER UNE REFERENCE DE FACTURE
-// ==========================
+// GENERER REF
 router.get('/generate-ref', verifyToken, generateRef);
 
-// ==========================
-// CREATION FACTURE
-// ==========================
+// CREER FACTURE
 router.post(
     '/',
     verifyToken,
@@ -28,9 +26,7 @@ router.post(
     createFacture
 );
 
-// ==========================
-// LISTE DES FACTURES DE LA COMPAGNIE CONNECTEE
-// ==========================
+// LISTE FACTURES
 router.get(
     '/',
     verifyToken,
@@ -38,9 +34,7 @@ router.get(
     getInvoicesByCompany
 );
 
-// ==========================
-// ROUTE SUPPLEMENTAIRE : FACTURES DE LA COMPAGNIE (optionnel)
-// ==========================
+// FACTURES PAR COMPAGNIE
 router.get(
     '/company',
     verifyToken,
@@ -48,14 +42,10 @@ router.get(
     getInvoicesByCompany
 );
 
-// ==========================
-// AFFICHER UNE FACTURE PAR NUMERO
-// ==========================
+// FACTURE PAR NUMERO
 router.get('/:numero_facture', verifyToken, getFactureByNumero);
 
-// ==========================
-// METTRE À JOUR UNE FACTURE
-// ==========================
+// MISE À JOUR FACTURE
 router.put(
     '/:numero_facture',
     verifyToken,
@@ -63,9 +53,7 @@ router.put(
     updateFacture
 );
 
-// ==========================
-// ARCHIVER UNE FACTURE
-// ==========================
+// ARCHIVER FACTURE
 router.delete(
     '/:numero_facture',
     verifyToken,
@@ -73,9 +61,23 @@ router.delete(
     archiveFacture
 );
 
-// ==========================
-// METTRE À JOUR UN STATUT DE FACTURE
-// ==========================
+// CONFIRMER FACTURE (PAYÉE)
+router.put(
+    '/confirm/:numero_facture',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
+    confirmerFacture
+);
+
+// SUPPRIMER DEFINITIVEMENT
+router.delete(
+    '/delete/:numero_facture',
+    verifyToken,
+    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
+    deleteFacture
+);
+
+// MISE À JOUR STATUT
 router.put(
     '/statut',
     verifyToken,

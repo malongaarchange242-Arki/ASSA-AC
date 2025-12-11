@@ -71,9 +71,15 @@
                 <input type="text" id="city" name="city" required class="form-input" placeholder="Ex: Douala">
             </div>
             <div>
-                <label for="airport-code" class="block text-sm font-medium text-gray-700 mb-2">Code IATA de l'Aéroport</label>
-                <input type="text" id="airport-code" name="airport_code" class="form-input" placeholder="Ex: DLA ou NSI">
+                <label for="airport-code" class="block text-sm font-medium text-gray-700 mb-2">
+                    Code IATA de l'Aéroport
+                </label>
+            
+                <select id="airport-code" name="airport_code" class="form-input">
+                    <option value="">-- Sélectionnez un aéroport --</option>
+                </select>
             </div>
+            
         </div>
     </fieldset>
 

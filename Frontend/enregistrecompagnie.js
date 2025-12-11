@@ -1,4 +1,35 @@
+// Liste d'aéroports Afrique (IATA)
+const AFRICA_AIRPORTS = [
+    { code: "DLA", name: "" },
+    { code: "NSI", name: "" },
+    { code: "FIH", name: "" },
+    { code: "BZV", name: "" },
+    { code: "ABJ", name: "" },
+    { code: "CKY", name: "" },
+    { code: "DKR", name: "" },
+    { code: "SSG", name: "" },
+    { code: "LOS", name: "" },
+    { code: "PNR", name: "" },
+    { code: "ADD", name: "" },
+    { code: "CAI", name: "" },
+    { code: "CMN", name: "" },
+    { code: "TUN", name: "" },
+    { code: "JNB", name: "" },
+    { code: "NDJ", name: "" },
+    { code: "BGF", name: "" }
+];
+
 document.addEventListener('DOMContentLoaded', async () => {
+
+        // Remplir automatiquement la liste des codes IATA
+        const airportSelect = document.getElementById("airport-code");
+        AFRICA_AIRPORTS.forEach(ap => {
+            const option = document.createElement("option");
+            option.value = ap.code;
+            option.textContent = `${ap.code} — ${ap.name}`;
+            airportSelect.appendChild(option);
+        });
+    
     const API_BASE = 'https://assa-ac-jyn4.onrender.com';
     const form = document.getElementById('company-registration-form');
     const saveButton = document.getElementById('save-button');
