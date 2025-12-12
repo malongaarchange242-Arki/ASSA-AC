@@ -605,7 +605,7 @@ export const confirmerFacture = async (req, res) => {
 // ===============================================================
 export const deleteFacture = async (req, res) => {
   try {
-    let numero_facture = req.params[0];
+    let numero_facture = decodeURIComponent(req.params.numero_facture);
     numero_facture = decodeURIComponent(numero_facture);
 
     console.log("➡ NUM FACTURE À SUPPRIMER :", numero_facture);

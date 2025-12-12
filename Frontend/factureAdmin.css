@@ -265,3 +265,21 @@ body {
     opacity: 0.8;
     display: inline-block;
 }
+
+.action-btn-remove {
+    background: #e63737;
+    border: none;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+.action-btn-remove:hover {
+    background: #c62828;
+}
+
+.action-btn-remove i {
+    pointer-events: none;
+}

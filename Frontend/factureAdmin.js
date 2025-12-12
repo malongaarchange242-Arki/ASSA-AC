@@ -87,14 +87,28 @@ function remplirTableau(factures) {
             statut === "Contestée" ? "contester" :
             "en-attente";
 
+        // 🔥 Boutons d'actions selon le statut
         const action =
             statut === "Payée"
-                ? `<span class="action-btn-confirmed">Confirmée</span>`
+                ? `
+                    <span class="action-btn-confirmed">Confirmée</span>
+                `
                 : statut === "Contestée"
-                    ? `<button class="action-btn-delete" onclick="refaireFacture('${numeroFacture}')">Refaire</button>                    `
-                    : `<button class="action-btn-confirm" onclick="confirmerFacture('${fact.numero_facture}')">Confirmer</button>
+                    ? `
+                        <button class="action-btn-delete" onclick="refaireFacture('${numeroFacture}')">
+                            Refaire
+                        </button>
+                        <button class="action-btn-remove" onclick="supprimerFacture('${numeroFacture}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `
+                    : `
+                        <button class="action-btn-confirm" onclick="confirmerFacture('${numeroFacture}')">
+                            Confirmer
+                        </button>
                     `;
 
+        // 🔥 Ligne HTML
         tbody.innerHTML += `
             <tr data-facture-id="${numeroFacture}" data-statut="${statut.toLowerCase()}">
 
@@ -208,27 +222,32 @@ function appliquerRecherche() {
 /* ============================================================
    7️⃣ SUPPRIMER FACTURE
    ============================================================ */
-async function supprimerFacture(numero) {
+   async function supprimerFacture(numero) {
     if (!confirm("Supprimer définitivement cette facture ?")) return;
 
     try {
-        const res = await fetch(`${API_URL}/delete/${numero}`, {
+
+        // 🔥 ENCODAGE ESSENTIEL
+        const encodedNumero = encodeURIComponent(numero);
+
+        const res = await fetch(`${API_URL}/delete/${encodedNumero}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token}` }
         });
 
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.message);
+        if (!res.ok) throw new Error(data.message || "Erreur API");
 
         alert("Facture supprimée !");
         chargerFactures();
 
     } catch (err) {
-        console.error(err);
+        console.error("Erreur front :", err);
         alert("Erreur lors de la suppression.");
     }
 }
+
 
 // /* ============================================================
 //    8️⃣ VOIR FACTURE
