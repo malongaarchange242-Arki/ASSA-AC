@@ -16,7 +16,7 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
    1️⃣ CHARGER LES FACTURES
    ============================================================ */
 async function chargerFactures() {
-    try {
+    try {   
         const res = await fetch(API_URL, {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -91,8 +91,9 @@ function remplirTableau(factures) {
             statut === "Payée"
                 ? `<span class="action-btn-confirmed">Confirmée</span>`
                 : statut === "Contestée"
-                    ? `<button class="action-btn-delete" onclick="supprimerFacture('${numeroFacture}')">Supprimer</button>`
-                    : `<button class="action-btn-confirm" onclick="confirmerFacture('${numeroFacture}')">Confirmer</button>`;
+                    ? `<button class="action-btn-delete" onclick="refaireFacture('${numeroFacture}')">Refaire</button>                    `
+                    : `<button class="action-btn-confirm" onclick="confirmerFacture('${fact.numero_facture}')">Confirmer</button>
+                    `;
 
         tbody.innerHTML += `
             <tr data-facture-id="${numeroFacture}" data-statut="${statut.toLowerCase()}">
@@ -130,23 +131,46 @@ function remplirTableau(factures) {
    5️⃣ FILTRAGE LOCAL PAR COMPAGNIE + RECHERCHE
    ============================================================ */
    function filtrerFactures() {
-    const selectComp = document.querySelectorAll(".report-select")[1];
+    const selectMois = document.querySelectorAll(".report-select")[0];  // filtre par mois
+    const selectComp = document.querySelectorAll(".report-select")[1];  // filtre par compagnie
     const recherche = document.getElementById("searchInput").value.toLowerCase();
 
+    const moisFiltre = selectMois.value;       // "12", "11", "10"
     const compagnieFiltre = selectComp.value;
 
     const result = FACTURES.filter(f => {
+
+        // --- 📅 Filtre par mois ---
+        let matchMois = true;
+        if (moisFiltre && f.date) {
+            const moisFacture = new Date(f.date).getMonth() + 1; // JS: 0 = Janvier
+            matchMois = moisFacture.toString() === moisFiltre;
+        }
+
+        // --- 🏢 Filtre par compagnie ---
         const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
+
+        // --- 🔍 Filtre recherche ---
         const matchRecherche =
             f.client.toLowerCase().includes(recherche) ||
-            f.numero_facture.toLowerCase().includes(recherche) ||   // ✅ correction ici
+            f.numero_facture.toLowerCase().includes(recherche) ||
             f.date.toLowerCase().includes(recherche);
 
-        return matchComp && matchRecherche;
+        return matchMois && matchComp && matchRecherche;
     });
 
     remplirTableau(result);
 }
+
+
+function refaireFacture(numero) {
+    // Ajoute le numéro dans la session pour préremplir si besoin
+    sessionStorage.setItem("factureARefaire", numero);
+
+    // Redirection vers la page de création/modification
+    window.location.href = "EnregistreFacture.html";
+}
+
 
 
 // Quand on tape dans la recherche
@@ -212,7 +236,12 @@ async function supprimerFacture(numero) {
 async function voirFacture(numeroFacture) {
     const token = localStorage.getItem("jwtTokenAdmin");
 
+    console.log("🔍 voirFacture() appelé pour :", numeroFacture);
+
     try {
+        // 1️⃣ Preuves de paiement classiques
+        console.log("📡 → Recherche des preuves de paiement…");
+
         const response = await fetch(
             `https://assa-ac-jyn4.onrender.com/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
             { headers: { "Authorization": `Bearer ${token}` } }
@@ -220,34 +249,75 @@ async function voirFacture(numeroFacture) {
 
         const result = await response.json();
 
-        if (!response.ok) {
-            alert(result.message || "Erreur lors de la récupération de la preuve.");
-            return;
+        console.log("📥 Réponse API PREUVES :", result);
+
+        if (response.ok && result.preuves && result.preuves.length > 0) {
+            const preuve = result.preuves[result.preuves.length - 1];
+
+            console.log("🧾 Preuve trouvée :", preuve);
+
+            if (preuve.fichier_url) {
+                console.log("📄 Ouverture fichier preuve :", preuve.fichier_url);
+                window.open(preuve.fichier_url, "_blank");
+                return;
+            } else {
+                console.warn("⚠️ La preuve n’a pas de fichier_url !");
+            }
+        } else {
+            console.log("ℹ️ Aucune preuve classique trouvée.");
         }
 
-        if (!result.preuves || result.preuves.length === 0) {
-            alert("Aucune preuve de paiement n’a été téléversée pour cette facture.");
+        // 2️⃣ Vérifier la contestation liée à la facture
+        console.log("📡 → Recherche de la contestation dans FACTURES…");
+
+        const facture = FACTURES.find(f => f.numero_facture === numeroFacture);
+
+        console.log("🧾 Facture trouvée :", facture);
+
+        if (facture && facture.contestation) {
+            const contest = facture.contestation;
+
+            console.log("📄 Contestation trouvée :", contest);
+            console.log("📦 Champ fichiers :", contest.fichiers);
+
+            // 🟢 S'assurer que c'est un tableau
+            const files = Array.isArray(contest.fichiers) ? contest.fichiers : [];
+
+            console.log("🗂️ fichiers[] normalisé :", files);
+
+            if (files.length > 0) {
+                console.log("📁 Premier fichier :", files[0]);
+
+                if (files[0].file_url) {
+                    console.log("📄 Ouverture fichier contestation :", files[0].file_url);
+                    window.open(files[0].file_url, "_blank");
+                    return;
+                } else {
+                    console.warn("⚠️ Fichier trouvé mais pas de file_url !");
+                }
+            }
+
+            alert("La contestation n'a pas de fichier joint.");
             return;
+        } else {
+            console.log("ℹ️ Aucune contestation trouvée.");
         }
 
-        const preuve = result.preuves[result.preuves.length - 1];
-
-        if (!preuve.fichier_url) {
-            alert("Cette preuve ne contient pas de fichier.");
-            return;
-        }
-
-        window.open(preuve.fichier_url, "_blank");
+        // 3️⃣ Aucun fichier
+        alert("Aucune preuve (paiement ou contestation) n’a été téléversée pour cette facture.");
 
     } catch (err) {
-        console.error("Erreur voirFacture :", err);
+        console.error("❌ Erreur voirFacture :", err);
         alert("Impossible d'ouvrir la preuve.");
     }
 }
-
-
 
 /* ============================================================
    9️⃣ LANCEMENT
    ============================================================ */
 window.onload = chargerFactures;
+
+// Activation du filtre "Par mois"
+document.querySelectorAll(".report-select")[0].addEventListener("change", filtrerFactures);
+
+

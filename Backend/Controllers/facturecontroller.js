@@ -244,6 +244,7 @@ export const createFacture = async (req, res) => {
 };
 
 // READ : Factures de la compagnie connectée
+// READ : Factures de la compagnie connectée
 export const getInvoicesByCompany = async (req, res) => {
   try {
     const userRole = req.user?.role;
@@ -252,21 +253,25 @@ export const getInvoicesByCompany = async (req, res) => {
 
     let companyIds = [];
 
-    // --- Récupération des company accessibles selon le rôle ---
+    /* =======================================================
+       1️⃣ RÉCUPÉRATION DES COMPAGNIES ACCESSIBLES
+    ======================================================== */
     if (String(userRole).toLowerCase() === "company") {
       if (id_companie) companyIds = [id_companie];
     } 
     else if (["Admin", "Administrateur", "Superviseur", "Super Admin", "SuperAdmin"].includes(userRole)) {
 
-      const { data: links, error: linksError } = await supabase
+      // --- Companies par table admin_companies
+      const { data: links } = await supabase
         .from("admin_companies")
         .select("company_id")
         .eq("admin_id", userId);
 
-      if (!linksError && links?.length) {
+      if (links?.length) {
         companyIds = links.map(l => l.company_id).filter(Boolean);
       }
 
+      // --- Companies dont l’admin est propriétaire
       if (!companyIds.length) {
         const { data: ownedCompanies } = await supabase
           .from("companies")
@@ -281,12 +286,16 @@ export const getInvoicesByCompany = async (req, res) => {
       if (!companyIds.length && id_companie) companyIds = [id_companie];
     }
 
-    // --- Query factures ---
+
+    /* =======================================================
+       2️⃣ RÉCUPÉRATION FACTURES
+    ======================================================== */
     let query = supabase
       .from("factures")
       .select("*")
       .eq("archived", false);
 
+    // Admin sauf SuperAdmin : limiter aux companies autorisées
     if (!["Super Admin", "SuperAdmin"].includes(userRole)) {
       if (companyIds.length) query = query.in("id_companie", companyIds);
       else return res.status(200).json([]);
@@ -297,45 +306,72 @@ export const getInvoicesByCompany = async (req, res) => {
     if (error) throw error;
     if (!invoices) return res.status(404).json({ message: "Aucune facture trouvée" });
 
-    // --- Récupérer les preuves de paiement (fichier_url) ---
+
+    /* =======================================================
+       3️⃣ RÉCUPÉRER PREUVES DE PAIEMENT
+    ======================================================== */
     const { data: proofs } = await supabase
       .from("preuve_paiement")
       .select("numero_facture, fichier_url");
 
     const proofMap = {};
-    if (proofs?.length) {
-      proofs.forEach(p => {
-        proofMap[p.numero_facture] = p.fichier_url;
-      });
-    }
+    proofs?.forEach(p => {
+      proofMap[p.numero_facture] = p.fichier_url;
+    });
 
-    // --- Construire le résultat envoyé au frontend ---
+
+    /* =======================================================
+       4️⃣ RÉCUPÉRER CONTESTATIONS (JSONB correct)
+    ======================================================== */
+    const { data: contestations } = await supabase
+      .from("contestation")
+      .select("*");
+
+    const contestMap = {};
+
+    contestations?.forEach(c => {
+
+      // fichiers est JSONB → déjà un array
+      const fichiers = Array.isArray(c.fichiers) ? c.fichiers : [];
+
+      contestMap[c.facture_id] = {
+        explication: c.explication,
+        statut: c.statut,
+        date_contestation: c.date_contestation,
+        fichiers: fichiers,
+        fichier_url: fichiers.length ? fichiers[0].file_url : null,
+        file_name: fichiers.length ? fichiers[0].file_name : null
+      };
+    });
+
+
+    /* =======================================================
+       5️⃣ CONSTRUIRE RÉSULTAT FINAL
+    ======================================================== */
     const result = invoices.map(f => ({
+      id: f.id,
       numero_facture: f.numero_facture,
       date: f.date_emission || "",
       amount: Number(f.montant_total || 0),
       status: f.statut || "Impayée",
       due_date: f.date_limite || "",
       client: f.nom_client,
-      fichier_url: proofMap[f.numero_facture] || null // 🔥 ajouté ici
+
+      // Preuve de paiement
+      preuve_paiement_url: proofMap[f.numero_facture] || null,
+
+      // Contestation JSONB
+      contestation: contestMap[f.id] || null
     }));
 
-    console.log(
-      "Factures récupérées pour compagnie", 
-      id_companie, 
-      ":", 
-      invoices.map(f => f.id_companie)
-    );
 
     return res.status(200).json(result);
 
   } catch (err) {
-    console.error("Erreur getInvoicesByCompany:", err);
+    console.error("❌ Erreur getInvoicesByCompany:", err);
     return res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 };
-
-
 
 
 // ===============================================================
@@ -563,9 +599,6 @@ export const confirmerFacture = async (req, res) => {
     res.status(500).json({ message: "Erreur confirmation facture" });
   }
 };
-
-
-
 
 // ===============================================================
 // SUPPRESSION DÉFINITIVE d'une facture

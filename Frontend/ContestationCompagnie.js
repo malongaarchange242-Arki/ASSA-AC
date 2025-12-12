@@ -119,10 +119,11 @@ async function renderContestationsView() {
         // Utiliser le format XAF pour la devise affichée
         const formattedAmount = invoice.amount.toLocaleString('fr-CM', { style: 'currency', currency: 'XAF', minimumFractionDigits: 0 });
         options += `
-            <option value="${invoice.id}">
-                ${invoice.id} (${formattedAmount} - Statut: ${invoice.status})
-            </option>
-        `;
+        <option value="${invoice.numero_facture}">
+            ${invoice.numero_facture} (${formattedAmount} - Statut: ${invoice.status})
+        </option>
+    `;
+
     });
     
     select.innerHTML = options;

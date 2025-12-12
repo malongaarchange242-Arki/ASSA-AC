@@ -213,6 +213,8 @@ function renderInvoices(INVOICES = []) {
     INVOICES.forEach(inv => {
         totalInvoices++;
 
+        const numero = inv.numero_facture || "-";
+
         const montant = Number(inv.amount) || 0;
         const formattedXAF = montant.toLocaleString('fr-FR', {
             style: 'currency',
@@ -221,10 +223,10 @@ function renderInvoices(INVOICES = []) {
             maximumFractionDigits: 0
         });
 
-        let displayStatus = inv.status || '—';
+        let status = inv.status || '—';
         let statusClass = '';
 
-        switch (displayStatus.toLowerCase()) {
+        switch (status.toLowerCase()) {
             case 'payée':
             case 'payee':
                 statusClass = 'bg-green-100 text-green-800';
@@ -247,43 +249,42 @@ function renderInvoices(INVOICES = []) {
 
         let actionButton = '-';
 
-        if (displayStatus.toLowerCase() === 'impayée' || displayStatus.toLowerCase() === 'impayee') {
+        if (status.toLowerCase() === 'impayée' || status.toLowerCase() === 'impayee') {
             actionButton = `
-                <a href="TeleverserCompagnie.html?facture=${encodeURIComponent(inv.id)}"
+                <a href="TeleverserCompagnie.html?facture=${encodeURIComponent(numero)}"
                    class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 font-semibold transition hover:scale-105">
                    Téléverser Preuve
                 </a>`;
         } 
-        else if (displayStatus.toLowerCase() === 'payée' || displayStatus.toLowerCase() === 'payee') {
+        else if (status.toLowerCase() === 'payée' || status.toLowerCase() === 'payee') {
             actionButton = `<span class="text-green-600 dark:text-green-400 font-medium">Réglée</span>`;
         } 
-        else if (displayStatus.toLowerCase() === 'contestée' || displayStatus.toLowerCase() === 'conteste') {
+        else if (status.toLowerCase() === 'contestée' || status.toLowerCase() === 'conteste') {
             actionButton = `<span class="text-orange-600 dark:text-orange-400 font-medium">En revue</span>`;
         }
 
         rowsHTML += `
 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-    <td class="px-6 py-4 text-sm font-medium">${inv.id || '-'}</td>
+
+    <td class="px-6 py-4 text-sm font-medium">${numero}</td>
     <td class="px-6 py-4 text-sm">${inv.date || '-'}</td>
     <td class="px-6 py-4 text-sm">${formattedXAF}</td>
+
     <td class="px-6 py-4">
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-            ${displayStatus}
+            ${status}
         </span>
     </td>
+
     <td class="px-6 py-4 text-center font-medium">${actionButton}</td>
 
-    <!-- ⭐ Icône de l'œil -->
     <td class="px-6 py-4 text-center">
-    
-        <button onclick="openInvoicePage('${inv.id}', '${inv.status}')"
-
-
+        <button onclick="openInvoicePage('${numero}', '${status}')"
             class="text-blue-600 hover:text-blue-900 dark:text-blue-400 font-medium">
 
-            <!-- Icône œil (Heroicons) -->
             <svg xmlns="http://www.w3.org/2000/svg" 
-                 fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+                 fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.5" stroke="currentColor"
                  class="w-6 h-6 inline">
                 <path stroke-linecap="round" stroke-linejoin="round" 
                     d="M2.25 12s3.75-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.75 7.5-9.75 7.5S2.25 12 2.25 12z" />
@@ -294,14 +295,11 @@ function renderInvoices(INVOICES = []) {
         </button>
     </td>
 </tr>`;
-
     });
 
     tableBody.innerHTML = rowsHTML;
 
-    // -------------------------------
-    // ✔ KPI CORRIGÉ
-    // -------------------------------
+    // ✔ KPI mis à jour correctement
     const validInvoices = INVOICES.filter(inv =>
         inv.status &&
         ["payée", "payee"].includes(inv.status.toLowerCase())
@@ -311,6 +309,7 @@ function renderInvoices(INVOICES = []) {
     document.getElementById('kpi-overdue-count').textContent = totalInvoices;
     document.getElementById('kpi-dispute-count').textContent = disputeCount;
 }
+
 
 function formatNumber(num) {
     if (num === null || num === undefined || num === "") return "0";

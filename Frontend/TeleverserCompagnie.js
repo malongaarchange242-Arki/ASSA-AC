@@ -3,6 +3,7 @@ const API_BASE = (() => {
     const origin = window.location.origin;
     return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
 })();
+
 let SERVER_INVOICES = [];
 
 function parseJwt(token) {
@@ -15,10 +16,14 @@ function parseJwt(token) {
     }
 }
 
+// ====================================================================
+//  CHARGER FACTURES DE LA COMPAGNIE
+// ====================================================================
 async function loadCompanyInvoices() {
     try {
         const token = localStorage.getItem('jwtTokenCompany');
-        const id_companie = localStorage.getItem('id_companie'); // récupéré au login
+        const id_companie = localStorage.getItem('id_companie');
+
         if (!token || !id_companie) {
             console.warn("Token ou id_companie manquant pour charger les factures");
             return;
@@ -27,6 +32,7 @@ async function loadCompanyInvoices() {
         let base = API_BASE;
         let url = `${base}/api/factures/company`;
         let resp;
+
         try {
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         } catch (e) {
@@ -46,20 +52,25 @@ async function loadCompanyInvoices() {
             return;
         }
 
-        // Mapping factures pour l'UI
+        // Normalisation
         SERVER_INVOICES = data.map(f => ({
             id: f.id,
+            numero_facture: f.numero_facture, // 🔥 ajouté
             date: f.date,
             amount: Number(f.amount),
             status: f.status,
             due_date: f.due_date,
             client: f.client
         }));
+        
 
         console.log("Factures filtrées pour cette compagnie :", SERVER_INVOICES);
 
-        // Rendu du select (uniquement impayées ou en retard)
-        renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
+        // Rendu initial (impayées + en retard)
+        renderInvoiceSelect(
+            'paiement',
+            inv => inv.status === 'Impayée' || inv.status === 'En Retard'
+        );
 
     } catch (err) {
         console.error("Erreur loadCompanyInvoices:", err);
@@ -75,9 +86,7 @@ async function loadCompanyInfo() {
 
     try {
         const response = await fetch(`${API_BASE}/api/companies/me`, {
-            headers: {
-                "Authorization": "Bearer " + token
-            }
+            headers: { "Authorization": "Bearer " + token }
         });
 
         if (!response.ok) {
@@ -88,22 +97,17 @@ async function loadCompanyInfo() {
         const data = await response.json();
         console.log("🏢 Compagnie connectée :", data);
 
-        //  Les vrais données sont dans data.company
         const company = data.company;
 
         const nameEl = document.getElementById("company-name");
         const logoEl = document.getElementById("company-logo");
 
-        if (nameEl) {
-            nameEl.textContent = company.company_name || "Compagnie";
-        }
+        if (nameEl) nameEl.textContent = company.company_name || "Compagnie";
 
         if (logoEl) {
-            //  TON logo_url est déjà une URL complète => NE PAS prefixer API_BASE
             logoEl.src = company.logo_url
                 ? company.logo_url
                 : "https://placehold.co/40x40/1e40af/ffffff?text=?";
-
             logoEl.alt = company.company_name || "Logo compagnie";
         }
 
@@ -112,8 +116,7 @@ async function loadCompanyInfo() {
     }
 }
 
-
-// ------------------- RENDER FACTURES -------------------
+// ------------------- RENDER SELECT -------------------
 function renderInvoiceSelect(viewId, filterFn = inv => true) {
     const select = document.getElementById(`invoice-select-${viewId}`);
     if (!select) return;
@@ -121,27 +124,34 @@ function renderInvoiceSelect(viewId, filterFn = inv => true) {
     const targetInvoices = SERVER_INVOICES.filter(filterFn);
 
     let options = `<option value="">Sélectionnez la facture...</option>`;
+    
     targetInvoices.forEach(inv => {
-        const amount = Number(inv.amount).toLocaleString('fr-CM', { style: 'currency', currency: 'XAF' });
-        options += `<option value="${inv.id}">${inv.id} (${amount} - Statut: ${inv.status})</option>`;
+        const amount = Number(inv.amount || 0).toLocaleString('fr-CM', { 
+            style: 'currency', 
+            currency: 'XAF' 
+        });
+
+        // ⭐ Ici on utilise numero_facture
+        options += `
+            <option value="${inv.numero_facture}">
+                ${inv.numero_facture} (${amount} - Statut: ${inv.status})
+            </option>`;
     });
 
     select.innerHTML = options;
 }
 
-// Auto-sélection facture passée via URL
+
+// ------------------- AUTO SELECT VIA URL -------------------
 function autoSelectInvoiceFromURL() {
     const params = new URLSearchParams(window.location.search);
     const factureId = params.get("facture");
-
     if (!factureId) return;
 
-    // On attend que SERVER_INVOICES soit rempli
     const interval = setInterval(() => {
         const select = document.getElementById('invoice-select-paiement');
         if (!select || SERVER_INVOICES.length === 0) return;
 
-        // Si la facture existe → on la sélectionne
         const option = Array.from(select.options).find(o => o.value == factureId);
         if (option) {
             select.value = factureId;
@@ -150,55 +160,55 @@ function autoSelectInvoiceFromURL() {
     }, 150);
 }
 
-
 // ------------------- THÈME -------------------
 function setTheme(mode) {
-    const htmlElement = document.documentElement;
+    const html = document.documentElement;
     const themeIcon = document.getElementById('theme-icon');
     const themeText = document.getElementById('theme-text');
 
     if (mode === 'dark') {
-        htmlElement.classList.add('dark');
+        html.classList.add('dark');
         localStorage.setItem('theme', 'dark');
-        if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Jour';
+        if (themeIcon) themeIcon.innerHTML =
+            `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
+        if (themeText) themeText.textContent = 'Mode Jour';
     } else {
-        htmlElement.classList.remove('dark');
+        html.classList.remove('dark');
         localStorage.setItem('theme', 'light');
-        if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Nuit';
+        if (themeIcon) themeIcon.innerHTML =
+            `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
+        if (themeText) themeText.textContent = 'Mode Nuit';
     }
 }
 
 function toggleTheme() {
-    const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    setTheme(current === 'dark' ? 'light' : 'dark');
 }
 
 // ------------------- MODALES -------------------
 function showModal(title, message) {
+    const modal = document.getElementById('status-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalMessage = document.getElementById('modal-message');
-    if(modalTitle) modalTitle.textContent = title;
-    if(modalMessage) modalMessage.innerHTML = message;
 
-    const modal = document.getElementById('status-modal');
-    if(modal) {
+    if (modalTitle) modalTitle.textContent = title;
+    if (modalMessage) modalMessage.innerHTML = message;
+
+    if (modal) {
         modal.classList.remove('invisible', 'opacity-0');
         modal.classList.add('visible', 'opacity-100');
         const btn = modal.querySelector('button');
-        if(btn) btn.focus();
+        if (btn) btn.focus();
     }
 }
 
 function closeModal() {
     const modal = document.getElementById('status-modal');
-    if(modal) {
-        modal.classList.add('opacity-0');
-        setTimeout(() => {
-            modal.classList.add('invisible');
-        }, 300);
-    }
+    if (!modal) return;
+
+    modal.classList.add('opacity-0');
+    setTimeout(() => modal.classList.add('invisible'), 300);
 }
 
 // ------------------- NAVIGATION -------------------
@@ -210,7 +220,7 @@ function changeView(view) {
         'factures': document.getElementById('factures-view'),
     };
 
-    let titleMap = {
+    const titles = {
         'factures': 'Consultation des Factures',
         'paiements': 'Téléverser Preuve de Paiement',
         'contestations': 'Soumettre une Contestation',
@@ -221,26 +231,32 @@ function changeView(view) {
     document.querySelectorAll('.nav-link').forEach(l => {
         l.classList.remove('bg-indigo-100', 'dark:bg-indigo-900/50', 'font-semibold', 'text-primary');
         l.classList.add('font-medium', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+
         if (l.getAttribute('data-view') === view) {
             l.classList.add('bg-indigo-100', 'dark:bg-indigo-900/50', 'font-semibold', 'text-primary');
-            l.classList.remove('font-medium', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+            l.classList.remove('font-medium');
         }
     });
 
-    Object.values(views).forEach(v => { if(v) v.classList.add('hidden'); });
-    if(views[view]) views[view].classList.remove('hidden');
-    if(mainTitle) mainTitle.textContent = titleMap[view] || 'Portail Client';
+    Object.values(views).forEach(v => v?.classList.add('hidden'));
+    views[view]?.classList.remove('hidden');
+
+    if (mainTitle) mainTitle.textContent = titles[view] || 'Portail Client';
 
     if (view === 'paiements') {
-        renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
+        renderInvoiceSelect(
+            'paiement',
+            inv => inv.status === 'Impayée' || inv.status === 'En Retard'
+        );
     }
 
     const sidebar = document.getElementById('sidebar');
-    if(sidebar) sidebar.classList.add('-translate-x-full');
+    if (sidebar) sidebar.classList.add('-translate-x-full');
 }
 
 // ------------------- DOMContentLoaded -------------------
 document.addEventListener('DOMContentLoaded', () => {
+
     // 1. Thème
     setTheme(localStorage.getItem('theme') || 'light');
 
@@ -249,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', e => {
             const view = e.currentTarget.getAttribute('data-view');
             const href = e.currentTarget.getAttribute('href');
+
             if (view === 'paiements') {
                 e.preventDefault();
                 changeView('paiements');
@@ -262,10 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const openBtn = document.getElementById('open-sidebar-btn');
     const closeBtn = document.getElementById('close-sidebar-btn');
-    if(openBtn) openBtn.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
-    if(closeBtn) closeBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
 
-        // 4. Formulaire paiements
+    if (openBtn) openBtn.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
+    if (closeBtn) closeBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
+
+    // 4. FORMULAIRE PREUVES
     const paiementForm = document.getElementById('paiements-form');
     const fileInputPaiement = document.getElementById('file-upload-paiement');
     const fileDisplayPaiement = document.getElementById('file-upload-display-paiement');
@@ -285,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const token = localStorage.getItem('jwtTokenCompany');
             if (!token) {
-                showModal('Authentification requise', 'Veuillez vous reconnecter pour envoyer la preuve.');
+                showModal('Authentification requise', 'Veuillez vous reconnecter.');
                 return;
             }
 
@@ -295,7 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('commentaire', note);
                 formData.append('file', file);
 
-                // Récupération company_id
                 const jwt = localStorage.getItem('jwtTokenCompany');
                 const payload = parseJwt(jwt) || {};
                 const cid = localStorage.getItem('id_companie') || payload.id_companie || payload.company_id;
@@ -308,30 +325,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const data = await resp.json().catch(() => ({}));
+
                 if (!resp.ok) {
                     showModal('Erreur', data.message || "Échec de l’envoi de la preuve");
                     return;
                 }
 
-                // ================================
+                // =====================================================
                 // 🔥 Mise à jour du statut EN LOCAL
-                // ================================
-                const invoice = SERVER_INVOICES.find(f => f.numero_facture == invoiceId);
-                if (invoice) invoice.statut = "En Attente";
+                // =====================================================
+                const invoice = SERVER_INVOICES.find(f => f.id == invoiceId);
+                if (invoice) invoice.status = "En Attente";
 
-                // 🔥 Mise à jour du select (retirer la facture)
-                renderInvoiceSelect('paiement', inv =>
-                    inv.statut === 'Impayée' || inv.statut === 'En Retard'
+                // 🔥 Re-render du select en filtrant encore Impayées + En Retard
+                renderInvoiceSelect(
+                    'paiement',
+                    inv => inv.status === 'Impayée' || inv.status === 'En Retard'
                 );
 
-                // Message succès
                 showModal(
                     'Succès',
                     `Votre preuve de paiement a été envoyée.<br>
-                    Le statut de la facture <b>${invoiceId}</b> est maintenant <span class="text-yellow-600 font-semibold">"En Attente"</span>.`
+                     Le statut de la facture <b>${invoiceId}</b> est maintenant 
+                     <span class="text-yellow-600 font-semibold">"En Attente"</span>.`
                 );
 
-                // Reset UI
                 paiementForm.reset();
                 if (fileDisplayPaiement) {
                     fileDisplayPaiement.textContent = 'PDF, PNG, JPG (MAX. 1 fichier)';
@@ -340,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (err) {
                 console.error('Erreur upload preuve:', err);
-                showModal('Erreur', 'Une erreur est survenue lors de l’envoi de la preuve.');
+                showModal('Erreur', 'Une erreur est survenue lors de l’envoi.');
             }
         });
     }
@@ -357,13 +375,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     // 5. Vue initiale
     changeView('paiements');
 
-    // 6. Charger les factures
-    loadCompanyInvoices().then(() => {
-        autoSelectInvoiceFromURL();
-    });
-    loadCompanyInfo();  // ⬅️ ICI AJOUTÉ
+    // 6. Charger factures + auto select
+    loadCompanyInvoices().then(autoSelectInvoiceFromURL);
+
+    // 7. Charger logo + nom
+    loadCompanyInfo();
 });

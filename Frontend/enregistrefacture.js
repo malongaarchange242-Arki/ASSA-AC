@@ -402,7 +402,15 @@ function showPreview() {
 
             <div class="mt-8 flex justify-center gap-4 p-4 print-controls">
                 <button type="button" onclick="closePreview()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition">Modifier / Retour</button>
-                <button type="button" onclick="sendInvoice()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Envoyer & Enregistrer</button>
+                <button id="send-btn" type="button" onclick="sendInvoice()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    Envoyer & Enregistrer
+                </button>
+
+                <p id="sending-message" class="text-blue-600 mt-2 hidden">
+                    ⏳ Enregistrement en cours...
+                </p>
+
                 <button type="button" onclick="printPreview()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Imprimer</button>
             </div>
         </div>
@@ -508,6 +516,8 @@ function closePreview() {
 }
 
 
+
+
 // ======================= ENVOI =======================
 async function sendInvoice() {
     if (!validateForm()) return;
@@ -574,6 +584,16 @@ async function sendInvoice() {
     }
 }
 
+window.onload = function () {
+    const numero = sessionStorage.getItem("factureARefaire");
+
+    if (numero) {
+        document.getElementById("numero_facture").value = numero;
+        sessionStorage.removeItem("factureARefaire");
+    }
+};
+
+
 
 // ======================= INITIALISATION =======================
 window.onload = () => {
@@ -601,9 +621,11 @@ window.onload = () => {
 };
 
 function getPreviousMonthPeriod() {
-    const date = new Date();
-    date.setDate(1);
-    date.setMonth(date.getMonth() - 1);
-    const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-    return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin",
+                        "Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+    return `Mois de ${monthNames[prev.getMonth()]} ${prev.getFullYear()}`;
 }
