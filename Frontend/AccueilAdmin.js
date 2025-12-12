@@ -93,18 +93,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             activites.forEach(act => {
                 const tr = document.createElement('tr');
-
-                // Type d’activité lisible
+            
                 const typeActivite = act.type_activite === 'system' ? 'Système' : act.type_activite || '-';
-
-                // Description lisible
                 const description = act.description || act.objet || '-';
-
-                // Nom utilisateur (UUID remplacé si possible)
-                const utilisateur = act.utilisateur_nom || act.utilisateur_email || act.utilisateur || userEmail || '-';
-
+            
+                // 🔥 Priorité à la valeur enrichie par le backend
+                const utilisateur = act.utilisateur || act.utilisateur_nom || act.utilisateur_email || '-';
+            
                 const date = act.date_activite ? new Date(act.date_activite).toLocaleString() : '-';
-
+            
                 tr.innerHTML = `
                     <td>${typeActivite}</td>
                     <td>${description}</td>
@@ -113,6 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
                 tableBody.appendChild(tr);
             });
+            
 
             if (searchInput?.value.trim() !== '') filtrerTableau(searchInput.value.trim());
         } catch (err) {

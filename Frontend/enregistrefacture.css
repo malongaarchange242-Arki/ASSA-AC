@@ -58,17 +58,49 @@
             transform: scale(1.05);
         }
 
-        /* Styles de masquage (pour se concentrer sur la saisie) */
-        .line-calculation, .col-designation, .col-numero, #total-in-words {
-            display: none !important;
-        }
-        .header-designation, .header-numero {
-            display: none !important;
-        }
-        /* Laisser la suppression visible */
-        .col-delete, .header-delete {
-             display: table-cell; 
-        }
+      /* --- SECTION DE MASQUAGE CORRIGÉE --- */
+
+/* Assurons-nous que tous les éléments inutiles sont masqués, SAUF ceux voulus */
+
+/* 1. Masquer les éléments inutiles/calculés dans la vue de saisie */
+.line-calculation, /* (Si utilisé) */
+.cell-designation, /* Masquer la colonne de désignation */
+.line-total-cell, /* Masquer le coût total par ligne */
+#total-in-words { 
+    display: none !important;
+}
+
+/* 2. Masquer les en-têtes correspondants */
+.header-designation,
+/* Si vous ne voulez pas voir le N°, décommentez la ligne ci-dessous. */
+/* .header-numero, */
+/* Par défaut, le Coût Total est masqué par la ligne-total-cell ci-dessus */
+/* Nous allons le masquer explicitement pour plus de sécurité */
+table thead th:nth-child(5) { /* Cible le 5ème TH, qui est 'Coût Total' */
+    display: none !important;
+}
+
+
+/* 3. S'assurer que les éléments voulus sont bien affichés (N°, Qty, Zone, Suppr.) */
+
+/* Assure que la cellule N° est visible */
+.cell-numero {
+    display: table-cell !important;
+    text-align: center !important;
+}
+
+/* Assure que l'en-tête N° est visible */
+.header-numero {
+    display: table-cell !important;
+    text-align: center !important;
+}
+
+/* Le Nbre Passagers (3ème TH/TD) et la Zone (4ème TH/TD) sont visibles par défaut car ils n'ont pas de classe de masquage. */
+/* Le Suppr. est déjà géré pour être visible : */
+.col-delete, .header-delete {
+    display: table-cell !important; 
+    text-align: center !important;
+}
         
         .line-total-cell {
             text-align: right;

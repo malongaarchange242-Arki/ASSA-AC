@@ -5,36 +5,50 @@ import supabase from '../Config/db.js';
 // Helper async pour enrichir les activités
 const enrichActivites = async (activites) => {
   return await Promise.all(
-    activites.map(async (act) => {
-      let utilisateur = '-';
-      if (act.id_admin) {
-        const { data: adminData } = await supabase
-          .from('admins')
-          .select('email, nom, prenom')
-          .eq('id', act.id_admin)
-          .single();
-        if (adminData) utilisateur = adminData.email || `${adminData.nom} ${adminData.prenom}`;
-      } else if (act.id_companie) {
-        const { data: companyData } = await supabase
-          .from('companies')
-          .select('company_name, email')
-          .eq('id', act.id_companie)
-          .single();
-        if (companyData) utilisateur = companyData.email || companyData.company_name;
-      } else if (act.email) utilisateur = act.email;
-      else if (act.nom_utilisateur) utilisateur = act.nom_utilisateur;
+      activites.map(async (act) => {
+          let utilisateur = '-';
 
-      let typeActivite = act.type_activite || 'Système';
-      if (typeActivite.toLowerCase() === 'system') typeActivite = 'Système';
+          // 🔥 Si l’activité a enregistré directement un nom/email, on l’utilise
+          if (act.utilisateur_email) {
+              utilisateur = act.utilisateur_email;
+          } else if (act.utilisateur_nom) {
+              utilisateur = act.utilisateur_nom;
+          }
 
-      return {
-        ...act,
-        utilisateur,
-        type_activite: typeActivite
-      };
-    })
+          // 🔥 Si l’activité a id_admin → on récupère dans admins
+          else if (act.id_admin) {
+              const { data: admin } = await supabase
+                  .from('admins')
+                  .select('email, nom, prenom')
+                  .eq('id', act.id_admin)
+                  .single();
+
+              if (admin) {
+                  utilisateur = admin.email || `${admin.nom} ${admin.prenom}`;
+              }
+          }
+
+          // 🔥 Si activité liée à une compagnie
+          else if (act.id_companie) {
+              const { data: company } = await supabase
+                  .from('companies')
+                  .select('company_name, email')
+                  .eq('id', act.id_companie)
+                  .single();
+
+              if (company) {
+                  utilisateur = company.email || company.company_name;
+              }
+          }
+
+          return {
+              ...act,
+              utilisateur
+          };
+      })
   );
 };
+
 
 // ==========================
 // Toutes les activités
@@ -109,18 +123,25 @@ export const getActivitesByCompanie = async (req, res) => {
 // ==========================
 export const getRecentActivites = async (req, res) => {
   const n = parseInt(req.query.limit) || 10;
+
   try {
     const { data, error } = await supabase
       .from('journal_activite')
       .select('*')
+      .not('type_activite', 'eq', 'system')      // ❌ Exclure les logs Système
+      .not('description', 'ilike', '%consultée%') // ❌ Exclure "liste consultée"
       .order('date_activite', { ascending: false })
       .limit(n);
+
     if (error) throw error;
 
     const activites = await enrichActivites(data);
     res.status(200).json({ success: true, activites });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Erreur récupération dernières activités', error: err.message });
+    res.status(500).json({
+      message: 'Erreur récupération dernières activités',
+      error: err.message
+    });
   }
 };

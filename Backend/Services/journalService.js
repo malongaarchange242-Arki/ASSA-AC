@@ -14,11 +14,26 @@ export const logActivite = async ({
   id_admin,
   id_companie = null,
   type_activite,
-  categorie = 'Général', // valeur par défaut
+  categorie = 'Général',
   reference = null,
-  description = '-'
+  description = '-',
+  utilisateur_nom,
+  utilisateur_email
 }) => {
   try {
+    let nom = utilisateur_nom || null;
+    let email = utilisateur_email || null;
+    if (id_admin && (!nom || !email)) {
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('email, nom, prenom')
+        .eq('id', id_admin)
+        .single();
+      if (admin) {
+        email = email || admin.email || null;
+        nom = nom || (admin.nom && admin.prenom ? `${admin.nom} ${admin.prenom}` : admin.nom || null);
+      }
+    }
     const { data, error } = await supabase
       .from('journal_activite')
       .insert([{
@@ -28,7 +43,9 @@ export const logActivite = async ({
         categorie,
         reference,
         description,
-        date_activite: new Date()
+        date_activite: new Date(),
+        utilisateur_nom: nom,
+        utilisateur_email: email
       }])
       .select();
 

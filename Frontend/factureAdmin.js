@@ -68,13 +68,16 @@ function remplirListeCompagnies() {
    4️⃣ REMPLIR LE TABLEAU
 ============================================================ */
 function remplirTableau(factures) {
+    // 🔥 1. Charger les factures supprimées stockées dans localStorage
+    const hidden = JSON.parse(localStorage.getItem("factures_supprimees") || "[]");
+
+    // 🔥 2. Filtrer AVANT d'afficher
+    factures = factures.filter(f => !hidden.includes(f.numero_facture));
+
     const tbody = document.getElementById("factureTableBody");
     tbody.innerHTML = "";
 
     factures.forEach(fact => {
-
-        console.log("FACTURE RÉÉLLE :", fact);
-
         const numeroFacture = fact.numero_facture;
         const compagnie = fact.client;
         const dateEmission = fact.date;
@@ -87,12 +90,9 @@ function remplirTableau(factures) {
             statut === "Contestée" ? "contester" :
             "en-attente";
 
-        // 🔥 Boutons d'actions selon le statut
         const action =
             statut === "Payée"
-                ? `
-                    <span class="action-btn-confirmed">Confirmée</span>
-                `
+                ? `<span class="action-btn-confirmed">Confirmée</span>`
                 : statut === "Contestée"
                     ? `
                         <button class="action-btn-delete" onclick="refaireFacture('${numeroFacture}')">
@@ -108,7 +108,6 @@ function remplirTableau(factures) {
                         </button>
                     `;
 
-        // 🔥 Ligne HTML
         tbody.innerHTML += `
             <tr data-facture-id="${numeroFacture}" data-statut="${statut.toLowerCase()}">
 
@@ -226,8 +225,6 @@ function appliquerRecherche() {
     if (!confirm("Supprimer définitivement cette facture ?")) return;
 
     try {
-
-        // 🔥 ENCODAGE ESSENTIEL
         const encodedNumero = encodeURIComponent(numero);
 
         const res = await fetch(`${API_URL}/delete/${encodedNumero}`, {
@@ -236,17 +233,24 @@ function appliquerRecherche() {
         });
 
         const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
 
-        if (!res.ok) throw new Error(data.message || "Erreur API");
+        // 🔥 1. Stocker ce numéro comme "supprimé"
+        let hidden = JSON.parse(localStorage.getItem("factures_supprimees") || "[]");
+        if (!hidden.includes(numero)) hidden.push(numero);
+        localStorage.setItem("factures_supprimees", JSON.stringify(hidden));
 
-        alert("Facture supprimée !");
-        chargerFactures();
+        // 🔥 2. Supprimer la ligne du tableau
+        const row = document.querySelector(`tr[data-facture-id="${numero}"]`);
+        if (row) row.remove();
 
+        alert("Facture retirée !");
     } catch (err) {
         console.error("Erreur front :", err);
         alert("Erreur lors de la suppression.");
     }
 }
+
 
 
 // /* ============================================================

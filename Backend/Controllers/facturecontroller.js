@@ -123,49 +123,58 @@ export const createFacture = async (req, res) => {
     devise,
     montant_en_lettres,
     lignes,
-    id_companie // <-- nouvelle possibilité : passer l'ID de la compagnie
+    id_companie
   } = req.body;
 
   try {
     const userRole = req.user?.role;
     const userId = req.user?.id;
 
-    // Vérification du rôle
-    if (!['Administrateur', 'Superviseur', 'Company'].includes(userRole)) {
+    // ===========================
+    // 1️⃣ Vérification des rôles
+    // ===========================
+    if (!['Administrateur', 'Superviseur', 'Company', 'SuperAdmin', 'Admin'].includes(userRole)) {
       return res.status(403).json({ message: 'Rôle non autorisé pour créer une facture.' });
     }
 
-    // Déterminer l'ID de la compagnie : soit depuis le body, soit depuis l'utilisateur
+    // ===========================
+    // 2️⃣ Déterminer la compagnie
+    // ===========================
     let compagnieId = id_companie || req.user?.id_companie;
 
     if (!compagnieId) {
       return res.status(401).json({ message: "Aucune compagnie spécifiée pour cette facture." });
     }
 
-    if (['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(userRole)) {
-      if (['Super Admin','SuperAdmin'].includes(userRole)) {
-        // accès total
-      } else {
-        const { data: link } = await supabase
-          .from('admin_companies')
-          .select('company_id')
-          .eq('admin_id', userId)
-          .eq('company_id', compagnieId)
-          .maybeSingle();
-        if (!link) {
-          return res.status(403).json({ message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie." });
-        }
+    // Gestion des permissions
+    if (['Admin', 'Administrateur', 'Superviseur'].includes(userRole)) {
+      const { data: link } = await supabase
+        .from('admin_companies')
+        .select('company_id')
+        .eq('admin_id', userId)
+        .eq('company_id', compagnieId)
+        .maybeSingle();
+
+      if (!link && !['SuperAdmin', 'Super Admin'].includes(userRole)) {
+        return res.status(403).json({
+          message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie."
+        });
       }
+
     } else if (String(userRole).toLowerCase() === 'company') {
-      if (req.user?.id_companie !== compagnieId) {
+      if (req.user.id_companie !== compagnieId) {
         return res.status(403).json({ message: "Accès refusé pour cette compagnie." });
       }
     }
 
-    // Génération du numéro de facture
+    // ===========================
+    // 3️⃣ Génération du numéro facture
+    // ===========================
     const numero_facture = await generateNumeroFacture();
 
-    // 1️⃣ Création de la facture
+    // ===========================
+    // 4️⃣ Création de la facture
+    // ===========================
     const { data: factureData, error: factureError } = await supabase
       .from('factures')
       .insert([{
@@ -189,19 +198,23 @@ export const createFacture = async (req, res) => {
 
     if (factureError) throw factureError;
 
-    // 2️⃣ Journal d'activité
+    // ===========================
+    // 5️⃣ Journal activité
+    // ===========================
     await supabase.from('journal_activite').insert([{
       id_admin: userId,
       id_companie: compagnieId,
       type_activite: 'Création',
       categorie: 'Facture',
       reference: numero_facture,
-      description: `Création facture ${numero_facture} pour ${nom_client}`
+      description: `Création de la facture ${numero_facture} pour ${nom_client}`,
+      utilisateur_nom: req.user.nom || null,
+      utilisateur_email: req.user.email || null
     }]);
 
-    
-
-    // 4️⃣ Insertion des lignes facture
+    // ===========================
+    // 6️⃣ Insertion des lignes
+    // ===========================
     if (lignes?.length) {
       const lignesToInsert = lignes.map(l => ({
         numero_facture,
@@ -220,13 +233,30 @@ export const createFacture = async (req, res) => {
       if (lignesError) throw lignesError;
     }
 
-    // 5️⃣ Envoi email
+    // ===========================
+    // 7️⃣ Email envoyé à la compagnie
+    // ===========================
     try {
-      await sendInvoiceEmail(req.user.email, numero_facture, montant_total);
+      const { data: company, error: compErr } = await supabase
+        .from('companies')
+        .select('email, nom')
+        .eq('id', compagnieId)
+        .single();
+
+      if (compErr) console.error("Erreur récupération compagnie:", compErr);
+
+      if (company?.email) {
+        await sendInvoiceEmail(company.email, numero_facture, montant_total);
+      } else {
+        console.warn("Email compagnie introuvable :", compagnieId);
+      }
     } catch (err) {
-      console.error('Erreur email:', err);
+      console.error("Erreur envoi email :", err);
     }
 
+    // ===========================
+    // 8️⃣ Réponse HTTP
+    // ===========================
     res.status(201).json({
       success: true,
       message: 'Facture créée avec succès',
@@ -242,6 +272,7 @@ export const createFacture = async (req, res) => {
     });
   }
 };
+
 
 // READ : Factures de la compagnie connectée
 // READ : Factures de la compagnie connectée
@@ -463,13 +494,16 @@ export const updateFacture = async (req, res) => {
     }
 
     await supabase.from('journal_activite').insert([{
-      id_admin: req.user?.id,
+      id_admin: req.user.id,
       id_companie,
       type_activite: 'Modification',
       categorie: 'Facture',
       reference: numero_facture,
-      description: `Mise à jour de la facture ${numero_facture} pour ${nom_client}`
+      description: `Mise à jour de la facture ${numero_facture} (${nom_client})`,
+      utilisateur_nom: req.user.nom || null,
+      utilisateur_email: req.user.email || null
     }]);
+    
 
     res.status(200).json({ message: 'Facture mise à jour', facture: updatedData });
   } catch (err) {
@@ -507,13 +541,16 @@ export const archiveFacture = async (req, res) => {
 
     // Journal d'activité
     await supabase.from('journal_activite').insert([{
-      id_admin: req.user?.id,
+      id_admin: req.user.id,
       id_companie,
       type_activite: 'Archivage',
       categorie: 'Facture',
       reference: numero_facture,
-      description: `Facture ${numero_facture} archivée`
+      description: `Facture ${numero_facture} archivée`,
+      utilisateur_nom: req.user.nom || null,
+      utilisateur_email: req.user.email || null
     }]);
+    
 
     // Création d’une entrée dans la table archives
     await createArchive({
@@ -553,13 +590,16 @@ export const updateFactureStatut = async (req, res) => {
     if (error || !data) return res.status(404).json({ message: 'Facture non trouvée ou accès refusé' });
 
     await supabase.from('journal_activite').insert([{
-      id_admin: req.user?.id,
+      id_admin: req.user.id,
       id_companie,
-      type_activite: 'Mise à jour statut',
+      type_activite: 'Statut',
       categorie: 'Facture',
       reference: numero_facture,
-      description: `Le statut de la facture ${numero_facture} est passé à ${statut}`
+      description: `Statut mis à jour : ${statut} pour la facture ${numero_facture}`,
+      utilisateur_nom: req.user.nom || null,
+      utilisateur_email: req.user.email || null
     }]);
+    
 
     res.status(200).json({ success: true, message: `Statut mis à jour en "${statut}"`, facture: data });
   } catch (err) {
@@ -589,6 +629,17 @@ export const confirmerFacture = async (req, res) => {
       .select()
       .single();
 
+      await supabase.from('journal_activite').insert([{
+        id_admin: req.user.id,
+        id_companie: facture.id_companie,
+        type_activite: 'Confirmation',
+        categorie: 'Facture',
+        reference: numero_facture,
+        description: `Confirmation du paiement de la facture ${numero_facture}`,
+        utilisateur_nom: req.user.nom || null,
+        utilisateur_email: req.user.email || null
+      }]);
+      
     res.json({
       success: true,
       message: "Facture confirmée",
@@ -606,52 +657,17 @@ export const confirmerFacture = async (req, res) => {
 export const deleteFacture = async (req, res) => {
   try {
     let numero_facture = decodeURIComponent(req.params.numero_facture);
-    numero_facture = decodeURIComponent(numero_facture);
 
-    console.log("➡ NUM FACTURE À SUPPRIMER :", numero_facture);
+    console.log("➡ Suppression FRONT ONLY :", numero_facture);
 
-    const id_companie = req.user?.id_companie;
-
-    // Vérifier si la facture existe
-    const { data: facture, error } = await supabase
-      .from('factures')
-      .select('*')
-      .eq('numero_facture', numero_facture)
-      .eq('id_companie', id_companie)
-      .single();
-
-    if (error || !facture) {
-      return res.status(404).json({ message: "Facture introuvable ou accès refusé." });
-    }
-
-    // Supprimer les lignes
-    await supabase
-      .from('lignes_facture')
-      .delete()
-      .eq('numero_facture', numero_facture);
-
-    // Supprimer la facture
-    await supabase
-      .from('factures')
-      .delete()
-      .eq('numero_facture', numero_facture);
-
-    // Journal
-    await supabase.from('journal_activite').insert([{
-      id_admin: req.user?.id,
-      id_companie,
-      type_activite: 'Suppression',
-      categorie: 'Facture',
-      reference: numero_facture,
-      description: `La facture ${numero_facture} a été supprimée définitivement.`
-    }]);
-
-    res.status(200).json({ success: true, message: `Facture ${numero_facture} supprimée définitivement.` });
+    // ❌ On NE SUPPRIME RIEN dans la base de données !
+    return res.status(200).json({
+      success: true,
+      message: `Facture ${numero_facture} retirée du front uniquement.`
+    });
 
   } catch (err) {
     console.error("Erreur suppression facture:", err);
     res.status(500).json({ message: "Erreur suppression facture", error: err.message });
   }
 };
-
-
