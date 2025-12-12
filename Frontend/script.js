@@ -130,32 +130,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const factures = await fetchWithAuth(`${API_BASE}/api/factures`);
             console.log('Données factures reçues:', factures);
-
+    
             if (!statCards.factures) return;
-
+    
             // Total factures
             statCards.factures.textContent = Array.isArray(factures) ? factures.length : '0';
-
+    
             // Factures contestées
             if (statCards.contestees) {
+    
                 const contestees = Array.isArray(factures)
-                    ? factures.filter(f =>
-                        typeof f.statut === 'string' &&
-                        f.statut.trim().toLowerCase() === 'contestée'
-                    )
+                    ? factures.filter(f => {
+                        const statut = (f.statut || "")
+                            .normalize("NFD")                     // Sépare accents
+                            .replace(/[\u0300-\u036f]/g, "")     // Enlève accents
+                            .trim()
+                            .toLowerCase();
+    
+                        return statut === "contestee";  // "contestée" → "contestee"
+                    })
                     : [];
-
+    
                 statCards.contestees.textContent = contestees.length;
             }
-
+    
         } catch (err) {
             console.error('Erreur récupération factures :', err);
-
+    
             statCards.factures.textContent = '0';
             if (statCards.contestees) statCards.contestees.textContent = '0';
         }
     }
-
+    
     // ================== Initialisation ==================
     await chargerCompanies();
     await chargerFactures();

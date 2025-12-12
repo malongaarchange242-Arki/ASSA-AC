@@ -71,24 +71,36 @@ export const generateNumeroFacture = async () => {
 // ===============================================================
 const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: false,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    tls: { rejectUnauthorized: false }
+    host: process.env.SMTP_HOST,          // smtp.gmail.com
+    port: Number(process.env.SMTP_PORT),  // 587
+    secure: false,                        // IMPORTANT : STARTTLS = false ici
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS         // mot de passe d'application
+    },
+    tls: {
+      rejectUnauthorized: false,
+      ciphers: "SSLv3"                    // ajoute stabilité Gmail
+    }
   });
-
 
   const mailOptions = {
     from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
     to,
     subject: `Nouvelle facture : ${numero_facture}`,
-    text: `Bonjour,\n\nUne nouvelle facture (${numero_facture}) a été générée pour un montant total de ${montant_total}.\n\nMerci.`,
-    html: `<p>Bonjour,</p><p>Une nouvelle facture (<strong>${numero_facture}</strong>) a été générée pour un montant total de <strong>${montant_total}</strong>.</p><p>Merci.</p>`
+    text: `Bonjour, une nouvelle facture ${numero_facture} a été générée pour un montant total de ${montant_total}.`,
+    html: `
+      <p>Bonjour,</p>
+      <p>Une nouvelle facture <strong>${numero_facture}</strong> a été générée.</p>
+      <p>Montant : <strong>${montant_total}</strong></p>
+      <br>
+      <p>Cordialement,<br><strong>ASSA-AC</strong></p>
+    `
   };
 
-  await transporter.sendMail(mailOptions);
+  return transporter.sendMail(mailOptions);
 };
+
 
 // ===============================================================
 // ENDPOINT : Générer une référence de facture
@@ -130,51 +142,41 @@ export const createFacture = async (req, res) => {
     const userRole = req.user?.role;
     const userId = req.user?.id;
 
-    // ===========================
-    // 1️⃣ Vérification des rôles
-    // ===========================
-    if (!['Administrateur', 'Superviseur', 'Company', 'SuperAdmin', 'Admin'].includes(userRole)) {
+    if (!['Administrateur', 'Superviseur', 'Company'].includes(userRole)) {
       return res.status(403).json({ message: 'Rôle non autorisé pour créer une facture.' });
     }
 
-    // ===========================
-    // 2️⃣ Déterminer la compagnie
-    // ===========================
+    // Déterminer la compagnie
     let compagnieId = id_companie || req.user?.id_companie;
 
     if (!compagnieId) {
       return res.status(401).json({ message: "Aucune compagnie spécifiée pour cette facture." });
     }
 
-    // Gestion des permissions
-    if (['Admin', 'Administrateur', 'Superviseur'].includes(userRole)) {
-      const { data: link } = await supabase
-        .from('admin_companies')
-        .select('company_id')
-        .eq('admin_id', userId)
-        .eq('company_id', compagnieId)
-        .maybeSingle();
+    // Vérifications d’accès
+    if (['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(userRole)) {
+      if (!['Super Admin','SuperAdmin'].includes(userRole)) {
+        const { data: link } = await supabase
+          .from('admin_companies')
+          .select('company_id')
+          .eq('admin_id', userId)
+          .eq('company_id', compagnieId)
+          .maybeSingle();
 
-      if (!link && !['SuperAdmin', 'Super Admin'].includes(userRole)) {
-        return res.status(403).json({
-          message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie."
-        });
+        if (!link) {
+          return res.status(403).json({ message: "Vous n'avez pas l'autorisation de créer une facture pour cette compagnie." });
+        }
       }
-
     } else if (String(userRole).toLowerCase() === 'company') {
-      if (req.user.id_companie !== compagnieId) {
+      if (req.user?.id_companie !== compagnieId) {
         return res.status(403).json({ message: "Accès refusé pour cette compagnie." });
       }
     }
 
-    // ===========================
-    // 3️⃣ Génération du numéro facture
-    // ===========================
+    // Générer le numéro
     const numero_facture = await generateNumeroFacture();
 
-    // ===========================
-    // 4️⃣ Création de la facture
-    // ===========================
+    // 1️⃣ Création facture
     const { data: factureData, error: factureError } = await supabase
       .from('factures')
       .insert([{
@@ -198,9 +200,7 @@ export const createFacture = async (req, res) => {
 
     if (factureError) throw factureError;
 
-    // ===========================
-    // 5️⃣ Journal activité
-    // ===========================
+    // 2️⃣ Journal
     await supabase.from('journal_activite').insert([{
       id_admin: userId,
       id_companie: compagnieId,
@@ -212,9 +212,7 @@ export const createFacture = async (req, res) => {
       utilisateur_email: req.user.email || null
     }]);
 
-    // ===========================
-    // 6️⃣ Insertion des lignes
-    // ===========================
+    // 3️⃣ Lignes facture
     if (lignes?.length) {
       const lignesToInsert = lignes.map(l => ({
         numero_facture,
@@ -233,30 +231,33 @@ export const createFacture = async (req, res) => {
       if (lignesError) throw lignesError;
     }
 
-    // ===========================
-    // 7️⃣ Email envoyé à la compagnie
-    // ===========================
-    try {
-      const { data: company, error: compErr } = await supabase
-        .from('companies')
-        .select('email, nom')
-        .eq('id', compagnieId)
-        .single();
+    // 4️⃣ Récupération email compagnie
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .select('email, company_name')
+      .eq('id', compagnieId)
+      .single();
 
-      if (compErr) console.error("Erreur récupération compagnie:", compErr);
-
-      if (company?.email) {
-        await sendInvoiceEmail(company.email, numero_facture, montant_total);
-      } else {
-        console.warn("Email compagnie introuvable :", compagnieId);
-      }
-    } catch (err) {
-      console.error("Erreur envoi email :", err);
+    if (companyError) {
+      console.error("Erreur récupération compagnie:", companyError);
     }
 
-    // ===========================
-    // 8️⃣ Réponse HTTP
-    // ===========================
+    console.log("📧 Email compagnie trouvé :", company?.email);
+
+    // 5️⃣ Envoi email à la compagnie
+    try {
+      if (company?.email) {
+        console.log("👉 Envoi facture à :", company.email);
+        await sendInvoiceEmail(company.email, numero_facture, montant_total);
+        console.log("✅ Email envoyé !");
+      } else {
+        console.warn("⚠ Aucune adresse email dans la compagnie :", compagnieId);
+      }
+    } catch (err) {
+      console.error("❌ Échec envoi email :", err);
+    }
+
+    // Réponse
     res.status(201).json({
       success: true,
       message: 'Facture créée avec succès',
