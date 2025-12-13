@@ -92,7 +92,7 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
     html: `
       <p>Bonjour,</p>
       <p>Une nouvelle facture <strong>${numero_facture}</strong> a été générée.</p>
-      <p>Montant : <strong>${montant_total}</strong></p>
+      <p>Montant : <strong>${montant_total}</strong> XAF</p>
       <br>
       <p>Cordialement,<br><strong>ASSA-AC</strong></p>
     `
