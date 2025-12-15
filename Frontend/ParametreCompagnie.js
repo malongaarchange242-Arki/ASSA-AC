@@ -215,7 +215,7 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
     try {
         const token = localStorage.getItem("jwtTokenCompany");
 
-        const response = await fetch("http://localhost:5002/api/companies/update-password", {
+        const response = await fetch("https://assa-ac-jyn4.onrender.com/api/companies/update-password", {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -244,52 +244,87 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
 });
 
 /* ============================================================
-    E) THEME + SIDEBAR + MODAL
+    F) THEME + SIDEBAR + MODAL + VISIBILITÉ MOT DE PASSE
+    * Ces fonctions doivent être disponibles globalement
 ============================================================ */
 
-function toggleTheme() {
-    document.documentElement.classList.toggle("dark");
-    document.getElementById("theme-text").textContent =
-        "Mode " + (document.documentElement.classList.contains("dark") ? "Nuit" : "Jour");
-}
-
-document.getElementById("open-sidebar-btn")?.addEventListener("click", () => {
-    document.getElementById("sidebar").classList.remove("-translate-x-full");
-});
-
-document.getElementById("close-sidebar-btn")?.addEventListener("click", () => {
-    document.getElementById("sidebar").classList.add("-translate-x-full");
-});
-
-function showModal(title, message) {
-    document.getElementById("modal-title").textContent = title;
-    document.getElementById("modal-message").textContent = message;
-    const m = document.getElementById("status-modal");
-    m.classList.remove("opacity-0", "invisible");
-    m.classList.add("opacity-100");
-}
-
-function closeModal() {
-    const m = document.getElementById("status-modal");
-    m.classList.add("opacity-0", "invisible");
-}
-
-function togglePasswordVisibility(inputId, button) {
-    const input = document.getElementById(inputId);
-
-    if (input.type === "password") {
-        input.type = "text";
-        button.textContent = "🙈"; // Changer l'icône
-    } else {
-        input.type = "password";
-        button.textContent = "👁️";
+function setTheme(mode) {
+        const htmlElement = document.documentElement;
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+    
+        if (mode === 'dark') {
+            htmlElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+            if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
+            if(themeText) themeText.textContent = 'Mode Jour';
+        } else {
+            htmlElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+            if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
+            if(themeText) themeText.textContent = 'Mode Nuit';
+        }
     }
-}
-
-/* ============================================================
-    INIT
-============================================================ */
-
-document.addEventListener("DOMContentLoaded", () => {
-    loadCompanyInfo();
-});
+    
+    function toggleTheme() {
+        const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    }
+    
+    // Sidebar logic
+    document.getElementById("open-sidebar-btn")?.addEventListener("click", () => {
+        document.getElementById("sidebar").classList.remove("-translate-x-full");
+    });
+    
+    document.getElementById("close-sidebar-btn")?.addEventListener("click", () => {
+        document.getElementById("sidebar").classList.add("-translate-x-full");
+    });
+    
+    // Modal logic
+    function showModal(title, message) {
+        const m = document.getElementById("status-modal");
+        if(!m) { console.error('Modal element not found'); return; }
+    
+        document.getElementById("modal-title").textContent = title;
+        document.getElementById("modal-message").textContent = message;
+        
+        // Rendre visible
+        m.classList.remove("opacity-0", "invisible");
+        m.classList.add("opacity-100");
+    }
+    
+    function closeModal() {
+        const m = document.getElementById("status-modal");
+        if(m) m.classList.add("opacity-0", "invisible");
+    }
+    
+    // Password visibility logic
+    function togglePasswordVisibility(inputId, button) {
+        const input = document.getElementById(inputId);
+    
+        if (input.type === "password") {
+            input.type = "text";
+            button.innerHTML = "🙈"; // Utiliser innerHTML pour les emojis dans les boutons
+        } else {
+            input.type = "password";
+            button.innerHTML = "👁️";
+        }
+    }
+    
+    // Rendre les fonctions d'interface utilisateur globales pour les appels HTML (onclick)
+    window.toggleTheme = toggleTheme;
+    window.showModal = showModal;
+    window.closeModal = closeModal;
+    window.togglePasswordVisibility = togglePasswordVisibility;
+    
+    
+    /* ============================================================
+        INIT
+    ============================================================ */
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        // Initialise le thème au chargement
+        setTheme(localStorage.getItem('theme') || 'light');
+        
+        loadCompanyInfo();
+    });

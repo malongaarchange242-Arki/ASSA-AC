@@ -6,8 +6,13 @@ import nodemailer from 'nodemailer';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { logActivite } from '../Services/journalService.js'; // journal d'activité
-import { archiveCompanyService, restoreCompanyService } from '../Services/archiveService.js'; // archivage
+import {
+  archiveCompanyService,
+  restoreCompanyService,
+  createArchive
+} from '../Services/archiveService.js';
+import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
+
 
 // ----------------- Configuration Multer (upload logo en mémoire) -----------------
 const uploadLogo = multer({
@@ -137,12 +142,16 @@ export const requestFirstLoginOtp = async (req, res) => {
 
     // Log activité
     await logActivite({
-      module: "Système",
-      type_activite: "create",
-      description: `OTP généré pour ${company.company_name}`,
+      module: 'Système',
+      type_activite: 'system',
+      categorie: 'Sécurité',
+      description: `OTP de première connexion généré pour la compagnie ${company.company_name}`,
+      id_admin: req.user?.id || null,
       id_companie: company.id,
+      utilisateur_nom: req.user?.nom_complet || 'Administrateur',
+      utilisateur_email: req.user?.email || null
     });
-
+    
     return res.json({
       message: "OTP généré",
       email_sent: emailSent,
@@ -198,11 +207,16 @@ export const validateOtpAndSetPassword = async (req, res) => {
     }, process.env.JWT_SECRET, { expiresIn: '12h' });
 
     await logActivite({
-      module: 'Système',
-      type_activite: 'update',
-      description: `${company.company_name} a validé son OTP et défini un mot de passe`,
-      id_companie: company.id
+      module: "Compagnies",
+      type_activite: "update",
+      categorie: "company",
+      description: "Activation automatique du compte et définition du mot de passe",
+      id_companie: company.id,
+    
+      utilisateur_nom: "Système"
     });
+    
+    
 
     res.json({
       message: 'Mot de passe défini, connexion réussie',
@@ -240,11 +254,15 @@ export const loginCompany = async (req, res) => {
     }, process.env.JWT_SECRET, { expiresIn: '12h' });
 
     await logActivite({
-      module: 'Système',
-      type_activite: 'system',
-      description: `${company.company_name} s'est connecté`,
-      id_companie: company.id
+      module: 'Authentification',
+      type_activite: 'create',
+      categorie: 'auth',
+      description: `Connexion de la compagnie ${company.company_name}`,
+      id_companie: company.id,
+      utilisateur_nom: company.company_name,
+      utilisateur_email: company.email || null
     });
+    
 
     res.json({
       message: 'Connexion réussie',
@@ -306,8 +324,14 @@ export const me = async (req, res) => {
 // ----------------- Lister toutes les compagnies -----------------
 export const listCompanies = async (req, res) => {
   try {
-    const { data, error } = await supabase.from('companies').select('*');
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('archived', false); // 🔥 FILTRE CRITIQUE
+
+    if (error) {
+      return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
+    }
 
     const companiesWithDefaults = data.map(company => ({
       ...company,
@@ -315,18 +339,13 @@ export const listCompanies = async (req, res) => {
       logo_url: company.logo_url || 'https://via.placeholder.com/60?text=Logo'
     }));
 
-    await logActivite({
-      module: 'Compagnies',
-      type_activite: 'system',
-      description: `Liste des compagnies consultée`,
-      id_admin: req.user?.id
-    });
-
     res.json({ total: companiesWithDefaults.length, companies: companiesWithDefaults });
+
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
+
 
 // ----------------- ARCHIVER une compagnie -----------------
 export const archiveCompany = async (req, res) => {
@@ -410,17 +429,17 @@ export const getCompanyById = async (req, res) => {
     }
 
     // Journaliser l'activité
-    try {
-      await logActivite({
-        module: 'Compagnies',
-        type_activite: 'Consultation',
-        description: `Consultation du profil de la compagnie ${company.company_name}`,
-        id_admin: req.user?.id,
-        id_companie: company.id
-      });
-    } catch (logErr) {
-      console.warn('Impossible de journaliser l’activité:', logErr.message);
-    }
+    // try {
+    //   await logActivite({
+    //     module: 'Compagnies',
+    //     type_activite: 'Consultation',
+    //     description: `Consultation du profil de la compagnie ${company.company_name}`,
+    //     id_admin: req.user?.id,
+    //     id_companie: company.id
+    //   });
+    // } catch (logErr) {
+    //   console.warn('Impossible de journaliser l’activité:', logErr.message);
+    // }
 
     // Réponse
     res.status(200).json({ success: true, company });
@@ -607,12 +626,31 @@ export const updateCompany = async (req, res) => {
     // 3️⃣ LOG ACTIVITÉ
     // ================================
     await logActivite({
-      module: "Compagnies",
-      type_activite: "update",
+      module: 'Compagnies',
+      type_activite: 'update',
+      categorie: 'company',
+      reference: updatedCompany[0].company_name,
       description: `Compagnie ${updatedCompany[0].company_name} mise à jour`,
-      id_admin: req.user?.id,
+      id_admin: req.user?.id || null,
       id_companie: updatedCompany[0].id,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
+      utilisateur_email: req.user?.email || null
     });
+    
+
+    // ================================
+    // 4️⃣ ARCHIVAGE
+    // ================================
+    await createArchive({
+      type: "Mise à jour de compagnie",
+      ref: crypto.randomUUID(),
+      compagnie_id: updatedCompany[0].id,
+      compagnie_nom: updatedCompany[0].company_name,
+      statut: "Inactif",
+      admin_id: req.user?.id,
+      admin_nom: req.user?.nom_complet || req.user?.nom || req.user?.email
+    });
+    
 
     // ================================
     // 4️⃣ RÉPONSE API
@@ -631,90 +669,69 @@ export const updateCompany = async (req, res) => {
 export const deleteCompanySafe = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'ID de compagnie manquant' });
+    }
 
-    if (!id) return res.status(400).json({ message: 'ID de compagnie manquant' });
-
-    // Vérifier que la compagnie existe
+    // 🔍 Vérifier l'existence
     const { data: company, error: findError } = await supabase
       .from('companies')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (findError || !company) return res.status(404).json({ message: 'Compagnie introuvable' });
+    if (findError || !company) {
+      return res.status(404).json({ message: 'Compagnie introuvable' });
+    }
 
-    // 1️⃣ Archiver les factures liées
-    const { data: factures, error: facturesError } = await supabase
+    // 1️⃣ Supprimer les factures liées
+    const { error: deleteFacturesError } = await supabase
       .from('factures')
-      .select('*')
-      .eq('id_companie', id)
-      .eq('archived', false);
+      .delete()
+      .eq('id_companie', id);
 
-    if (facturesError) throw facturesError;
+    if (deleteFacturesError) throw deleteFacturesError;
 
-    if (factures?.length) {
-      const factureIds = factures.map(f => f.numero_facture);
-      await supabase.from('factures').update({ archived: true, statut: 'Archivée' }).in('numero_facture', factureIds);
-      await supabase.from('journal_activite').insert(
-        factures.map(f => ({
-          id_admin: req.user?.id,
-          id_companie: id,
-          type_activite: 'Archivage',
-          categorie: 'Facture',
-          reference: f.numero_facture,
-          description: `Facture ${f.numero_facture} archivée avant archivage de la compagnie`
-        }))
-      );
-    }
-
-    // 2️⃣ Archiver les admins/utilisateurs liés
-    const { data: admins, error: adminsError } = await supabase
+    // 2️⃣ Supprimer les admins liés
+    const { error: deleteAdminsError } = await supabase
       .from('admins')
-      .select('*')
-      .eq('id_companie', id)
-      .eq('archived', false);
+      .delete()
+      .eq('id_companie', id);
 
-    if (adminsError) throw adminsError;
+    if (deleteAdminsError) throw deleteAdminsError;
 
-    if (admins?.length) {
-      const adminIds = admins.map(a => a.id);
-      await supabase.from('admins').update({ archived: true }).in('id', adminIds);
-      await supabase.from('journal_activite').insert(
-        admins.map(a => ({
-          id_admin: req.user?.id,
-          id_companie: id,
-          type_activite: 'Archivage',
-          categorie: 'Admin',
-          reference: a.id,
-          description: `Admin ${a.email} archivé avant archivage de la compagnie`
-        }))
-      );
-    }
-
-    // 3️⃣ Archiver la compagnie
-    const { error: archiveError } = await supabase
+    // 3️⃣ Supprimer la compagnie
+    const { error: deleteCompanyError } = await supabase
       .from('companies')
-      .update({ archived: true, status: 'Inactif' })
+      .delete()
       .eq('id', id);
 
-    if (archiveError) throw archiveError;
+    if (deleteCompanyError) throw deleteCompanyError;
 
-    // 4️⃣ Journaliser l’archivage
+    // 4️⃣ Journaliser la suppression
     await logActivite({
       module: 'Compagnies',
-      type_activite: 'archive',
-      description: `Compagnie ${company.company_name} archivée`,
+      type_activite: 'delete',
+      categorie: 'Compagnie',
+      description: `Suppression définitive de la compagnie ${company.company_name}`,
       id_admin: req.user?.id,
       id_companie: id
     });
 
-    res.status(200).json({ message: 'Compagnie archivée avec succès', company });
+    res.status(200).json({
+      success: true,
+      message: 'Compagnie supprimée définitivement'
+    });
 
   } catch (err) {
     console.error('Erreur deleteCompanySafe:', err);
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    res.status(500).json({
+      message: 'Erreur serveur',
+      erreur: err.message
+    });
   }
 };
+
 
 
 export const updateCompanyPassword = async (req, res) => {

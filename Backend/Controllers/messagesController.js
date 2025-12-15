@@ -74,6 +74,45 @@ export const getMessagesHistory = async (req, res) => {
   }
 };
 
+// ---------------------------
+// Marquer messages comme lus
+// ---------------------------
+export const markMessagesAsRead = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Token invalide' });
+    }
+
+    const { companyId } = req.params;
+    if (!companyId) {
+      return res.status(400).json({ message: 'companyId requis' });
+    }
+
+    // ADMIN uniquement
+    if (!['Admin', 'admin'].includes(user.role)) {
+      return res.status(403).json({ message: 'Accès refusé' });
+    }
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('id_companie', companyId)
+      .eq('admin_id', user.id)
+      .eq('sender_role', 'company')
+      .eq('is_read', false);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('markMessagesAsRead error:', err);
+    res.status(500).json({ message: 'Erreur marquage messages' });
+  }
+};
+
+
 /// ---------------------------
 // Envoi message
 // ---------------------------
@@ -113,6 +152,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       sender_role: isCompany ? "company" : "admin",
       content,
       admin_id: adminId,
+      is_read: false // 🔥 IMPORTANT
     };
 
     const { data: msg, error } = await supabase
@@ -196,6 +236,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       broadcastToRoom(getRoomKey(adminRoomId, companyId), payload);
       broadcastToRoom(getCompanyRoomKey(companyId), payload);
     }
+
 
     res.status(201).json(payload);
 
@@ -286,5 +327,45 @@ export const uploadAndSendProof = async (req, res, broadcastToRoom) => {
   } catch (err) {
     console.error('uploadAndSendProof error:', err);
     res.status(500).json({ message: 'Erreur upload et envoi preuve', erreur: err.message });
+  }
+};
+
+export const countUnreadMessagesAdmin = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('admin_id', adminId)
+      .eq('sender_role', 'company')
+      .eq('is_read', false);
+
+    if (error) throw error;
+
+    res.json({ unread: count || 0 });
+
+  } catch (err) {
+    res.status(500).json({ unread: 0 });
+  }
+};
+
+export const countUnreadMessagesCompany = async (req, res) => {
+  try {
+    const companyId = req.user.id_companie;
+
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('id_companie', companyId)
+      .eq('sender_role', 'admin')
+      .eq('is_read', false);
+
+    if (error) throw error;
+
+    res.json({ unread: count || 0 });
+
+  } catch (err) {
+    res.status(500).json({ unread: 0 });
   }
 };

@@ -12,7 +12,9 @@ export const createArchive = async ({
   montant = null,
   objet = null,
   periode = null,
-  statut = null
+  statut = null,
+  admin_id = null,
+  admin_nom = null
 }) => {
   const { error } = await supabase
     .from('archives')
@@ -25,6 +27,8 @@ export const createArchive = async ({
       objet,
       periode,
       statut,
+      admin_id,
+      admin_nom,
       date_cloture: new Date()
     });
 

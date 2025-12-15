@@ -1,3 +1,54 @@
+/* ========================================================= */
+/* 💡 GESTION DU THÈME (LIGHT/DARK MODE) */
+/* ========================================================= */
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Référence au bouton de bascule
+       const themeToggle = document.getElementById('theme-toggle');
+       const body = document.body;
+   
+       // 2. Fonction pour appliquer le thème
+       function applyTheme(theme) {
+           if (theme === 'dark') {
+               body.classList.add('dark-mode');
+               localStorage.setItem('theme', 'dark');
+               if (themeToggle) {
+                   // Icône Soleil pour passer au mode clair
+                   themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                   themeToggle.title = "Passer au Mode Clair";
+               }
+           } else {
+               body.classList.remove('dark-mode');
+               localStorage.setItem('theme', 'light');
+               if (themeToggle) {
+                   // Icône Lune pour passer au mode sombre
+                   themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                   themeToggle.title = "Passer au Mode Sombre";
+               }
+           }
+       }
+   
+       // 3. Détecter et appliquer le thème au chargement
+       const savedTheme = localStorage.getItem('theme');
+       if (savedTheme) {
+           applyTheme(savedTheme);
+       } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+           // Utiliser la préférence système si aucune n'est enregistrée
+           applyTheme('dark');
+       } else {
+           applyTheme('light'); // Par défaut au mode clair
+       }
+   
+       // 4. Écouteur d'événement pour le basculement
+       if (themeToggle) {
+           themeToggle.addEventListener('click', () => {
+               const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+               const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+               applyTheme(newTheme);
+           });
+       }
+   });
+   
 const API_URL = "https://assa-ac-jyn4.onrender.com/api/factures";
 const token = localStorage.getItem("jwtTokenAdmin");
 
@@ -33,7 +84,7 @@ async function chargerFactures() {
 
         extraireCompagnies();
         remplirListeCompagnies();
-        remplirTableau(FACTURES);
+        paginateFactures(FACTURES, 8);
 
     } catch (err) {
         console.error("ERREUR CHARGEMENT:", err);
@@ -144,6 +195,9 @@ function remplirTableau(factures) {
    5️⃣ FILTRAGE LOCAL PAR COMPAGNIE + RECHERCHE
    ============================================================ */
    function filtrerFactures() {
+    const selectStatut = document.getElementById("filter-statut");
+    const statutFiltre = selectStatut ? selectStatut.value : "";
+
     const selectMois = document.querySelectorAll(".report-select")[0];  // filtre par mois
     const selectComp = document.querySelectorAll(".report-select")[1];  // filtre par compagnie
     const recherche = document.getElementById("searchInput").value.toLowerCase();
@@ -156,23 +210,30 @@ function remplirTableau(factures) {
         // --- 📅 Filtre par mois ---
         let matchMois = true;
         if (moisFiltre && f.date) {
-            const moisFacture = new Date(f.date).getMonth() + 1; // JS: 0 = Janvier
+            const moisFacture = new Date(f.date).getMonth() + 1;
             matchMois = moisFacture.toString() === moisFiltre;
         }
-
+    
         // --- 🏢 Filtre par compagnie ---
         const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
-
-        // --- 🔍 Filtre recherche ---
+    
+        // --- 💳 Filtre par statut ---
+        let matchStatut = true;
+        if (statutFiltre) {
+            matchStatut = f.status?.toLowerCase() === statutFiltre;
+        }
+    
+        // --- 🔍 Recherche ---
         const matchRecherche =
             f.client.toLowerCase().includes(recherche) ||
             f.numero_facture.toLowerCase().includes(recherche) ||
             f.date.toLowerCase().includes(recherche);
-
-        return matchMois && matchComp && matchRecherche;
+    
+        return matchMois && matchComp && matchStatut && matchRecherche;
     });
+    
+    paginateFactures(result, 8);
 
-    remplirTableau(result);
 }
 
 
@@ -183,8 +244,6 @@ function refaireFacture(numero) {
     // Redirection vers la page de création/modification
     window.location.href = "EnregistreFacture.html";
 }
-
-
 
 // Quand on tape dans la recherche
 function appliquerRecherche() {
@@ -335,6 +394,121 @@ async function voirFacture(numeroFacture) {
     }
 }
 
+function paginateFactures(factures, rowsPerPage = 8) {
+    const pagination = document.getElementById("facture-pagination");
+    let currentPage = 1;
+
+    function renderPage() {
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = factures.slice(start, end);
+
+        remplirTableau(pageData);
+    }
+
+    function renderPagination() {
+        pagination.innerHTML = "";
+        const totalPages = Math.ceil(factures.length / rowsPerPage);
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            btn.classList.toggle("active", i === currentPage);
+
+            btn.onclick = () => {
+                currentPage = i;
+                renderPage();
+                renderPagination();
+            };
+
+            pagination.appendChild(btn);
+        }
+    }
+
+    renderPage();
+    renderPagination();
+}
+
+/* ============================================================
+   🔟 EXPORTER LA LISTE DES FACTURES (CSV)
+   ============================================================ */
+   function exporterFactures() {
+    // 🔁 On reprend EXACTEMENT les filtres actuels
+    const selectStatut = document.getElementById("filter-statut");
+    const statutFiltre = selectStatut ? selectStatut.value : "";
+
+    const selectMois = document.querySelectorAll(".report-select")[0];
+    const selectComp = document.querySelectorAll(".report-select")[1];
+    const recherche = document.getElementById("searchInput")?.value.toLowerCase() || "";
+
+    const moisFiltre = selectMois.value;
+    const compagnieFiltre = selectComp.value;
+
+    const facturesFiltrees = FACTURES.filter(f => {
+        let matchMois = true;
+        if (moisFiltre && f.date) {
+            const moisFacture = new Date(f.date).getMonth() + 1;
+            matchMois = moisFacture.toString() === moisFiltre;
+        }
+
+        const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
+
+        let matchStatut = true;
+        if (statutFiltre) {
+            matchStatut = f.status?.toLowerCase() === statutFiltre;
+        }
+
+        const matchRecherche =
+            f.client?.toLowerCase().includes(recherche) ||
+            f.numero_facture?.toLowerCase().includes(recherche) ||
+            f.date?.toLowerCase().includes(recherche);
+
+        return matchMois && matchComp && matchStatut && matchRecherche;
+    });
+
+    if (!facturesFiltrees.length) {
+        alert("Aucune facture à exporter.");
+        return;
+    }
+
+    // 🧾 En-têtes CSV
+    const headers = [
+        "Numéro facture",
+        "Compagnie",
+        "Date",
+        "Montant (XAF)",
+        "Statut"
+    ];
+
+    const rows = facturesFiltrees.map(f => [
+        f.numero_facture,
+        f.client,
+        f.date,
+        f.amount,
+        f.status
+    ]);
+
+    // 🔥 BOM UTF-8 POUR EXCEL
+    const csvContent = "\uFEFF" + [
+        headers.join(";"),
+        ...rows.map(r => r.join(";"))
+    ].join("\n");
+
+    // ⬇️ Téléchargement
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `factures_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+
 /* ============================================================
    9️⃣ LANCEMENT
    ============================================================ */
@@ -342,5 +516,9 @@ window.onload = chargerFactures;
 
 // Activation du filtre "Par mois"
 document.querySelectorAll(".report-select")[0].addEventListener("change", filtrerFactures);
+document
+    .getElementById("filter-statut")
+    .addEventListener("change", filtrerFactures);
+
 
 

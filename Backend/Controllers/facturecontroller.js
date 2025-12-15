@@ -1,7 +1,9 @@
 // controllers/factureController.js
 import supabase from '../Config/db.js';
 import nodemailer from 'nodemailer';
-import { archiveFactureService } from '../Services/archiveService.js';
+import { createArchive } from '../Services/archiveService.js';
+import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
+
 
 
 
@@ -201,17 +203,16 @@ export const createFacture = async (req, res) => {
     if (factureError) throw factureError;
 
     // 2️⃣ Journal
-    await supabase.from('journal_activite').insert([{
-      id_admin: userId,
-      id_companie: compagnieId,
-      type_activite: 'Création',
-      categorie: 'Facture',
+    await logActivite({
+      module: "Factures",
+      type_activite: "create",
+      categorie: "Facture",
       reference: numero_facture,
       description: `Création de la facture ${numero_facture} pour ${nom_client}`,
-      utilisateur_nom: req.user.nom || null,
-      utilisateur_email: req.user.email || null
-    }]);
-
+      id_admin: userId,
+      id_companie: compagnieId
+    });
+    
     // 3️⃣ Lignes facture
     if (lignes?.length) {
       const lignesToInsert = lignes.map(l => ({
@@ -256,6 +257,22 @@ export const createFacture = async (req, res) => {
     } catch (err) {
       console.error("❌ Échec envoi email :", err);
     }
+
+    // 🔹 ARCHIVAGE (AUDIT)
+    await createArchive({
+      type: "Création de facture",
+      ref: numero_facture,
+      compagnie_id: compagnieId,
+      compagnie_nom: company?.company_name || null,
+      montant: montant_total,
+      statut: 'Impayée',
+
+      // 👤 Auteur réel de l’action
+      admin_id: userId,
+      admin_nom: req.user.nom_complet || req.user.email || 'Administrateur'
+    });
+
+
 
     // Réponse
     res.status(201).json({
@@ -494,16 +511,16 @@ export const updateFacture = async (req, res) => {
       if (lignesError) throw lignesError;
     }
 
-    await supabase.from('journal_activite').insert([{
-      id_admin: req.user.id,
-      id_companie,
-      type_activite: 'Modification',
-      categorie: 'Facture',
+    await logActivite({
+      module: "Factures",
+      type_activite: "update",
+      categorie: "Facture",
       reference: numero_facture,
       description: `Mise à jour de la facture ${numero_facture} (${nom_client})`,
-      utilisateur_nom: req.user.nom || null,
-      utilisateur_email: req.user.email || null
-    }]);
+      id_admin: req.user.id,
+      id_companie
+    });
+    
     
 
     res.status(200).json({ message: 'Facture mise à jour', facture: updatedData });
@@ -541,16 +558,16 @@ export const archiveFacture = async (req, res) => {
       .eq('numero_facture', numero_facture);
 
     // Journal d'activité
-    await supabase.from('journal_activite').insert([{
-      id_admin: req.user.id,
-      id_companie,
-      type_activite: 'Archivage',
-      categorie: 'Facture',
+    await logActivite({
+      module: "Factures",
+      type_activite: "archive",
+      categorie: "Facture",
       reference: numero_facture,
       description: `Facture ${numero_facture} archivée`,
-      utilisateur_nom: req.user.nom || null,
-      utilisateur_email: req.user.email || null
-    }]);
+      id_admin: req.user.id,
+      id_companie
+    });
+    
     
 
     // Création d’une entrée dans la table archives
@@ -590,16 +607,16 @@ export const updateFactureStatut = async (req, res) => {
 
     if (error || !data) return res.status(404).json({ message: 'Facture non trouvée ou accès refusé' });
 
-    await supabase.from('journal_activite').insert([{
-      id_admin: req.user.id,
-      id_companie,
-      type_activite: 'Statut',
-      categorie: 'Facture',
+    await logActivite({
+      module: "Factures",
+      type_activite: "update",
+      categorie: "Facture",
       reference: numero_facture,
-      description: `Statut mis à jour : ${statut} pour la facture ${numero_facture}`,
-      utilisateur_nom: req.user.nom || null,
-      utilisateur_email: req.user.email || null
-    }]);
+      description: `Statut de la facture mis à jour : ${statut}`,
+      id_admin: req.user.id,
+      id_companie
+    });
+    
     
 
     res.status(200).json({ success: true, message: `Statut mis à jour en "${statut}"`, facture: data });
@@ -609,46 +626,189 @@ export const updateFactureStatut = async (req, res) => {
   }
 };
 
+// ===============================================================
+// 📧 EMAIL : Confirmation de paiement facture
+// ===============================================================
+const sendPaymentConfirmationEmail = async (
+  to,
+  numero_facture,
+  montant_total,
+  company_name
+) => {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+
+  const mailOptions = {
+    from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `Confirmation de paiement – Facture ${numero_facture}`,
+    text: `
+Bonjour,
+
+Nous confirmons la réception du paiement de la facture ${numero_facture}.
+Montant : ${montant_total} XAF
+
+Merci pour votre confiance.
+
+ASSA-AC
+    `,
+    html: `
+      <p>Bonjour,</p>
+
+      <p>Nous confirmons la réception du paiement de la facture suivante :</p>
+
+      <ul>
+        <li><strong>Facture :</strong> ${numero_facture}</li>
+        <li><strong>Montant :</strong> ${montant_total} XAF</li>
+        <li><strong>Compagnie :</strong> ${company_name || '-'}</li>
+        <li><strong>Statut :</strong> <span style="color:green;">Payée</span></li>
+      </ul>
+
+      <p>Merci pour votre confiance.</p>
+
+      <p>
+        Cordialement,<br>
+        <strong>ASSA-AC</strong>
+      </p>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+
 export const confirmerFacture = async (req, res) => {
   try {
-    let numero_facture = decodeURIComponent(req.params.numero_facture);
+    const numero_facture = decodeURIComponent(req.params.numero_facture);
 
-    const { data: facture, error } = await supabase
+    /* =======================================================
+       1️⃣ RÉCUPÉRATION FACTURE
+    ======================================================== */
+    const { data: facture, error: factureError } = await supabase
       .from("factures")
       .select("*")
       .eq("numero_facture", numero_facture)
       .single();
 
-    if (error || !facture) {
+    if (factureError || !facture) {
       return res.status(404).json({ message: "Facture introuvable." });
     }
 
-    const { data: updated, error: updateError } = await supabase
+    /* =======================================================
+       2️⃣ DÉJÀ PAYÉE ?
+    ======================================================== */
+    if (facture.statut === "Payée") {
+      return res.status(400).json({
+        message: "Cette facture est déjà confirmée payée."
+      });
+    }
+
+    /* =======================================================
+       3️⃣ MISE À JOUR STATUT
+    ======================================================== */
+    const { data: updatedFacture, error: updateError } = await supabase
       .from("factures")
-      .update({ statut: "Payée", updated_at: new Date() })
+      .update({
+        statut: "Payée",
+        updated_at: new Date()
+      })
       .eq("numero_facture", numero_facture)
       .select()
       .single();
 
-      await supabase.from('journal_activite').insert([{
-        id_admin: req.user.id,
-        id_companie: facture.id_companie,
-        type_activite: 'Confirmation',
-        categorie: 'Facture',
-        reference: numero_facture,
-        description: `Confirmation du paiement de la facture ${numero_facture}`,
-        utilisateur_nom: req.user.nom || null,
-        utilisateur_email: req.user.email || null
-      }]);
-      
-    res.json({
+    if (updateError) throw updateError;
+
+    /* =======================================================
+       4️⃣ RÉCUPÉRATION COMPAGNIE
+    ======================================================== */
+    const { data: company, error: companyError } = await supabase
+      .from("companies")
+      .select("company_name, email")
+      .eq("id", facture.id_companie)
+      .single();
+
+    if (companyError) {
+      console.warn("⚠ Erreur récupération compagnie :", companyError.message);
+    }
+
+    /* =======================================================
+       5️⃣ JOURNAL D’ACTIVITÉ
+    ======================================================== */
+    await logActivite({
+      module: "Factures",
+      type_activite: "update",
+      categorie: "Facture",
+      reference: numero_facture,
+      description: `Confirmation du paiement de la facture ${numero_facture}`,
+      id_admin: req.user.id,
+      id_companie: facture.id_companie,
+      utilisateur_nom:
+        req.user.nom_complet ||
+        req.user.email ||
+        "Administrateur",
+      utilisateur_email: req.user.email || null
+    });
+
+    /* =======================================================
+       6️⃣ ARCHIVAGE (AUDIT)
+    ======================================================== */
+    await createArchive({
+      type: "Confirmation de paiement",
+      ref: numero_facture,
+      compagnie_id: facture.id_companie,
+      compagnie_nom: company?.company_name || null,
+      montant: facture.montant_total,
+      statut: "Payée",
+      admin_id: req.user.id,
+      admin_nom:
+        req.user.nom_complet ||
+        req.user.nom ||
+        req.user.email ||
+        "Administrateur"
+    });
+
+    /* =======================================================
+       7️⃣ ENVOI EMAIL (NON BLOQUANT)
+    ======================================================== */
+    try {
+      if (company?.email) {
+        await sendPaymentConfirmationEmail(
+          company.email,
+          numero_facture,
+          facture.montant_total,
+          company.company_name
+        );
+        console.log("📧 Email confirmation paiement envoyé à", company.email);
+      }
+    } catch (mailErr) {
+      console.error("❌ Erreur envoi email confirmation :", mailErr.message);
+    }
+
+    /* =======================================================
+       8️⃣ RÉPONSE
+    ======================================================== */
+    return res.status(200).json({
       success: true,
-      message: "Facture confirmée",
-      facture: updated
+      message: "Facture confirmée et notification envoyée",
+      facture: updatedFacture
     });
 
   } catch (err) {
-    res.status(500).json({ message: "Erreur confirmation facture" });
+    console.error("❌ Erreur confirmerFacture :", err);
+    return res.status(500).json({
+      message: "Erreur confirmation facture",
+      error: err.message
+    });
   }
 };
 

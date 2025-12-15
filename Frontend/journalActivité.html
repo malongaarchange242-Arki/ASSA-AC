@@ -18,8 +18,8 @@
             <a href="AccueilAdmin.html" ><i class="fas fa-th-large"></i> Tableau de Bord</a>
             <a href="gestioncompagnie.html"><i class="fas fa-building"></i> Gestion des Compagnies</a>
             <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
-            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Archives</a>
             <a href="messagerieAdmin.html"><i class="fas fa-comments"></i> Messagerie</a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Registre des opérations</a>
             <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
             <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
         </nav>
@@ -36,11 +36,11 @@
                 </div>
                 
                 <div class="user-interaction-group">
+                    <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i class="fas fa-moon"></i></button>
+                    
                     <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
-                    <button class="icon-btn" title="Messages"><i class="fas fa-envelope"></i></button>
                     <div class="user-info">
-                        <img src="https://via.placeholder.com/150/0B3F7B/FFFFFF?text=AD" alt="Avatar" class="user-avatar">
-                        <span>Admin Dupont <i class="fas fa-caret-down"></i></span>
+                        <img src="Icône profile.png" alt="Avatar" class="user-avatar">
                     </div>
                 </div>
             </div>
@@ -53,13 +53,11 @@
             </div>
             
             <div class="filter-actions-bar">
-                <label for="filter-user">Utilisateur :</label>
+                <label for="filter-user">Utilisateur </label>
                 <select id="filter-user">
                     <option value="">Tous</option>
-                    <option value="admin">Admin Dupont</option>
-                    <option value="client_at">AfriTech Solutions</option>
-                    <option value="client_cf">Cairo Financial Corp</option>
                 </select>
+                
 
                 <label for="filter-action">Type d'Action :</label>
                 <select id="filter-action">
@@ -83,76 +81,18 @@
 
             <div class="log-container">
                 <ul class="activity-list">
-                    
-                    <!-- <li class="activity-item">
-                        <div class="log-icon update"><i class="fas fa-pen"></i></div>
-                        <div class="log-details">
-                            **Admin Dupont** a mis à jour le statut de la **Facture INV-2025-1025** de 'Émise' à 'En Attente de Paiement'.
-                            <div class="log-metadata">
-                                Module : Facturation | <span class="user-name">Admin Dupont</span> | <span class="time">17:28:45</span>
-                            </div>
-                        </div>
-                    </li>
-                    
-                    <li class="activity-item">
-                        <div class="log-icon create"><i class="fas fa-file-invoice-dollar"></i></div>
-                        <div class="log-details">
-                            **Admin Dupont** a créé une nouvelle **Facture INV-2025-1026** pour **Lagos Digital Hub** d'un montant de 1.5M XAF.
-                            <div class="log-metadata">
-                                Module : Facturation | <span class="user-name">Admin Dupont</span> | <span class="time">17:15:02</span>
-                            </div>
-                        </div>
-                    </li>
-                    
-                    <li class="activity-item">
-                        <div class="log-icon system"><i class="fas fa-lock-open"></i></div>
-                        <div class="log-details">
-                            **Cairo Financial Corp** s'est connecté au portail client depuis l'adresse IP 192.168.1.10.
-                            <div class="log-metadata">
-                                Module : Système | <span class="user-name">Utilisateur Cairo</span> | <span class="time">16:40:11</span>
-                            </div>
-                        </div>
-                    </li>
-
-                    <li class="activity-item">
-                        <div class="log-icon delete"><i class="fas fa-archive"></i></div>
-                        <div class="log-details">
-                            **Admin Dupont** a archivé la **Compagnie Dakar Trade Co.** (Fiche Inactive #1007).
-                            <div class="log-metadata">
-                                Module : Compagnies | <span class="user-name">Admin Dupont</span> | <span class="time">15:55:20</span>
-                            </div>
-                        </div>
-                    </li>
-                    
-                    <li class="activity-item">
-                        <div class="log-icon update"><i class="fas fa-comments"></i></div>
-                        <div class="log-details">
-                            **AfriTech Solutions** a envoyé une réponse dans le **Ticket Messagerie #456**.
-                            <div class="log-metadata">
-                                Module : Messagerie | <span class="user-name">Utilisateur AfriTech</span> | <span class="time">15:30:10</span>
-                            </div>
-                        </div>
-                    </li>
-                    
-                    <li class="activity-item">
-                        <div class="log-icon system"><i class="fas fa-sign-in-alt"></i></div>
-                        <div class="log-details">
-                            **Admin Dupont** s'est connecté au tableau de bord.
-                            <div class="log-metadata">
-                                Module : Système | <span class="user-name">Admin Dupont</span> | <span class="time">14:01:05</span>
-                            </div>
-                        </div>
-                    </li> -->
-
+    
                 </ul>
             </div>
+
+            <div id="activity-pagination" class="pagination"></div>
+
             
             </div>
     </div>
 
-    <script src="/Frontend/Js/script.js"></script>
-    <script src="theme.js"></script>
-    <script src="/Frontend/Js/journalActivité.js"></script>
+    
+    <script src="journalActivité.js"></script>
 
 
 </body>

@@ -148,30 +148,20 @@ body {
     background-color: var(--header-bg);
     padding: 15px 30px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    position: sticky;
-    top: 0;
-    z-index: 999;
+    /* Ajustement pour que le contenu soit aligné à droite */
+    justify-content: flex-end; 
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0; 
+    transition: background-color 0.3s, box-shadow 0.3s;
 }
 
-.search-bar input {
-    padding: 10px 15px;
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    width: 300px;
-    outline: none;
-    transition: border-color 0.2s;
-    background-color: var(--card-bg);
-    color: var(--text-color);
+/* La barre de recherche n'existe plus dans le HTML, nous n'avons donc pas besoin de styles spécifiques */
+.search-bar {
+    display: none; /* Assure sa non-visibilité même si elle est oubliée */
 }
 
-.search-bar input:focus {
-    border-color: var(--primary-blue);
-}
-
-.user-profile {
+.user-interaction-group {
     display: flex;
     align-items: center;
 }
@@ -179,7 +169,7 @@ body {
 .icon-btn {
     background: none;
     border: none;
-    color: var(--text-color);
+    color: var(--text-color-header); 
     margin-left: 15px;
     cursor: pointer;
     font-size: 1.1em;
@@ -194,8 +184,11 @@ body {
 .user-info {
     display: flex;
     align-items: center;
-    margin-left: 20px;
+    margin-left: 25px; 
     cursor: pointer;
+    border-left: 1px solid var(--border-color); 
+    padding-left: 25px;
+    color: var(--text-color-header);
 }
 
 .user-avatar {
@@ -207,6 +200,7 @@ body {
     object-fit: cover;
 }
 
+/* ================================================== */
 /* ================== Dashboard Grid ================== */
 .dashboard-grid {
     padding: 30px;
@@ -316,4 +310,24 @@ body {
 
 .activity-table tr:last-child td {
     border-bottom: none;
+}
+
+
+.notification-btn {
+    position: relative;
+}
+
+.notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #e53935;
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 999px;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px white;
 }

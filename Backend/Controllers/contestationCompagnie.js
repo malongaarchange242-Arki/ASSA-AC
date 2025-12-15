@@ -1,6 +1,7 @@
 import supabase from '../Config/db.js';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+import nodemailer from "nodemailer";
 
 // ================= Multer =================
 const storage = multer.memoryStorage();
@@ -8,54 +9,147 @@ export const uploadContestationFiles = multer({ storage }).array('files', 5);
 
 const BUCKET = "Attachement_message";
 
-// ================= Controller Contestation =================
+// ================= EMAIL =================
+const sendContestationEmail = async ({
+  to,
+  numero_facture,
+  company_name,
+  explication
+}) => {
+  try {
+    if (!to) {
+      console.warn("⚠ Email admin manquant");
+      return;
+    }
+
+    const port = Number(process.env.SMTP_PORT);
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure: port === 465,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+
+    const mailOptions = {
+      from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
+      to,
+      subject: `⚠ Contestation de la facture ${numero_facture}`,
+      text: `
+Bonjour,
+
+La facture ${numero_facture} a été contestée par la compagnie ${company_name}.
+
+Motif de la contestation :
+${explication}
+
+Veuillez vous connecter à la plateforme pour plus de détails.
+
+Cordialement,
+ASSA-AC
+      `,
+      html: `
+        <p>Bonjour,</p>
+
+        <p>
+          La facture <strong>${numero_facture}</strong> a été
+          <strong style="color:#d9534f;">contestée</strong>
+          par la compagnie <strong>${company_name}</strong>.
+        </p>
+
+        <p><strong>Motif de la contestation :</strong></p>
+
+        <blockquote style="
+          background:#f8f9fa;
+          padding:10px;
+          border-left:4px solid #d9534f;
+        ">
+          ${explication}
+        </blockquote>
+
+        <p>
+          Veuillez vous connecter à la plateforme pour consulter
+          les détails de la contestation.
+        </p>
+
+        <p>
+          Cordialement,<br>
+          <strong>ASSA-AC</strong>
+        </p>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Email contestation envoyé :", info.messageId);
+
+  } catch (error) {
+    console.error("❌ ERREUR EMAIL CONTESTATION :", error);
+  }
+};
+
+
+// ================= Controller =================
 export const uploadContestation = async (req, res) => {
   try {
-    console.log("📥 Reçu contestation :", req.body, "files:", req.files?.length);
+    console.log("📥 Nouvelle contestation reçue");
 
+    // ================= Auth =================
     const user = req.user;
-    if (!user) return res.status(401).json({ message: "Token invalide" });
+    if (!user) {
+      console.warn("❌ Aucun utilisateur dans req.user");
+      return res.status(401).json({ message: "Token invalide" });
+    }
 
-    const companyId = req.body.id_companie || user.id_companie || user.company_id;
-    if (!companyId) return res.status(400).json({ message: "id_companie requis" });
+    console.log("👤 Utilisateur :", {
+      id: user.id,
+      role: user.role,
+      id_companie: user.id_companie
+    });
 
-    const numero_facture = req.body.numero_facture;
-    const explication = (req.body.explication || "").trim();
+    // ================= Données =================
+    const companyId = req.body.id_companie ?? user.id_companie;
+    const { numero_facture, explication } = req.body;
 
-    if (!numero_facture || !explication) {
+    console.log("📄 Facture :", numero_facture);
+
+    if (!numero_facture || !explication?.trim()) {
+      console.warn("❌ Champs requis manquants");
       return res.status(400).json({
-        message: "numero_facture et explication requis"
+        message: "Le numéro de facture et l'explication sont obligatoires"
       });
     }
 
-    // ==========================
-    // 1️⃣ Vérifier facture
-    // ==========================
+    // ================= Facture =================
     const { data: facture, error: factureErr } = await supabase
       .from("factures")
-      .select("id, id_companie")
+      .select("id, id_companie, id_admin")
       .eq("numero_facture", numero_facture)
       .maybeSingle();
 
-    if (factureErr) return res.status(500).json({ message: "Erreur récupération facture", erreur: factureErr.message });
-    if (!facture) return res.status(404).json({ message: "Facture introuvable" });
-
-    if (String(user.role).toLowerCase() === "company" && facture.id_companie !== companyId) {
-      return res.status(403).json({ message: "Accès refusé à cette facture" });
+    if (factureErr || !facture) {
+      console.error("❌ Facture introuvable :", factureErr);
+      return res.status(404).json({ message: "Facture introuvable" });
     }
 
-    const facture_id = facture.id;
+    console.log("✅ Facture trouvée :", facture);
 
-    // ==========================
-    // 2️⃣ Upload fichiers
-    // ==========================
+    if (
+      String(user.role).toLowerCase() === "company" &&
+      String(facture.id_companie) !== String(companyId)
+    ) {
+      console.warn("⛔ Accès refusé à la facture");
+      return res.status(403).json({ message: "Accès refusé" });
+    }
+
+    // ================= Upload fichiers =================
     const uploadedFiles = [];
-    const files = req.files || [];
 
-    console.log("📎 Fichiers reçus :", files.length);
+    console.log("📎 Nombre de fichiers :", req.files?.length || 0);
 
-    for (const file of files) {
-      const ext = file.originalname.split(".").pop();
+    for (const file of req.files || []) {
       const safeName = file.originalname
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -65,62 +159,91 @@ export const uploadContestation = async (req, res) => {
 
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
-        .upload(filename, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false
-        });
+        .upload(filename, file.buffer, { contentType: file.mimetype });
 
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) {
+        console.error("❌ Erreur upload fichier :", uploadErr);
+        return res.status(500).json({ message: "Erreur upload fichier" });
+      }
 
-      const { data: urlObj } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
 
       uploadedFiles.push({
         file_name: file.originalname,
-        file_url: urlObj.publicUrl
+        file_url: data.publicUrl
       });
     }
 
-    // ==========================
-    // 3️⃣ Enregistrement DB
-    // ==========================
-    const { data: contestData, error: contestErr } = await supabase
+    console.log("✅ Fichiers uploadés :", uploadedFiles.length);
+
+    // ================= Contestation =================
+    const { data: contestation, error: contestErr } = await supabase
       .from("contestation")
       .insert([{
-        facture_id,
+        facture_id: facture.id,
         id_companie: companyId,
-        explication,
+        explication: explication.trim(),
         fichiers: uploadedFiles,
         date_contestation: new Date()
       }])
       .select()
       .single();
 
-    if (contestErr) throw contestErr;
+    if (contestErr) {
+      console.error("❌ Erreur insertion contestation :", contestErr);
+      return res.status(500).json({ message: "Erreur enregistrement contestation" });
+    }
 
-    // ==========================
-    // 4️⃣ Statut facture
-    // ==========================
-    console.log("🔄 Mise à jour facture → Contestée");
+    console.log("✅ Contestation enregistrée :", contestation.id);
 
+    // ================= Mise à jour facture =================
     await supabase
       .from("factures")
       .update({ statut: "Contestée" })
-      .eq("id", facture_id);
+      .eq("id", facture.id);
 
-    // ==========================
-    // 5️⃣ Réponse
-    // ==========================
-    res.status(201).json({
+    console.log("🔄 Facture mise à jour → Contestée");
+
+    // ================= Admin =================
+    const { data: admin } = await supabase
+      .from("admins")
+      .select("email")
+      .eq("id", facture.id_admin)
+      .maybeSingle();
+
+    console.log("👨‍💼 Admin email :", admin?.email);
+
+    // ================= Company =================
+    const { data: company } = await supabase
+      .from("companies")
+      .select("company_name")
+      .eq("id", companyId)
+      .maybeSingle();
+
+    console.log("🏢 Compagnie :", company?.company_name);
+
+    // ================= EMAIL (non bloquant) =================
+    sendContestationEmail({
+      to: admin?.email,
+      numero_facture,
+      company_name: company?.company_name || "Compagnie",
+      explication: explication.trim()
+    }).catch(err =>
+      console.error("❌ Erreur envoi email contestation :", err)
+    );
+
+    // ================= Réponse =================
+    return res.status(201).json({
       success: true,
-      message: "Contestation enregistrée",
-      contestation: contestData
+      message: "Contestation envoyée et email notifié",
+      contestation
     });
 
   } catch (err) {
-    console.error("⛔ ERREUR uploadContestation :", err);
+    console.error("🔥 ERREUR uploadContestation :", err);
     return res.status(500).json({
-      message: "Erreur soumission contestation",
-      erreur: err.message
+      message: "Erreur interne serveur",
+      error: err.message
     });
   }
 };

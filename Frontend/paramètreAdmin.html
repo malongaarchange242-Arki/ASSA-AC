@@ -18,8 +18,8 @@
             <a href="AccueilAdmin.html" ><i class="fas fa-th-large"></i> Tableau de Bord</a>
             <a href="gestioncompagnie.html"><i class="fas fa-building"></i> Gestion des Compagnies</a>
             <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
-            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Archives</a>
             <a href="messagerieAdmin.html"><i class="fas fa-comments"></i> Messagerie</a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Registre des opérations</a>
             <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
             <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
         </nav>
@@ -31,16 +31,10 @@
     <div class="main-content">
         
         <div class="header">
-            <div class="search-bar">
-                <input type="text" placeholder="Rechercher un paramètre ou une option...">
-            </div>
-            
             <div class="user-interaction-group">
                 <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
-                <button class="icon-btn" title="Messages"><i class="fas fa-envelope"></i></button>
                 <div class="user-info">
-                    <img src="https://via.placeholder.com/150/0B3F7B/FFFFFF?text=AD" alt="Avatar" class="user-avatar">
-                    <span>Admin Dupont <i class="fas fa-caret-down"></i></span>
+                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
                 </div>
             </div>
         </div>
@@ -49,12 +43,9 @@
             
             <nav class="settings-nav">
                 <a href="#general" class="settings-active"><i class="fas fa-info-circle"></i> Général</a>
-                <a href="#users"><i class="fas fa-users-cog"></i> Utilisateurs & Accès</a>
-                <a href="#billing"><i class="fas fa-file-signature"></i> Facturation & Docs</a>
                 <a href="#themes"><i class="fas fa-palette"></i> Thèmes & Apparence</a> 
                 <a href="#security"><i class="fas fa-shield-alt"></i> Sécurité</a>
-                <a href="#notifications"><i class="fas fa-bell"></i> Notifications</a>
-            </nav>
+                </nav>
             
             <div class="settings-content">
                 
@@ -67,9 +58,6 @@
                         <div class="form-action-bar"><button type="submit"><i class="fas fa-save"></i> Sauvegarder les Paramètres Généraux</button></div>
                     </form>
                 </div>
-
-                <div id="users" class="settings-section" style="display: none;"><h2>Gestion des Utilisateurs Admin</h2><p>Contenu de la gestion des rôles et accès...</p></div>
-                <div id="billing" class="settings-section" style="display: none;"><h2>Paramètres de Facturation et Documents</h2><p>Gestion de la numérotation des factures, modèles de devis, etc.</p></div>
 
                 <div id="themes" class="settings-section" style="display: none;">
                     <h2>Thèmes et Mode d'Affichage</h2>
@@ -117,8 +105,6 @@
                     <h3 style="font-size: 1.1em; color: var(--primary-blue); margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border-color);">Authentification à Deux Facteurs (2FA)</h3>
                     <p style="font-size: 0.9em; color: #70757A;">Renforcez la sécurité de votre compte en activant la vérification en deux étapes.</p>
                 </div>
-
-                <div id="notifications" class="settings-section" style="display: none;"><h2>Préférences de Notifications</h2><p>Configuration des alertes par email et sur le tableau de bord.</p></div>
                 
             </div>
         </div>

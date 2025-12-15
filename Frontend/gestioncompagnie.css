@@ -1,3 +1,4 @@
+/* ================== Variables CSS (Light Mode) ================== */
 :root {
     --primary-blue: #1A73E8;
     --dark-blue: #0B3F7B;
@@ -11,13 +12,47 @@
     --status-inactive: #A0A0A0;
     --status-pending: #F9AB00;
     --nav-text-default: #E0E0E0; 
+
+    /* Backgrounds spécifiques pour light mode */
+    --sidebar-bg: var(--dark-blue);
+    --header-bg: white;
+    --card-bg: white;
 }
 
-body { font-family: 'Arial', sans-serif; margin:0; padding:0; background-color: var(--light-bg); display:flex; min-height:100vh; color:var(--text-color); }
+/* ================== Dark Mode ================== */
+body.dark-mode {
+    --primary-blue: #3399ff;
+    --dark-blue: #1e1e1e;
+    --light-bg: #121212;
+    --text-color: #e0e0e0;
+    --border-color: #333;
+    --alert-red: #ff5555;
+    --neon-blue: rgba(51, 153, 255, 0.7);
+    --status-active: #5cb85c;
+    --status-inactive: #6c757d;
+    --status-pending: #ffc107;
+    --nav-text-default: #B0B0B0;
+
+    /* Backgrounds spécifiques pour dark mode */
+    --sidebar-bg: #1b1b1b;
+    --header-bg: #1b1b1b;
+    --card-bg: #1c1c1c;
+}
+
+/* ================== Global ================== */
+body { 
+    font-family: 'Arial', sans-serif; 
+    margin:0; 
+    padding:0; 
+    background-color: var(--light-bg); 
+    display:flex; 
+    min-height:100vh; 
+    color:var(--text-color); 
+}
 
 .sidebar {
     width: var(--sidebar-width);
-    background-color: var(--dark-blue);
+    background-color: var(--sidebar-bg);
     color: white;
     padding: 20px 0;
     display: flex;
@@ -31,24 +66,21 @@ body { font-family: 'Arial', sans-serif; margin:0; padding:0; background-color: 
     box-sizing:border-box;
 }
 
-        /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
-        .header-logo-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 25px; 
-        }
-        
-        /* Style du texte "ASSA-AC PORTAL" */
-        .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #0dace0;
-            margin-left: 15px; 
-            letter-spacing: 1px;
-        }
+.header-logo-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px; 
+}
 
-        /* STYLE LOGO ASSA-AC (40px) */
-        #assaac-logo { height: 70px; width: auto; }
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0dace0;
+    margin-left: 15px; 
+    letter-spacing: 1px;
+}
+
+#assaac-logo { height: 70px; width: auto; }
 .nav-menu { flex-grow:1; }
 .sidebar-header { text-align:center; padding:0 20px 30px; font-size:1.8em; font-weight:bold; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:white; }
 .sidebar-bottom { padding:10px 0; border-top:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
@@ -58,14 +90,58 @@ body { font-family: 'Arial', sans-serif; margin:0; padding:0; background-color: 
 .nav-menu a.active-company, .nav-menu a.active { background-color: var(--primary-blue); color:white; font-weight:bold; border-left:4px solid white; padding-left:16px; }
 
 .main-content { flex-grow:1; margin-left:var(--sidebar-width); overflow-y:auto; height:100vh; }
-.header { background-color:white; padding:15px 30px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:999; flex-shrink:0; }
+
+/* ================== HEADER RÉINTÉGRÉ (Avec Recherche) ================== */
+.header { 
+    background-color:var(--header-bg); 
+    padding:15px 30px; 
+    display:flex; 
+    /* CHANGEMENT: Réaligne pour laisser de la place à la recherche */
+    justify-content:space-between; 
+    align-items:center; 
+    box-shadow:0 1px 4px rgba(0,0,0,0.05); 
+    position:sticky; 
+    top:0; 
+    z-index:999; 
+    flex-shrink:0; 
+}
 .user-interaction-group { display:flex; align-items:center; }
+
+/* Styles de la barre de recherche réintégrés */
 .search-bar { flex-grow:0; max-width:400px; margin-right:20px; }
-.search-bar input { padding:10px 15px; border:1px solid var(--border-color); border-radius:20px; width:300px; outline:none; background-color:white; color:var(--text-color); }
-.icon-btn { background:none; border:none; color:var(--text-color); margin-left:15px; cursor:pointer; font-size:1.1em; padding:5px; transition:color 0.2s; }
+.search-bar input { 
+    padding:10px 15px; 
+    border:1px solid var(--border-color); 
+    border-radius:20px; 
+    width:300px; 
+    outline:none; 
+    background-color:var(--card-bg); /* S'adapte au mode nuit */
+    color:var(--text-color); 
+}
+
+.icon-btn { 
+    background:none; 
+    border:none; 
+    color:var(--text-color);
+    margin-left:15px; 
+    cursor:pointer; 
+    font-size:1.1em; 
+    padding:5px; 
+    transition:color 0.2s; 
+}
 .icon-btn:hover { color: var(--primary-blue); }
-.user-info { display:flex; align-items:center; margin-left:20px; cursor:pointer; border-left:1px solid var(--border-color); padding-left:20px; }
+
+.user-info { 
+    display:flex; 
+    align-items:center; 
+    margin-left:20px; 
+    cursor:pointer; 
+    border-left:1px solid var(--border-color); 
+    padding-left:20px; 
+}
 .user-avatar { width:35px; height:35px; border-radius:50%; background-color:#ccc; margin-right:10px; object-fit:cover; }
+/* ================================================== */
+
 
 .company-management { padding:30px; }
 .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
@@ -76,10 +152,20 @@ body { font-family: 'Arial', sans-serif; margin:0; padding:0; background-color: 
 .action-buttons a.btn-add:hover { background-color:#0b5ed7; }
 
 .company-card-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px; }
-.company-card { background-color:white; border-radius:8px; padding:20px; box-shadow:0 2px 6px rgba(0,0,0,0.1); border-left:5px solid var(--primary-blue); transition:transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
-.company-card:hover { transform:translateY(-4px); box-shadow:0 0 10px var(--neon-blue),0 0 20px var(--neon-blue),0 6px 15px rgba(0,0,0,0.15); border-left-color: var(--primary-blue); }
+.company-card { 
+    background-color:var(--card-bg); 
+    border-radius:8px; 
+    padding:20px; 
+    box-shadow:0 2px 6px rgba(0,0,0,0.1); 
+    border-left:5px solid var(--primary-blue); 
+    transition:transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; 
+}
+.company-card:hover { 
+    transform:translateY(-4px); 
+    box-shadow:0 0 10px var(--neon-blue),0 0 20px var(--neon-blue),0 6px 15px rgba(0,0,0,0.15); 
+    border-left-color: var(--primary-blue); 
+}
 
-/* Logo intégré dans le header */
 .card-header {
     display: flex;
     align-items: center;
@@ -104,6 +190,7 @@ body { font-family: 'Arial', sans-serif; margin:0; padding:0; background-color: 
 .card-actions button { background:none; border:none; color:var(--primary-blue); cursor:pointer; margin-left:15px; font-size:1em; transition:color 0.2s; }
 .card-actions button:hover { color: var(--alert-red); }
 .status-badge { display:inline-block; padding:5px 10px; border-radius:12px; font-size:0.75em; font-weight:bold; text-transform:uppercase; color:white; }
+
 .status-badge.active { background-color: var(--status-active); }
 .status-badge.inactive { background-color: var(--status-inactive); }
 .status-badge.pending { background-color: var(--status-pending); }

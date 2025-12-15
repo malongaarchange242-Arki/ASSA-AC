@@ -3,7 +3,15 @@ import supabase from '../Config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
-import { archiveAdminService, restoreAdminService } from '../Services/archiveService.js';
+
+import {
+  archiveAdminService,
+  restoreAdminService,
+  createArchive
+} from '../Services/archiveService.js';
+
+import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
+
 
 /* ---------------------------------------------------------
    🔹 Profils spéciaux et permissions
@@ -88,6 +96,17 @@ export const loginAdmin = async (req, res) => {
       permissions: payload.permissions,
       id_companie: payload.id_companie
     });
+
+    await logActivite({
+      type_activite: 'system',
+      categorie: 'auth',
+      module: 'login',
+      description: 'Connexion administrateur',
+      id_admin: user.id,
+      utilisateur_email: user.email,
+      utilisateur_nom: user.nom_complet
+    });
+    
 
   } catch (err) {
     console.error('Erreur loginAdmin :', err);
@@ -205,13 +224,48 @@ export const createCompany = async (req, res) => {
     .from('admin_companies')
     .insert([{ admin_id: adminId, company_id: newCompany.id, role: role || 'Administrateur', created_at: new Date() }]);
 
+  // Association admin_companies OK
   if (linkError) {
     console.error('Erreur association admin_companies :', linkError);
-    return res.status(201).json({ message: 'Compagnie créée, association admin échouée', company: newCompany, erreur_association: linkError.message });
+    return res.status(201).json({
+      message: 'Compagnie créée, association admin échouée',
+      company: newCompany,
+      erreur_association: linkError.message
+    });
   }
 
-  res.status(201).json({ message: 'Compagnie créée avec succès et admin associé', company: newCompany });
+  console.log("USER JWT :", req.user);
+
+  // 🔹 ARCHIVAGE (AUDIT)
+  await createArchive({
+    type: "Création de compagnie",
+    ref: newCompany.id,
+    compagnie_id: newCompany.id,
+    compagnie_nom: newCompany.company_name,
+    statut: newCompany.status,
+    admin_id: adminId,
+    admin_nom: req.user.nom_complet || req.user.email || 'Administrateur'
+  });
+
+  await logActivite({
+    type_activite: 'create',
+    categorie: 'company',
+    module: 'companies',
+    reference: newCompany.company_name,
+    description: `Compagnie ${newCompany.company_name} créée`,
+    id_admin: adminId,
+    id_companie: newCompany.id,
+    utilisateur_nom: req.user.nom_complet || 'Administrateur',
+    utilisateur_email: req.user.email
+  });
   
+  
+  res.status(201).json({
+    message: 'Compagnie créée avec succès et admin associé',
+    company: newCompany
+  });
+
+    
   
   } catch (err) {
   console.error('Erreur createCompany :', err);
@@ -285,6 +339,18 @@ export const updateAdminPassword = async (req, res) => {
     if (updateError) return res.status(500).json({ message: 'Erreur mise à jour mot de passe', erreur: updateError.message });
 
     res.json({ message: 'Mot de passe mis à jour avec succès' });
+
+    await logActivite({
+      type_activite: 'update',
+      categorie: 'security',
+      module: 'admins',
+      reference: 'password',
+      description: 'Mot de passe administrateur modifié',
+      id_admin: req.userId,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
+      utilisateur_email: req.user?.email || null
+    });
+    
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }

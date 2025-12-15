@@ -96,38 +96,60 @@ async function renderContestationsView() {
     if (!select) return;
 
     const token = localStorage.getItem('jwtTokenCompany');
-    const id_companie = localStorage.getItem('id_companie');
-    if (!token || !id_companie) { select.innerHTML = '<option value="">Connexion requise</option>'; return; }
+    if (!token) {
+        select.innerHTML = '<option value="">Connexion requise</option>';
+        return;
+    }
 
     let base = API_BASE;
     let url = `${base}/api/factures/company`;
     let resp;
+
     try {
-        resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        resp = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
     } catch (e) {
+        // 🔁 fallback local
         base = 'https://assa-ac-jyn4.onrender.com';
         url = `${base}/api/factures/company`;
-        resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        resp = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
     }
-    const data = await resp.json().catch(()=>[]);
-    SERVER_INVOICES = Array.isArray(data) ? data : [];
-    const contestableInvoices = SERVER_INVOICES.filter(inv => inv.status === 'Impayée' || inv.status === 'En Retard' || inv.status === 'Contestée');
-    
-    let options = '<option value="">Sélectionnez une facture à contester...</option>';
-    
-    contestableInvoices.forEach(invoice => {
-        // Utiliser le format XAF pour la devise affichée
-        const formattedAmount = invoice.amount.toLocaleString('fr-CM', { style: 'currency', currency: 'XAF', minimumFractionDigits: 0 });
-        options += `
-        <option value="${invoice.numero_facture}">
-            ${invoice.numero_facture} (${formattedAmount} - Statut: ${invoice.status})
-        </option>
-    `;
 
-    });
-    
+    const data = await resp.json().catch(() => []);
+    const SERVER_INVOICES = Array.isArray(data) ? data : [];
+
+    // ✅ FILTRE : UNIQUEMENT IMPAYÉE
+    const unpaidInvoices = SERVER_INVOICES.filter(inv =>
+        inv.status &&
+        ['impayée', 'impayee'].includes(inv.status.toLowerCase())
+    );
+
+    let options = '<option value="">Sélectionnez une facture impayée...</option>';
+
+    if (!unpaidInvoices.length) {
+        options += '<option value="">Aucune facture impayée</option>';
+    } else {
+        unpaidInvoices.forEach(invoice => {
+            const formattedAmount = Number(invoice.amount || 0).toLocaleString('fr-CM', {
+                style: 'currency',
+                currency: 'XAF',
+                minimumFractionDigits: 0
+            });
+
+            options += `
+                <option value="${invoice.id}">
+                    ${invoice.numero_facture} (${formattedAmount})
+                </option>
+            `;
+        });
+    }
+
     select.innerHTML = options;
 }
+
 
 /**
  * Ouvre la modal d'état.

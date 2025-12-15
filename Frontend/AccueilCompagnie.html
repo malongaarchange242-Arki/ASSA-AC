@@ -112,17 +112,15 @@
                         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre de Factures Valides</p>
                             <div class="text-3xl font-bold mt-1 text-primary" id="kpi-total-unpaid">0</div> 
-                            <span class="text-xs text-gray-400 mt-2 block" id="kpi-total-valid-status">Factures reconnues valides (Total - Contestées).</span>
                         </div>
                         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre Total de Factures Reçues</p>
                             <div class="text-3xl font-bold mt-1 text-red-500" id="kpi-overdue-count">0</div>
-                            <span class="text-xs text-gray-400 mt-2 block" id="kpi-overdue-status">Toutes les factures reçues, y compris payées et contestées.</span>
                         </div>
                         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Factures Contestées</p>
                             <div class="text-3xl font-bold mt-1 text-orange-500" id="kpi-dispute-count">0</div>
-                            <span class="text-xs text-gray-400 mt-2 block">En attente de résolution ASSA-AC.</span>
+                            
                         </div>
                     </div>
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
@@ -141,7 +139,7 @@
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead>
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Facture</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Facture</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Emission</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant (XAF)</th> 
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
@@ -152,12 +150,16 @@
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700" id="invoices-table-body">
                                 </tbody>
                             </table>
+                            <div id="pagination-controls"></div>
                         </div>
-                        <!-- <div class="mt-6 flex justify-end">
-                            <button class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md hover-neon-glow">
-                                Télécharger le Récapitulatif (.CSV)
-                            </button>
-                        </div> -->
+                        <div class="mt-6 flex justify-end">
+                            <button
+                            onclick="downloadRecapCSV()"
+                            class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md hover-neon-glow">
+                            Télécharger le Récapitulatif (.CSV)
+                           </button>
+                        
+                        </div>
                     </div>
 
                 </div>

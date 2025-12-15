@@ -1,3 +1,4 @@
+/* ================= Variables CSS ================= */
 :root {
     --primary-blue: #1A73E8;
     --dark-blue: #0B3F7B;
@@ -7,9 +8,186 @@
     --sidebar-width: 250px;
     --alert-red: #D93025;
     --nav-text-default: #E0E0E0;
+
+    /* Variables d'application standard */
+    --surface-color: white; /* Header, Chat Header, Input Area, Client Bubble */
+    --list-hover-bg: #F8F8F8;
+    --list-active-bg: rgba(26,115,232,0.1);
+    --chat-background: var(--light-bg);
+    --client-bubble-border: #E0E0E0;
+    --secondary-text-color: #70757A;
+
+    /* VARIABLES DARK MODE */
+    --dark-bg-main: #121212;
+    --dark-surface: #1E1E1E;
+    --dark-text-color: #E0E0E0;
+    --dark-border-color: #333333;
+    --dark-list-hover-bg: #2A2A2A;
+    --dark-list-active-bg: rgba(26,115,232,0.2);
+    --dark-client-bubble-bg: #282828;
+    --dark-primary-blue-adjusted: #5499F4; /* Bleu légèrement éclairci pour Dark Mode */
+    --dark-secondary-text-color: #A0A0A0;
 }
 
-/* Global Styles */
+/* ========================================================= */
+/* 🌙 DARK MODE STYLES (Corrigé et Nettoyé) */
+/* ========================================================= */
+
+body.dark-mode {
+    /* Mettre à jour les variables générales */
+    background-color: var(--dark-bg-main);
+    color: var(--dark-text-color);
+    --text-color: var(--dark-text-color);
+    --border-color: var(--dark-border-color);
+    --surface-color: var(--dark-surface);
+    --chat-background: var(--dark-bg-main);
+    --secondary-text-color: var(--dark-secondary-text-color);
+    
+    /* Variables spécifiques à la messagerie */
+    --list-hover-bg: var(--dark-list-hover-bg);
+    --list-active-bg: var(--dark-list-active-bg);
+    --client-bubble-border: var(--dark-border-color);
+    
+    /* Redéfinition de la couleur des liens de navigation */
+    --nav-text-default: var(--dark-secondary-text-color);
+}
+
+/* Surcharge de la sidebar pour qu'elle soit sombre au lieu de bleu foncé */
+body.dark-mode .sidebar {
+    background-color: var(--dark-surface); /* Passage au gris sombre */
+    color: var(--dark-text-color); /* Texte clair */
+    box-shadow: 2px 0 5px rgba(255,255,255,0.05);
+}
+
+/* Ajustement du header de la sidebar (logo/texte) */
+body.dark-mode .sidebar-header {
+    color: var(--dark-text-color);
+}
+body.dark-mode .logo-text {
+    color: var(--dark-primary-blue-adjusted);
+}
+
+
+/* Header, Conteneurs, Barres */
+body.dark-mode .header,
+body.dark-mode .conversations-list,
+body.dark-mode .chat-header,
+body.dark-mode .chat-input-area,
+body.dark-mode .preview-container {
+    background-color: var(--dark-surface);
+}
+
+/* Chat Area Background */
+body.dark-mode .chat-area {
+    background-color: var(--chat-background);
+}
+
+/* Texte et Titres */
+body.dark-mode .list-header {
+    color: var(--dark-text-color);
+}
+body.dark-mode .conv-company {
+    color: var(--dark-text-color);
+}
+body.dark-mode .chat-header h2 {
+    color: var(--dark-primary-blue-adjusted);
+}
+body.dark-mode .chat-header p {
+    color: var(--dark-secondary-text-color);
+}
+
+/* Liens de navigation (Hover/Active) */
+body.dark-mode .nav-menu a, 
+body.dark-mode .sidebar-bottom a { 
+    color: var(--nav-text-default);
+}
+body.dark-mode .nav-menu a:hover, 
+body.dark-mode .sidebar-bottom a:hover { 
+    background-color: var(--dark-list-hover-bg); 
+    border-left-color: var(--dark-primary-blue-adjusted);
+}
+body.dark-mode .nav-menu a.active { 
+    background-color: var(--dark-list-active-bg); 
+    color: var(--dark-text-color);
+    border-left-color: var(--dark-text-color); 
+}
+
+
+/* Conversation List Items */
+body.dark-mode .conversation-item {
+    border-bottom-color: var(--dark-border-color);
+}
+body.dark-mode .conversation-item:hover { 
+    background-color: var(--dark-list-hover-bg); 
+}
+body.dark-mode .conversation-item.active { 
+    background-color: var(--dark-list-active-bg); 
+}
+
+/* Input et Textarea */
+body.dark-mode .search-bar input,
+body.dark-mode .chat-input-area textarea {
+    background-color: #2D2D2D;
+    color: var(--dark-text-color);
+    border-color: var(--dark-border-color);
+}
+body.dark-mode .search-bar input::placeholder,
+body.dark-mode .chat-input-area textarea::placeholder {
+    color: var(--dark-secondary-text-color);
+}
+
+/* Bulles de Message */
+
+/* Client (droite) : Fond sombre, Texte clair */
+body.dark-mode .message-client {
+    background: var(--dark-client-bubble-bg);
+    color: var(--dark-text-color);
+    border-color: var(--dark-border-color);
+}
+body.dark-mode .message-client::after {
+    border-left-color: var(--dark-client-bubble-bg) !important; 
+}
+
+/* Admin (gauche) : Garder le bleu, ajuster */
+body.dark-mode .message-admin {
+    background: var(--dark-primary-blue-adjusted);
+}
+body.dark-mode .message-admin::after {
+    border-right-color: var(--dark-primary-blue-adjusted) !important;
+}
+
+/* Boutons d'action (restent pour les boutons d'envoi et d'attachement) */
+body.dark-mode .input-actions button {
+    background-color: var(--dark-primary-blue-adjusted);
+}
+body.dark-mode .input-actions button:hover {
+    background-color: var(--primary-blue);
+}
+body.dark-mode .input-actions .attach-btn {
+    color: var(--dark-text-color);
+}
+
+/* Pièces jointes (Ajustement des couleurs claires) */
+body.dark-mode .attachment, body.dark-mode .attachment img {
+    background-color: #3D4A5C;
+    color: var(--dark-text-color);
+    border: 1px solid #4D5A6C;
+}
+
+body.dark-mode .message-admin .attachment {
+    background-color: rgba(0,0,0,0.2);
+    border:1px solid rgba(255,255,255,0.2);
+}
+
+/* Preview fichiers avant envoi */
+body.dark-mode .preview-item {
+    background: #2D2D2D;
+    border: 1px solid #444444;
+    color: var(--dark-text-color);
+}
+
+
+/* ================= Global Styles (General Layout) ================= */
 body {
     font-family: 'Arial', sans-serif;
     margin:0; padding:0;
@@ -17,6 +195,7 @@ body {
     display:flex;
     min-height:100vh;
     color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .sidebar {
@@ -33,6 +212,7 @@ body {
     height: 100vh;
     z-index:1000;
     box-sizing:border-box;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .nav-menu { flex-grow:1; }
@@ -45,26 +225,29 @@ body {
     display:flex; 
     align-items:center; 
     justify-content:center; 
+    transition: color 0.3s;
 }
 
-  /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
-        .header-logo-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 25px; 
-        }
-        
-        /* Style du texte "ASSA-AC PORTAL" */
-        .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #0dace0;
-            margin-left: 15px; 
-            letter-spacing: 1px;
-        }
+    /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
+    .header-logo-container {
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        margin-bottom: 25px; 
+    }
+    
+    /* Style du texte "ASSA-AC PORTAL" */
+    .logo-text {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0dace0;
+        margin-left: 15px; 
+        letter-spacing: 1px;
+        transition: color 0.3s;
+    }
 
-        /* STYLE LOGO ASSA-AC (40px) */
-        #assaac-logo { height: 70px; width: auto; }
+    /* STYLE LOGO ASSA-AC (40px) */
+    #assaac-logo { height: 70px; width: auto; }
 
 .sidebar-bottom { 
     padding:10px 0; 
@@ -109,12 +292,13 @@ body {
     height:100vh; 
 }
 .header { 
-    background-color:white; 
+    background-color:var(--surface-color); 
     padding:15px 30px; 
     display:flex; 
     justify-content:flex-end; 
     align-items:center; 
     box-shadow:0 1px 4px rgba(0,0,0,0.05); 
+    transition: background-color 0.3s, box-shadow 0.3s;
 }
 .header-actions { display:flex; align-items:center; width:100%; }
 .search-bar { margin-right:auto; flex-grow:1; max-width:400px; }
@@ -124,37 +308,48 @@ body {
     border-radius:20px; 
     width:100%; 
     outline:none; 
-    background:white; 
+    background:var(--surface-color); 
     color:var(--text-color);
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
 }
 .user-interaction-group { display:flex; align-items:center; }
 .icon-btn { background:none; border:none; color:var(--text-color); margin-left:15px; cursor:pointer; font-size:1.1em; padding:5px; transition: color 0.2s; }
 .icon-btn:hover { color:var(--primary-blue); }
-.user-info { display:flex; align-items:center; margin-left:25px; cursor:pointer; border-left:1px solid var(--border-color); padding-left:25px; }
+.user-info { display:flex; align-items:center; margin-left:25px; cursor:pointer; border-left:1px solid var(--border-color); padding-left:25px; transition: border-left 0.3s; }
 .user-avatar { width:35px; height:35px; border-radius:50%; background-color:#ccc; margin-right:10px; object-fit:cover; display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; }
 
 /* Messaging Layout */
 .messaging-container { display:flex; flex-grow:1; overflow:hidden; }
-.conversations-list { width:350px; flex-shrink:0; background:white; border-right:1px solid var(--border-color); overflow-y:auto; padding:10px 0; }
-.list-header { padding:10px 20px 15px; font-size:1.2em; font-weight:bold; color: var(--dark-blue); display:flex; justify-content:space-between; align-items:center; }
-.new-message-btn { background-color:var(--primary-blue); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-size:0.9em; transition: background-color 0.2s;}
-.new-message-btn:hover { background-color:var(--dark-blue); }
+.conversations-list { width:350px; flex-shrink:0; background:var(--surface-color); border-right:1px solid var(--border-color); overflow-y:auto; padding:10px 0; transition: background-color 0.3s, border-color 0.3s; }
+
+/* MODIFICATION: Retrait de justify-content:space-between; car le bouton a été supprimé du HTML */
+.list-header { 
+    padding:10px 20px 15px; 
+    font-size:1.2em; 
+    font-weight:bold; 
+    color: var(--dark-blue); 
+    display:flex;
+    align-items:center; 
+    transition: color 0.3s; 
+}
+
+/* .new-message-btn rules have been removed */
 
 /* Conversation Item */
-.conversation-item { display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid #F0F0F0; cursor:pointer; transition: background-color 0.2s; }
-.conversation-item:hover { background-color:#F8F8F8; }
-.conversation-item.active { background-color:rgba(26,115,232,0.1); }
+.conversation-item { display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid #F0F0F0; cursor:pointer; transition: background-color 0.2s, border-color 0.3s; }
+.conversation-item:hover { background-color:var(--list-hover-bg); }
+.conversation-item.active { background-color:var(--list-active-bg); }
 .conv-avatar { width:45px; height:45px; border-radius:50%; object-fit:cover; background-color:#ccc; flex-shrink:0; margin-right:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; }
 .conv-info { flex-grow:1; }
-.conv-company { font-weight:bold; color: var(--dark-blue); }
+.conv-company { font-weight:bold; color: var(--dark-blue); transition: color 0.3s; }
 
 /* Chat Area */
-.chat-area { flex-grow:1; display:flex; flex-direction:column; background-color:var(--light-bg); height:calc(100vh - 70px);}
-.chat-header { background:white; padding:15px 20px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; }
+.chat-area { flex-grow:1; display:flex; flex-direction:column; background-color:var(--chat-background); height:calc(100vh - 70px); transition: background-color 0.3s;}
+.chat-header { background:var(--surface-color); padding:15px 20px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; transition: background-color 0.3s, border-color 0.3s; }
 .chat-header img { width:45px; height:45px; border-radius:50%; object-fit:cover; margin-right:15px; }
 .chat-header-details { flex-grow:1; }
-.chat-header h2 { margin:0; font-size:1.2em; color:var(--primary-blue);}
-.chat-header p { margin:0; font-size:0.85em; color:#70757A;}
+.chat-header h2 { margin:0; font-size:1.2em; color:var(--primary-blue); transition: color 0.3s;}
+.chat-header p { margin:0; font-size:0.85em; color:var(--secondary-text-color); transition: color 0.3s;}
 .chat-messages { flex-grow:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px;}
 
 /* Bulles de message */
@@ -165,6 +360,7 @@ body {
     line-height:1.4;
     position:relative;
     box-shadow:0 1px 2px rgba(0,0,0,0.1);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 /* Admin à gauche */
@@ -184,14 +380,15 @@ body {
     border-top:8px solid transparent;
     border-bottom:8px solid transparent;
     border-right:8px solid var(--primary-blue);
+    transition: border-right-color 0.3s;
 }
 
 /* Client à droite */
 .message-client {
-    background:white;
+    background:var(--surface-color);
     color: var(--text-color);
     align-self: flex-end;
-    border:1px solid #E0E0E0;
+    border:1px solid var(--client-bubble-border);
     border-radius: 15px 15px 5px 15px;
 }
 .message-client::after {
@@ -201,9 +398,11 @@ body {
     top:10px;
     width:0;
     height:0;
+    /* Utilisation de la couleur de fond de la bulle pour la pointe */
     border-top:8px solid transparent;
     border-bottom:8px solid transparent;
-    border-left:8px solid white;
+    border-left:8px solid var(--surface-color); 
+    transition: border-left-color 0.3s;
 }
 
 /* Pièces jointes et images */
@@ -219,6 +418,7 @@ body {
     font-size:0.8em;
     border:1px solid #cce0ff;
     max-width: 200px;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 .attachment img {
     max-width: 100%;
@@ -231,12 +431,12 @@ body {
 }
 
 /* Chat Input */
-.chat-input-area { background:white; padding:15px 20px; border-top:1px solid var(--border-color); display:flex; align-items:center; }
-.chat-input-area textarea { flex-grow:1; padding:10px; border:1px solid var(--border-color); border-radius:8px; resize:none; margin-right:10px; font-family:inherit; }
+.chat-input-area { background:var(--surface-color); padding:15px 20px; border-top:1px solid var(--border-color); display:flex; align-items:center; transition: background-color 0.3s, border-top-color 0.3s; }
+.chat-input-area textarea { flex-grow:1; padding:10px; border:1px solid var(--border-color); border-radius:8px; resize:none; margin-right:10px; font-family:inherit; transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
 .input-actions { display:flex; align-items:center; }
 .input-actions button { background-color: var(--primary-blue); color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer; margin-left:5px; transition:background-color 0.2s;}
 .input-actions button:hover { background-color: var(--dark-blue); }
-.input-actions .attach-btn { background:none; color:var(--text-color); font-size:1.2em; margin-right:10px; border:none; cursor:pointer; }
+.input-actions .attach-btn { background:none; color:var(--text-color); font-size:1.2em; margin-right:10px; border:none; cursor:pointer; transition: color 0.3s; }
 
 /* Messages temporaires / envoi / échec */
 .message-temp {
@@ -265,7 +465,8 @@ body {
     gap: 10px;
     padding: 10px 20px;
     border-top: 1px solid var(--border-color);
-    background: #fff;
+    background: var(--surface-color);
+    transition: background-color 0.3s, border-color 0.3s;
 }
 .preview-item {
     position: relative;
@@ -279,6 +480,7 @@ body {
     font-size: 0.85em;
     color: var(--dark-blue);
     max-width: 250px;
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
 }
 .preview-item i {
     font-size: 1.2em;

@@ -5,49 +5,51 @@ import supabase from '../Config/db.js';
 // Helper async pour enrichir les activités
 const enrichActivites = async (activites) => {
   return await Promise.all(
-      activites.map(async (act) => {
-          let utilisateur = '-';
+    activites.map(async (act) => {
+      let utilisateur = '-';
 
-          // 🔥 Si l’activité a enregistré directement un nom/email, on l’utilise
-          if (act.utilisateur_email) {
-              utilisateur = act.utilisateur_email;
-          } else if (act.utilisateur_nom) {
-              utilisateur = act.utilisateur_nom;
-          }
+      // 1️⃣ Valeur déjà enregistrée
+      if (act.utilisateur_email) {
+        utilisateur = act.utilisateur_email;
+      }
+      if (act.utilisateur_nom) {
+        utilisateur = act.utilisateur_nom;
+      }
 
-          // 🔥 Si l’activité a id_admin → on récupère dans admins
-          else if (act.id_admin) {
-              const { data: admin } = await supabase
-                  .from('admins')
-                  .select('email, nom, prenom')
-                  .eq('id', act.id_admin)
-                  .single();
+      // 2️⃣ Admin
+      if (act.id_admin) {
+        const { data: admin } = await supabase
+          .from('admins')
+          .select('email, nom, prenom')
+          .eq('id', act.id_admin)
+          .single();
 
-              if (admin) {
-                  utilisateur = admin.email || `${admin.nom} ${admin.prenom}`;
-              }
-          }
+        if (admin) {
+          utilisateur = admin.email || `${admin.nom} ${admin.prenom}`;
+        }
+      }
 
-          // 🔥 Si activité liée à une compagnie
-          else if (act.id_companie) {
-              const { data: company } = await supabase
-                  .from('companies')
-                  .select('company_name, email')
-                  .eq('id', act.id_companie)
-                  .single();
+      // 3️⃣ Compagnie ✅ (CORRIGÉ)
+      if (act.id_company) {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('company_name, email')
+          .eq('id', act.id_company)
+          .single();
 
-              if (company) {
-                  utilisateur = company.email || company.company_name;
-              }
-          }
+        if (company) {
+          utilisateur = company.company_name || company.email;
+        }
+      }
 
-          return {
-              ...act,
-              utilisateur
-          };
-      })
+      return {
+        ...act,
+        utilisateur
+      };
+    })
   );
 };
+
 
 
 // ==========================

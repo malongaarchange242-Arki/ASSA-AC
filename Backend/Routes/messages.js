@@ -1,7 +1,7 @@
 // Routes/messages.js
 import express from 'express';
 import multer from 'multer';
-import { getMessagesHistory, postMessage, uploadAndSendProof } from '../Controllers/messagesController.js';
+import { getMessagesHistory, postMessage, uploadAndSendProof, markMessagesAsRead, countUnreadMessagesCompany, countUnreadMessagesAdmin } from '../Controllers/messagesController.js';
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
@@ -38,6 +38,16 @@ export default (broadcastToRoom) => {
     upload.array('file'), // le champ 'file' du formulaire paiement
     (req, res) => uploadAndSendProof(req, res, broadcastToRoom)
   );
+
+  router.get('/messages/unread/admin', verifyToken, countUnreadMessagesAdmin);
+  router.get('/messages/unread/company', verifyToken, countUnreadMessagesCompany);
+
+  router.put(
+    '/messages/mark-read/:companyId',
+    verifyToken,
+    markMessagesAsRead
+  );
+
 
   return router;
 };

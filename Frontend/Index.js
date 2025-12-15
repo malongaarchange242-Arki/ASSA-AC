@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- CONSERVATION DES VRAIES ROUTES POUR LE RESTE DU FLUX ---
     const API_BASE = (() => {
         const origin = window.location.origin;
         return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
     })();
+
     // ==========================
     // 1. Éléments du DOM
     // ==========================
@@ -27,12 +29,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToEmail2 = document.getElementById('backToEmail2');
     const resendOtpLink = document.getElementById('resendOtpLink');
     
+    // DOM pour l'icône et le lien oublié
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+
     let currentEmail = '';
     let currentRole = '';
     let isChecking = false;
     let typingTimer;
     const doneTypingInterval = 300;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/;
+    
+    // ==========================
+    // GESTION DU MODE RÉINITIALISATION ET SIMULATION
+    // ==========================
+    let isResetMode = false;
+    const SIMULATED_RESET_OTP = '123456'; // CODE OTP FIXE POUR LA SIMULATION
     
     // ==========================
     // 2. Effet flottant inputs
@@ -65,11 +77,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function resetToInitialView() {
+        isResetMode = false; 
+        
+        // Rétablit les titres par défaut de la section OTP
+        // Correction de la cible H2 dans index.html
+        document.getElementById('otpSection').querySelector('h2').textContent = 'Vérification de sécurité'; 
+        document.getElementById('otpSection').querySelector('p').textContent = 'Un code d\'accès unique vous a été envoyé par email.';
+        otpPasswordInput.placeholder = 'Définir un mot de passe'; 
+        
         passwordField.classList.remove('visible');
         passwordInput.value = '';
         otpCodeInput.value = '';
         otpPasswordInput.value = '';
-        otpPasswordGroup.style.display = 'none';
+        
+        // S'assure que le champ Mot de passe OTP est masqué lors du retour
+        otpPasswordGroup.style.display = 'none'; 
+        
         actionButtonContainer.classList.remove('visible');
         mainTitle.textContent = 'Connexion';
         subTitle.textContent = 'Utilisez votre email pour vous connecter';
@@ -82,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==========================
-    // 4. Fonction fetch avec Auth
+    // 4. Fonction fetch avec Auth (Code original conservé)
     // ==========================
     async function fetchWithAuth(url, options = {}, isCompany = false) {
         const token = isCompany ? localStorage.getItem('jwtTokenCompany') : localStorage.getItem('jwtTokenAdmin');
@@ -104,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==========================
-    // 5. Vérification email
+    // 5. Vérification email (Logique d'affichage OTP Mot de Passe)
     // ==========================
     async function verifyEmailOnServer(email) {
         if (isChecking) return;
@@ -140,8 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     showSection(otpSection);
                     mainTitle.textContent = 'Validation OTP';
                     subTitle.textContent = 'Veuillez entrer le code OTP reçu par email.';
-                    otpPasswordGroup.style.display = 'block';
+                    
+                    // LIGNE CRUCIALE pour le Premier Login Compagnie:
+                    otpPasswordGroup.style.display = 'block'; 
+                    otpPasswordInput.placeholder = 'Définir un mot de passe'; 
                     otpPasswordInput.focus();
+                    
                     await requestOtp();
                 } else {
                     passwordField.classList.add('visible');
@@ -165,7 +192,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==========================
-    // 6. Demande OTP
+    // 5.b. SIMULATION : Demande OTP de Réinitialisation (Code original conservé)
+    // ==========================
+    async function initiatePasswordReset() {
+        const email = emailInput.value.trim();
+        
+        if (!email || !emailRegex.test(email)) {
+            return alert("Veuillez entrer une adresse email valide avant de cliquer sur 'Mot de passe oublié'.");
+        }
+
+        currentEmail = email; 
+        
+        // --- SIMULATION DU BACKEND (DÉBUT) ---
+        await new Promise(resolve => setTimeout(resolve, 800)); 
+        
+        alert(` Un code de réinitialisation a été envoyé à ${currentEmail}.\nUtilisez le code : ${SIMULATED_RESET_OTP}`);
+        
+
+        // 3. Mise à jour de l'interface
+        isResetMode = true; 
+        
+        emailSection.classList.remove('visible');
+        passwordField.classList.remove('visible'); 
+        actionButtonContainer.classList.remove('visible');
+        showSection(otpSection);
+        
+        // Changer les textes pour la réinitialisation
+        document.getElementById('otpSection').querySelector('h2').textContent = 'Réinitialisation du mot de passe';
+        document.getElementById('otpSection').querySelector('p').textContent = `Entrez le code (${SIMULATED_RESET_OTP}) et votre nouveau mot de passe.`;
+        
+        // Afficher le champ pour le nouveau mot de passe (Même logique que le premier login)
+        otpPasswordGroup.style.display = 'block';
+        otpPasswordInput.placeholder = "Nouveau mot de passe";
+        otpCodeInput.focus();
+    }
+    
+    // ==========================
+    // 6. Demande OTP (Premier Login Compagnie - Code original conservé)
     // ==========================
     async function requestOtp() {
         try {
@@ -185,23 +248,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==========================
-    // 7. Validation OTP
+    // 7. Validation OTP (Gère Reset et Premier Login - Code original conservé)
     // ==========================
     async function validateOtp() {
         const otp = otpCodeInput.value.trim();
         const password = otpPasswordInput.value.trim();
-        if (!otp || !password) return alert('Veuillez remplir OTP et mot de passe.');
+        
+        if (!otp || !password) return alert('Veuillez remplir le code OTP et le mot de passe.');
     
         try {
-            const res = await fetch(`${API_BASE}/api/companies/validate-otp`, {
+            if (isResetMode) {
+                // --- SIMULATION DU BACKEND (DÉBUT) ---
+                await new Promise(resolve => setTimeout(resolve, 800)); 
+                
+                if (otp !== SIMULATED_RESET_OTP) {
+                    throw new Error('Code de réinitialisation invalide.');
+                }
+                if (password.length < 6) {
+                    throw new Error('Le nouveau mot de passe est trop court.');
+                }
+
+                alert('Mot de passe modifié avec succès ! (Simulation)\nVeuillez vous reconnecter avec votre nouveau mot de passe.');
+                resetToInitialView();
+                return; 
+                // --- SIMULATION DU BACKEND (FIN) ---
+            } 
+            
+            // Logique du Premier Login Compagnie (vraie route)
+            const url = `${API_BASE}/api/companies/validate-otp`;
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentEmail, otp, password })
+                body: JSON.stringify({ email: currentEmail, otp: otp, password: password })
             });
     
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
     
+            // Logique de connexion Compagnie existante
             localStorage.setItem('jwtTokenCompany', data.token);
             localStorage.setItem('userRoleCompany', 'company');
             localStorage.setItem('userEmailCompany', currentEmail);
@@ -209,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             alert('OTP validé ! Mot de passe défini. Vous êtes connecté.');
             window.location.href = 'AccueilCompagnie.html';
+
         } catch (err) {
             console.error(err);
             alert(err.message || 'Erreur validation OTP');
@@ -216,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==========================
-    // 8. Connexion standard
+    // 8. Connexion standard (Code original conservé)
     // ==========================
     async function loginStandard() {
         const password = passwordInput.value.trim();
@@ -263,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==========================
-    // 9. Événements inputs
+    // 9. Événements inputs et Logique de la Barre (Code original conservé)
     // ==========================
     emailInput.addEventListener('input', () => {
         if (emailInput.readOnly) {
@@ -283,12 +368,39 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('validateOtpButton').addEventListener('click', validateOtp);
     resendOtpLink.addEventListener('click', e => { e.preventDefault(); if (currentEmail) requestOtp(); });
     backToEmail2.addEventListener('click', e => { e.preventDefault(); resetToInitialView(); });
+
+    // ==========================
+    // AJOUT : Gestion Voir MDP & Oublié (Événements)
+    // ==========================
+
+    // 1. Logique pour l'icône "Oeil"
+    if(togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            togglePasswordBtn.classList.toggle('fa-eye');
+            togglePasswordBtn.classList.toggle('fa-eye-slash');
+            
+            if (type === 'text') {
+                passwordInput.classList.add('password-visible');
+            } else {
+                passwordInput.classList.remove('password-visible');
+            }
+        });
+    }
+
+    // 2. Logique pour "Mot de passe oublié"
+    if(forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            // NOUVEL APPEL à la fonction de réinitialisation
+            initiatePasswordReset();
+        });
+    }
     
     // ==========================
-    // 10. Initialisation
+    // 10. Initialisation (Code original conservé)
     // ==========================
     resetToInitialView();
-
-    
-    });
-    
+});

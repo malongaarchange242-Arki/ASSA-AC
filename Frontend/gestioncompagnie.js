@@ -1,5 +1,57 @@
 let allCompanies = []; // Stocke toutes les compagnies pour la recherche
 
+document.addEventListener('DOMContentLoaded', async () => {
+ // 1. Référence au bouton de bascule
+    const themeToggle = document.getElementById('theme-toggle');
+    const body = document.body;
+
+    // 2. Fonction pour appliquer le thème
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+            if (themeToggle) {
+                // Icône Soleil pour passer au mode clair
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                themeToggle.title = "Passer au Mode Clair";
+            }
+        } else {
+            body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+            if (themeToggle) {
+                // Icône Lune pour passer au mode sombre
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                themeToggle.title = "Passer au Mode Sombre";
+            }
+        }
+    }
+
+    // 3. Détecter et appliquer le thème au chargement
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        // Utiliser la préférence système si aucune n'est enregistrée
+        applyTheme('dark');
+    } else {
+        applyTheme('light'); // Par défaut au mode clair
+    }
+
+    // 4. Écouteur d'événement pour le basculement
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+    }
+});
+
+
+// FIN GESTION DU THÈME
+/* ========================================================= */
+
+
 // --------------------------------------------------
 // Récupérer le token ADMIN
 // --------------------------------------------------
@@ -83,36 +135,45 @@ function attachCardEvents() {
         });
 
         // Supprimer (sécurisé)
+        // Supprimer une compagnie (définitif)
         card.querySelector('button[title="Supprimer"]').addEventListener('click', async () => {
-            if (!confirm('Voulez-vous vraiment supprimer définitivement cette compagnie ?')) return;
+
+            if (!confirm('⚠️ Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ?\nCette action est irréversible.')) {
+                return;
+            }
 
             try {
-                const res = await fetch(`https://assa-ac-jyn4.onrender.com/api/companies/delete/${companyId}`, {
-                    method: 'DELETE',
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                const res = await fetch(
+                    `https://assa-ac-jyn4.onrender.com/api/companies/delete/${companyId}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
                     }
-                });
+                );
 
                 const result = await res.json();
 
                 if (!res.ok) {
-                    const errorText = result?.message || JSON.stringify(result);
-                    alert('Erreur : ' + errorText);
-                    return;
+                    throw new Error(result.message || 'Erreur lors de la suppression');
                 }
 
-                alert(`Compagnie "${result.company.company_name}" supprimée définitivement avec succès`);
-                
-                // Retirer la carte de l'affichage
+                // ✅ Message succès
+                alert(`✅ Compagnie "${result.company?.company_name || ''}" supprimée avec succès`);
+
+                // ✅ Retirer la carte du DOM
                 card.remove();
+
+                // ✅ Mettre à jour la liste globale
                 allCompanies = allCompanies.filter(c => c.id.toString() !== companyId);
 
             } catch (err) {
-                alert('Erreur serveur : ' + err.message);
+                console.error(err);
+                alert('❌ Erreur : ' + err.message);
             }
         });
+
     });
 }
 
@@ -133,8 +194,14 @@ async function fetchCompanies() {
         if (!res.ok) throw new Error(`Erreur ${res.status} : ${res.statusText}`);
 
         const json = await res.json();
-        allCompanies = json.companies || [];
+        allCompanies = json.companies || []; 
         renderCompanies(allCompanies);
+
+        // Applique le filtre si une recherche était en cours (utile après l'actualisation)
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput && searchInput.value.trim() !== '') {
+            filterCompanies(searchInput.value.trim());
+        }
 
     } catch (err) {
         container.innerHTML = `<p style="color:red;">Erreur lors du chargement : ${err.message}</p>`;
@@ -143,19 +210,27 @@ async function fetchCompanies() {
 }
 
 // --------------------------------------------------
-// Recherche dynamique
+// Logique de Filtrage
+// --------------------------------------------------
+function filterCompanies(query) {
+    const lowerQuery = query.toLowerCase();
+    const filtered = allCompanies.filter(c =>
+        c.company_name?.toLowerCase().includes(lowerQuery) ||
+        (c.id && c.id.toString().includes(lowerQuery)) ||
+        c.representative_name?.toLowerCase().includes(lowerQuery)
+    );
+    renderCompanies(filtered);
+}
+
+// --------------------------------------------------
+// Événement de Recherche dynamique
 // --------------------------------------------------
 document.addEventListener('input', e => {
     if (e.target.id === 'searchInput') {
-        const query = e.target.value.toLowerCase();
-        const filtered = allCompanies.filter(c =>
-            c.company_name?.toLowerCase().includes(query) ||
-            (c.id && c.id.toString().includes(query)) ||
-            c.representative_name?.toLowerCase().includes(query)
-        );
-        renderCompanies(filtered);
+        filterCompanies(e.target.value);
     }
 });
+
 
 // --------------------------------------------------
 // Charger au démarrage

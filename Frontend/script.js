@@ -136,23 +136,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Total factures
             statCards.factures.textContent = Array.isArray(factures) ? factures.length : '0';
     
-            // Factures contestées
+          // Factures contestées
             if (statCards.contestees) {
-    
+
                 const contestees = Array.isArray(factures)
                     ? factures.filter(f => {
-                        const statut = (f.statut || "")
-                            .normalize("NFD")                     // Sépare accents
-                            .replace(/[\u0300-\u036f]/g, "")     // Enlève accents
+                        const statut = (f.status || "")
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "")
                             .trim()
                             .toLowerCase();
-    
-                        return statut === "contestee";  // "contestée" → "contestee"
+
+                        return statut === "contestee";
                     })
                     : [];
-    
+
                 statCards.contestees.textContent = contestees.length;
             }
+
     
         } catch (err) {
             console.error('Erreur récupération factures :', err);

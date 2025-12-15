@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     const API_BASE = 'https://assa-ac-jyn4.onrender.com';
     const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
-                   API_BASE.replace(/^https?:\/\//,'').replace(/\/$/,'') + '/ws';
+                    API_BASE.replace(/^https?:\/\//,'').replace(/\/$/,'') + '/ws';
 
     // -----------------------
     // ÉLÉMENTS DOM
@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const attachBtn = document.getElementById('attachBtn');
     const attachmentInput = document.getElementById('attachmentInput');
     const sendBtn = document.getElementById('sendBtn');
+    const notifBadge = document.getElementById('notifCount');
+    const notifBtn = document.querySelector('.notification-btn');
+
 
     // Preview container
     const chatInputArea = document.querySelector('.chat-input-area');
@@ -27,6 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (chatInputArea.children.length >= 1) chatInputArea.insertBefore(previewContainer, chatInputArea.children[1]);
         else chatInputArea.appendChild(previewContainer);
     }
+    
+    // Éléments du modal (nécessaires pour showModal/closeModal)
+    const modal = document.getElementById('status-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
 
     let selectedFiles = [];
     let ws = null;
@@ -38,19 +47,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // UTILITAIRES
     // -----------------------
     function showModal(title, message) {
-        const modal = document.getElementById('status-modal');
         if (!modal) return console.warn('Modal non trouvé', title, message);
-        document.getElementById('modal-title').textContent = title;
-        document.getElementById('modal-message').innerHTML = message;
+        if (modalTitle) modalTitle.textContent = title;
+        if (modalMessage) modalMessage.innerHTML = message;
+        
         modal.classList.remove('invisible', 'opacity-0');
         modal.classList.add('visible', 'opacity-100');
     }
 
     function closeModal() {
-        const modal = document.getElementById('status-modal');
         if (!modal) return;
         modal.classList.add('opacity-0');
         setTimeout(() => modal.classList.add('invisible'), 300);
+    }
+    
+    // Ajout de l'écouteur du bouton de fermeture du modal
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeModal);
     }
 
     function makeLetterAvatar(text) {
@@ -87,6 +100,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayedMessages.delete(tempId);
         }
     }
+
+    // -----------------------
+        // NOTIFICATIONS
+        // -----------------------
+        function updateNotifBadge(count) {
+            if (!notifBadge) return;
+
+            if (count > 0) {
+                notifBadge.hidden = false;
+                notifBadge.textContent = count > 99 ? '99+' : count;
+            } else {
+                notifBadge.hidden = true;
+                notifBadge.textContent = '0';
+            }
+        }
+
+        function incrementNotif() {
+            if (!notifBadge) return;
+            const current = parseInt(notifBadge.textContent || '0', 10);
+            updateNotifBadge(current + 1);
+        }
+
+        async function fetchUnreadCount() {
+            try {
+                const session = getSessionInfo();
+                if (!session) return;
+
+                const url = session.role === 'admin'
+                    ? `${API_BASE}/api/messages/unread/admin`
+                    : `${API_BASE}/api/messages/unread/company`;
+
+                const res = await fetchWithAuth(url);
+                const count = res?.count ?? res ?? 0;
+                updateNotifBadge(count);
+            } catch (e) {
+                console.warn('Erreur récupération notifications', e);
+            }
+        }
+
+        async function markConversationAsRead(companyId) {
+            try {
+                if (!companyId) return;
+                await fetchWithAuth(
+                    `${API_BASE}/api/messages/mark-read/${companyId}`,
+                    { method: 'PUT' }
+                );
+                fetchUnreadCount();
+            } catch (e) {
+                console.warn('Erreur mark as read', e);
+            }
+        }
+
+
 
     // -----------------------
     // SESSION & AUTH
@@ -214,29 +280,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         ws.onmessage = evt => {
             try {
                 const payload = JSON.parse(evt.data);
-                if (payload.type === 'message') {
-                    // accepter soit id_companie soit company_id dans le message
-                    const msg = payload.message || payload;
-                    const msgCompanyId = msg?.id_companie || msg?.company_id || null;
-                    if (!msgCompanyId) return;
-
-                    if (String(msgCompanyId) !== String(id_companie)) return;
-                    if (displayedMessages.has(msg.id)) return;
-
-                    const clientTempId = msg.client_temp_id || msg.temp_id;
-                    if (clientTempId && tempMessageMap.has(clientTempId)) {
-                        const tempEl = tempMessageMap.get(clientTempId);
-                        const realEl = renderMessage(msg, { returnElement: true });
-                        if (realEl && tempEl && tempEl.parentNode) tempEl.parentNode.replaceChild(realEl, tempEl);
-                        tempMessageMap.delete(clientTempId);
-                        displayedMessages.delete(clientTempId);
-                        return;
-                    }
-                    renderMessage(msg);
+                if (payload.type !== 'message') return;
+        
+                const msg = payload.message || payload;
+                const msgCompanyId = msg?.id_companie || msg?.company_id || null;
+                if (!msgCompanyId || !msg.id) return;
+        
+                // 🟡 Message pour une autre compagnie → incrément badge
+                if (String(msgCompanyId) !== String(selectedIdCompanie)) {
+                    incrementNotif();
+                    return;
                 }
-            } catch (e) { console.warn('WS message non valide', e); }
+        
+                // 🟢 Message pour la conversation ouverte
+                // Marquer comme lu uniquement si je suis le destinataire
+                if (msg.sender_role !== getSessionInfo()?.role?.toLowerCase()) {
+                    markConversationAsRead(msgCompanyId);
+                }
+        
+                // 🔁 Remplacement message temporaire
+                const clientTempId = msg.client_temp_id || msg.temp_id;
+                if (clientTempId && tempMessageMap.has(clientTempId)) {
+                    const tempEl = tempMessageMap.get(clientTempId);
+                    const realEl = renderMessage(msg, { returnElement: true });
+        
+                    if (realEl && tempEl && tempEl.parentNode) {
+                        tempEl.parentNode.replaceChild(realEl, tempEl);
+                    }
+        
+                    tempMessageMap.delete(clientTempId);
+                    displayedMessages.delete(clientTempId);
+                    return;
+                }
+        
+                // ⛔ Éviter doublons
+                if (displayedMessages.has(msg.id)) return;
+        
+                renderMessage(msg);
+        
+            } catch (e) {
+                console.warn('WS message non valide', e);
+            }
         };
-
+        
         ws.onerror = err => console.error('Erreur WS:', err);
         ws.onclose = () => {
             ws = null;
@@ -259,7 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             chatMessagesContent.innerHTML = '';
 
             if (Array.isArray(data) && data.length) data.forEach(msg => renderMessage(msg));
-            else chatMessagesContent.innerHTML = '<p style="color:#70757A;">Aucun message pour le moment.</p>';
+            else chatMessagesContent.innerHTML = '<p class="chat-placeholder">Aucun message pour le moment.</p>';
 
             connectWebSocket(id_companie);
         } catch (err) {
@@ -297,12 +383,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             previewContainer.appendChild(div);
         });
+        
+        // Afficher/Cacher la preview container si nécessaire
+        previewContainer.style.display = selectedFiles.length > 0 ? 'flex' : 'none';
     }
 
     attachBtn.addEventListener('click', () => attachmentInput.click());
-    attachmentInput.addEventListener('change', (e) => { selectedFiles = Array.from(e.target.files || []); updatePreview(); });
+    attachmentInput.addEventListener('change', (e) => { 
+        selectedFiles = Array.from(e.target.files || []); 
+        updatePreview(); 
+    });
 
-        // Remplace ta fonction sendMessage par celle-ci
+    // -----------------------
+    // SEND MESSAGE
+    // -----------------------
     async function sendMessage(text, files) {
         if ((!text || text.trim().length === 0) && (!files || files.length === 0)) return;
 
@@ -368,7 +462,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.debug('[sendMessage] server response:', res);
 
             // On attend que le serveur renvoie l'objet message sauvegardé.
-            // Si le serveur renvoie autre chose, on fait fallback -> reload history
             const serverMessage = res.message || res;
             const clientTempId = serverMessage.client_temp_id || serverMessage.temp_id;
 
@@ -399,8 +492,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // --- FALLBACK CRITIQUE ---
-            // Le serveur n'a pas renvoyé l'objet message attendu (ou ne contient pas id).
-            // On recharge l'historique (garantit que le message sauvegardé apparaisse si la DB est bonne).
             console.warn('[sendMessage] server did not return message with id -> reloading history as fallback');
             if (role === 'admin') {
                 await loadHistory(adminId, id_companie);
@@ -411,7 +502,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Échec envoi message:', err);
             if (tempMessageMap.has(tempId)) {
                 const tempNode = tempMessageMap.get(tempId);
-                if (tempNode) tempNode.classList.add('message-failed');
+                if (tempNode) {
+                    tempNode.classList.remove('message-sending', 'message-temp');
+                    tempNode.classList.add('message-failed');
+                }
                 tempMessageMap.delete(tempId);
             }
             displayedMessages.delete(tempId);
@@ -420,7 +514,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value.trim(), selectedFiles));
-    messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); } });
+    messageInput.addEventListener('keydown', (e) => { 
+        if (e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            sendBtn.click(); 
+        } 
+    });
 
     // -----------------------
     // FETCH COMPANIES (Actives)
@@ -493,17 +592,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // -----------------------
-    // INIT
+    // INIT & THEME MANAGEMENT
     // -----------------------
-    (function init() {
-        fetchCompaniesActive();
-        const saved = localStorage.getItem('id_companie');
-        if (saved) {
-            setTimeout(() => {
-                const el = Array.from(document.querySelectorAll('.conversation-item'))
-                    .find(c => c.dataset.idCompanie === saved);
-                if (el) el.click();
-            }, 600);
+
+    
+    
+    // --- MODE SOMBRE LOGIC ---
+    const themeToggle = document.getElementById('theme-toggle');
+
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark-mode');
+            if (themeToggle) {
+                // Utilisation de Font Awesome pour les icônes
+                themeToggle.querySelector('i').className = 'fas fa-sun'; 
+                themeToggle.title = 'Mode Clair';
+            }
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            if (themeToggle) {
+                themeToggle.querySelector('i').className = 'fas fa-moon'; 
+                themeToggle.title = 'Mode Sombre';
+            }
+            localStorage.setItem('theme', 'light');
         }
-    })();
+    }
+
+    // 1. Initialisation du Thème
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (prefersDark) {
+        applyTheme('dark');
+    } else {
+        applyTheme('light');
+    }
+
+    // 2. Écouteur du bouton de bascule du thème
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+    }
+    // --- FIN LOGIQUE MODE SOMBRE ---
+
+    // --- INITIALISATION GENERALE ---
+    (function init() {
+    updatePreview();
+    fetchCompaniesActive();
+
+    // 🔔 Charger les notifications au démarrage
+    fetchUnreadCount();
+
+    const saved = localStorage.getItem('id_companie');
+    if (saved) {
+        setTimeout(() => {
+            const el = Array.from(document.querySelectorAll('.conversation-item'))
+                .find(c => c.dataset.idCompanie === saved);
+            if (el) el.click();
+        }, 600);
+    }
+})();
+
 });
