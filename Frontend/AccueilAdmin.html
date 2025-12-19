@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard (Finalisé et Compact)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="AccueilAdmin.css">
+   
+    
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="header-logo-container">
+                <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+                <div class="logo-text">ASSA-AC</div>
+            </div>
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html" ><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="gestioncompagnie.html"><i class="fas fa-building"></i> Gestion des Compagnies</a>
+            <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
+            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i> Messagerie</a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Registre des opérations</a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="#"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="user-interaction-group">
+                <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i class="fas fa-moon"></i></button>
+                
+                <button class="icon-btn notification-btn" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge" id="notifCount" hidden>0</span>
+                </button>
+                
+                
+                <div class="user-info">
+                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+
+            <div class="card stat-card">
+                <div class="stat-icon"><i class="fas fa-building"></i></div>
+                <div class="stat-title">Compagnies Actives</div>
+                <div class="stat-value" id="companies-value">0</div>
+            </div>
+
+            <div class="card stat-card">
+                <div class="stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                <div class="stat-title">Nombre total de factures</div>
+                <div class="stat-value">0</div>
+            </div>
+
+            <div class="card stat-card alert-card">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            
+                <div class="stat-title">Factures Contestées</div>
+            
+                <div class="stat-value" id="facturesContesteesValue">0</div>
+            
+                <div class="stat-extra">Nécessite une action rapide</div>
+            </div>
+            
+            
+            <a href="enregistrefacture.html" style="text-decoration: none;">
+                <div class="card stat-card" style="border: 1px solid var(--border-color); cursor: pointer;">
+                    <div class="stat-icon" style="color: #6c757d;"><i class="fas fa-plus-circle"></i></div>
+                    <div class="stat-title">Nouvelle Facture</div>
+                    <div class="stat-value" style="color: #6c757d;">Créer</div>
+                    <div class="stat-extra">Accès rapide</div>
+                </div>
+            </a>
+            
+
+            <div class="card recent-activity-card">
+                <h3>Journal d'Activité Récent</h3>
+                <table id="table-activites" class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>Type d'Activité</th>
+                            <th>Description</th>
+                            <th>Utilisateur</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Les lignes seront ajoutées ici par JavaScript -->
+                    </tbody>
+                </table>
+                
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="AccueilAdmin.js"></script>
+    <script src="journalActivite.js"></script>
+        
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC - Connexion Sécurisée</title>
+    
+    <style>
+        /* BASE & TYPOGRAPHIE */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
+            line-height: 1.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background-color: #000;
+        }
+        
+        /* FOND VIDEO & OVERLAY */
+        #background-video { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1)), url('https://images.unsplash.com/photo-1544084177-cc6234b6770f?auto=format&fit=crop&q=80'); background-size: cover; background-position: center; }
+
+        /* CONTENEUR & SECTION BIENVENUE */
+        .page-container { flex-basis: 90%; max-width: 1200px; min-height: 600px; display: flex; position: relative; z-index: 10; overflow: hidden; }
+        .welcome-section {
+            flex-basis: 55%; padding: 50px; display: flex; flex-direction: column; justify-content: center;
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            position: relative; 
+            border-radius: 20px 0 0 20px; 
+        }
+
+        /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
+        .header-logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px; 
+        }
+        
+        /* Style du texte "ASSA-AC PORTAL" */
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0dace0;
+            margin-left: 15px; 
+            letter-spacing: 1px;
+        }
+
+        /* STYLE LOGO ASSA-AC (40px) */
+        #assaac-logo { height: 70px; width: auto; }
+        
+       /* Signature "By Softura" (SANS IMAGE) */
+       .signature {
+            position: absolute;
+            bottom: 30px;
+            left: 50px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6); /* Le reste du texte reste ici */
+            font-weight: 300; 
+            letter-spacing: 0.5px;
+        }
+
+        /* NOUVELLE RÈGLE : Cible uniquement le texte "Softura" */
+        #softuraText {
+            font-weight: 700; /* Rend le mot Softura en Gras (Bold) */
+            color: #ffffff;   /* Le met en blanc pour bien ressortir */
+        }
+
+
+        /* SECTION DE CONNEXION */
+        .login-section { flex-basis: 45%; display: flex; align-items: center; justify-content: center; padding: 40px; }
+
+        /* STYLE DU LOGIN-BOX */
+        .login-box {
+            width: 100%; max-width: 400px; padding: 40px;
+            border-radius: 20px; 
+            background: rgba(255, 255, 255, 0.08); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4); 
+        }
+
+        /* En-tête de connexion */
+        .login-header { text-align: center; margin-bottom: 50px; }
+        
+        /* CHAMPS DE SAISIE (INPUT) */
+        .input-group { position: relative; margin-bottom: 30px; }
+
+        .login-box input[type="email"],
+        .login-box input[type="password"],
+        .login-box input[type="text"] {
+            width: 100%; padding: 14px 14px 14px 14px; margin-bottom: 0; 
+            border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; 
+            background: rgba(255, 255, 255, 0.98); color: #333; font-size: 1rem;
+        }
+
+        /* STYLE DU LABEL FLOTTANT (Floating Label) */
+        .login-box label {
+            position: absolute; top: 50%; left: 14px; transform: translateY(-50%);
+            font-size: 1rem; color: #777; pointer-events: none; 
+            transition: all 0.2s ease-out; background: transparent; z-index: 1; 
+        }
+
+        /* État "flottant" */
+        .floating label {
+            top: 0; left: 10px; font-size: 0.8rem; padding: 0 5px; 
+            color: #1a237e; transform: translateY(-50%); 
+            background-color: rgba(255, 255, 255, 0.98); font-weight: 600;
+        }
+        
+        .floating input {
+            border-color: #1a237e !important;
+            outline: 1px solid #1a237e;
+        }
+
+        /* --- Le reste du CSS --- */
+        .full-name { font-size: 0.9rem; font-weight: 400; color: #cfd8dc; margin-bottom: 25px; letter-spacing: 1px; }
+        .welcome-section h1 { font-size: 4.5rem; font-weight: 900; margin-bottom: 20px; line-height: 1.1; letter-spacing: 3px; color: #ffffff; text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); }
+        .welcome-section p { font-size: 1.1rem; max-width: 480px; color: #cfd8dc; }
+        .login-header h1 { font-size: 2.2rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+        .login-header p { font-size: 1rem; color: #eee; } 
+        .btn-primary { background-color: #1a237e; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color 0.3s ease; width: 100%; }
+        .button-container { display: flex; justify-content: center; align-items: center; margin-top: 30px; width: 100%; }
+        #resendOtpLink { display: block; text-align: center; margin-top: 20px; color: #bbdefb; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.3s; }
+        .field-group { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .field-group.visible { display: block; opacity: 1; }
+        #passwordField { display: none; transition: all 0.3s ease-in-out; max-height: 0; overflow: hidden; opacity: 0; margin-top: 5px;}
+        #passwordField.visible { display: block; max-height: 200px; opacity: 1; }
+        #actionButtonContainer { margin-top: 30px; display: none; }
+        #actionButtonContainer.visible { display: flex; }
+        .back-link { display: block; text-align: center; margin-top: 15px; color: #bbdefb; text-decoration: none; font-size: 0.9rem; }
+        
+        @media (max-width: 900px) {
+            .welcome-section { display: none; }
+            .login-box { border-radius: 20px; } 
+        }
+    </style> 
+</head>
+<body>
+
+    <video autoplay loop muted id="background-video">
+    <source src="/Frontend/Assets/Video flything.mp4" type="video/mp4">
+    Votre navigateur ne supporte pas la lecture vidéo.
+</video>
+
+<div class="overlay"></div>
+
+    <div class="page-container">
+
+        <div class="welcome-section">
+            
+            <div class="header-logo-container">
+                <img src="/Frontend/Assets/assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+                <div class="logo-text">ASSA-AC PORTAIL</div>
+            </div>
+
+            <div class="full-name">Agence de Supervision de la Sécurité Aérienne en Afrique Centrale</div>
+            <h1>Plateforme de gestion des redevances sur les billets aériens</h1>
+            <p class="tagline">Gérez, coordonnez et optimisez vos opérations avec précision et sécurité.</p>
+            
+            <div class="signature">
+                Développé par <span id="softuraText">Softura</span>
+            </div>
+        </div>
+
+        <div class="login-section">
+            <div class="login-box">
+                
+                <form id="loginForm" action="#" method="post">
+                    
+                    <div id="emailSection" class="field-group visible">
+                        <div class="login-header">
+                            <h1 id="mainTitle">Connexion</h1>
+                            <p id="subTitle">Utilisez votre email pour vous connecter</p>
+                        </div>
+                        
+                        <div class="input-group" id="emailInputGroup">
+                            <label for="emailInput">Adresse email</label>
+                            <input type="email" id="emailInput" name="email" required>
+                        </div>
+                        
+                        <div id="passwordField">
+                            <div class="input-group" id="passwordInputGroup">
+                                <label for="passwordInput">Mot de passe</label>
+                                <input type="password" id="passwordInput">
+                            </div>
+                        </div>
+
+                        <div class="button-container" id="actionButtonContainer">
+                            <button type="button" class="btn-primary" id="mainButton">Se Connecter</button>
+                        </div>
+                    </div>
+                    
+                    <div id="otpSection" class="field-group">
+                        <div class="login-header">
+                            <h1>Vérification de sécurité</h1>
+                            <p>Un code d'accès unique vous a été envoyé par email.</p>
+                        </div>
+                    
+                        <div class="input-group" id="otpInputGroup">
+                            <label for="otpCode">Code d'accès (OTP)</label>
+                            <input type="text" id="otpCode">
+                        </div>
+                    
+                        <!-- Champ mot de passe définitif, caché au départ -->
+                        <div class="input-group" id="otpPasswordInputGroup" style="display: none;">
+                            <label for="otpPasswordInput">Définir un mot de passe</label>
+                            <input type="password" id="otpPasswordInput" placeholder="Nouveau mot de passe">
+                        </div>
+                    
+                        <div class="button-container" style="flex-direction: column; gap: 10px; margin-top: 15px;">
+                            <button type="button" id="validateOtpButton" class="btn-primary">Valider</button>
+                        </div>
+                    
+                        <a href="#" id="resendOtpLink">Renvoyer le code</a>
+                        <a class="back-link" id="backToEmail2" href="#">Retour</a>
+                    </div>
+                    
+                    
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/Frontend/Js/pageconnexion.js"></script>
+        
+
+</body>
+</html>

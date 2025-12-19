@@ -1,0 +1,333 @@
+/* ================== Variables CSS ================== */
+:root {
+    --primary-blue: #1A73E8;
+    --dark-blue: #0B3F7B;
+    --light-bg: #F5F7FA;
+    --text-color: #3C4043;
+    --border-color: #DADCE0;
+    --sidebar-width: 250px;
+    --alert-red: #D93025;
+    --neon-blue: rgba(26, 115, 232, 0.7);
+
+    /* Backgrounds spécifiques pour light mode */
+    --sidebar-bg: var(--dark-blue);
+    --header-bg: white;
+    --card-bg: white;
+    --table-header-bg: var(--light-bg);
+    --table-header-color: var(--dark-blue);
+}
+
+/* ================== Dark Mode ================== */
+body.dark-mode {
+    --primary-blue: #3399ff;
+    --dark-blue: #1e1e1e;
+    --light-bg: #121212;
+    --text-color: #e0e0e0;
+    --border-color: #333;
+    --alert-red: #ff5555;
+    --neon-blue: rgba(51, 153, 255, 0.7);
+
+    /* Backgrounds spécifiques pour dark mode */
+    --sidebar-bg: #1b1b1b;
+    --header-bg: #1b1b1b;
+    --card-bg: #1c1c1c;
+    --table-header-bg: #1b1b1b;
+    --table-header-color: #e0e0e0;
+}
+
+/* ================== Global ================== */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--light-bg);
+    color: var(--text-color);
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ================== Sidebar ================== */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    color: white;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    box-sizing: border-box;
+}
+
+.sidebar-header {
+    text-align: center;
+    padding: 0 20px 30px;
+    font-size: 1.8em;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sidebar-header i {
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+ /* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
+        .header-logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px; 
+        }
+        
+        /* Style du texte "ASSA-AC PORTAL" */
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0dace0;
+            margin-left: 15px; 
+            letter-spacing: 1px;
+        }
+
+        /* STYLE LOGO ASSA-AC (40px) */
+        #assaac-logo { height: 70px; width: auto; }
+
+.nav-menu {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.sidebar-bottom {
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+
+.nav-menu a, .sidebar-bottom a {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    text-decoration: none;
+    color: rgba(255,255,255,0.8);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-menu a i, .sidebar-bottom a i {
+    margin-right: 15px;
+    width: 20px;
+    text-align: center;
+}
+
+.nav-menu a:hover, .sidebar-bottom a:hover {
+    background-color: var(--primary-blue);
+    color: white;
+}
+
+.nav-menu a.active {
+    background-color: var(--primary-blue);
+    color: white;
+    font-weight: bold;
+}
+
+/* ================== Main Content ================== */
+.main-content {
+    flex-grow: 1;
+    margin-left: var(--sidebar-width);
+    overflow-y: auto;
+    height: 100vh;
+}
+
+/* ================== Header ================== */
+.header {
+    background-color: var(--header-bg);
+    padding: 15px 30px;
+    display: flex;
+    align-items: center;
+    /* Ajustement pour que le contenu soit aligné à droite */
+    justify-content: flex-end; 
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0; 
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+/* La barre de recherche n'existe plus dans le HTML, nous n'avons donc pas besoin de styles spécifiques */
+.search-bar {
+    display: none; /* Assure sa non-visibilité même si elle est oubliée */
+}
+
+.user-interaction-group {
+    display: flex;
+    align-items: center;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-color-header); 
+    margin-left: 15px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 5px;
+    transition: color 0.2s;
+}
+
+.icon-btn:hover {
+    color: var(--primary-blue);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    margin-left: 25px; 
+    cursor: pointer;
+    border-left: 1px solid var(--border-color); 
+    padding-left: 25px;
+    color: var(--text-color-header);
+}
+
+.user-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background-color: #ccc;
+    margin-right: 10px;
+    object-fit: cover;
+}
+
+/* ================================================== */
+/* ================== Dashboard Grid ================== */
+.dashboard-grid {
+    padding: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.stat-card {
+    text-align: center;
+    border: 1px solid var(--primary-blue);
+    width: 220px;
+    padding: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 15px var(--neon-blue), 0 0 25px var(--neon-blue), 0 5px 15px rgba(0,0,0,0.1);
+    border-color: var(--primary-blue);
+}
+
+.stat-card.alert-card {
+    border: 1px solid var(--alert-red);
+    background-color: rgba(217,48,37,0.05);
+}
+
+.stat-card.alert-card:hover {
+    box-shadow: 0 0 15px var(--alert-red), 0 0 25px var(--alert-red), 0 5px 15px rgba(0,0,0,0.1);
+    border-color: var(--alert-red);
+}
+
+.stat-icon {
+    color: var(--primary-blue);
+    font-size: 1.3em;
+    margin-bottom: 8px;
+}
+
+.stat-card.alert-card .stat-icon,
+.stat-card.alert-card .stat-value {
+    color: var(--alert-red);
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--primary-blue);
+    margin: 3px 0;
+}
+
+.stat-title {
+    font-size: 0.85em;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.stat-extra {
+    font-size: 0.75em;
+    color: var(--text-color);
+}
+
+/* ================== Table ================== */
+.recent-activity-card {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    color: var(--text-color);
+}
+
+.activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.9em;
+}
+
+.activity-table th, .activity-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    background-color: var(--card-bg);
+}
+
+.activity-table th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-color);
+    font-weight: bold;
+}
+
+.activity-table tr:last-child td {
+    border-bottom: none;
+}
+
+
+.notification-btn {
+    position: relative;
+}
+
+.notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #e53935;
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 999px;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px white;
+}

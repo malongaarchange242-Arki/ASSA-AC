@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin - Facturation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="factureAdmin.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="header-logo-container">
+                <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+                <div class="logo-text">ASSA-AC PORTAIL</div>
+            </div>
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html"><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="gestioncompagnie.html"><i class="fas fa-building"></i> Gestion des Compagnies</a>
+            <a href="factureAdmin.html" class="active"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
+            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i> Messagerie</a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Registre des opérations</a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        
+        <div class="header">
+            <div class="header-title">
+                <h1>Facturation</h1>
+            </div>
+
+            <div class="header-actions">
+                <div class="user-interaction-group">
+                    <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i class="fas fa-moon"></i></button>
+                
+                <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
+                
+                    <div class="user-info">
+                        <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scrollable-content">
+            
+            <div class="billing-management">
+            
+                <div class="page-header">
+                    </div>
+
+                <div class="report-bar">
+                    
+                    <div class="filter-controls-group">
+                        <div class="report-label">
+                            <i class="fas fa-filter"></i> Filtrer :
+                        </div>
+                        
+                        <select class="report-select" title="Filtrer par mois">
+                            <option value="">Par mois</option>
+                            <option value="12">Décembre 2025</option>
+                            <option value="11">Novembre 2025</option>
+                            <option value="10">Octobre 2025</option>
+                        </select>
+                        
+                        <select class="report-select" title="Filtrer par compagnie">
+                            <option value="">Toutes compagnies</option>
+                            <option>AfriTech Solutions</option>
+                            <option>Global Energies</option>
+                            <option>Kigali Innovations</option>
+                            <option>Atlas Commerce</option>
+                        </select>
+
+                        <select class="report-select" id="filter-statut">
+                            <option value="">Par statut</option>
+                            <option value="payée">Payée</option>
+                            <option value="impayée">Impayée</option>
+                            <option value="contestée">Contestée</option>
+                        </select>
+                        
+                    </div>
+                    
+                    <div class="action-buttons-group">
+                        <button class="btn-primary" onclick="window.location.href='enregistrefacture.html'">
+                            <i class="fas fa-file-invoice"></i> Créer Facture
+                        </button>
+                        <button class="btn-green" onclick="exporterFactures()">
+                            <i class="fas fa-file-csv"></i> Exporter la Liste
+                        </button>
+                        
+                        
+                    </div>
+
+                </div>
+
+                <div class="card-table-container">
+                    
+                    <div class="section-title-and-search">
+                        <div class="section-title">Liste des Factures</div>
+                        <div class="search-bar-local">
+                            <input type="text" id="searchInput" onkeyup="appliquerRecherche()" placeholder="Rechercher par Compagnie, Date ou N° Facture...">
+                        </div>
+                    </div>
+                    
+                    <table class="facture-table" id="factureTable">
+                        <thead>
+                            <tr>
+                                <th>N° Facture</th>
+                                <th>Compagnie</th>
+                                <th>Date d'Émission</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                                <th style="text-align: center;">Voir</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="factureTableBody">
+                            <!-- Les lignes de factures seront insérées ici dynamiquement via JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="facture-pagination" class="pagination"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="factureAdmin.js"></script>
+</body>
+</html>
