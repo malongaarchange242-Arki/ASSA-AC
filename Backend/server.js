@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
-import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import supabase from './Config/db.js';
 import path from 'path';
@@ -33,7 +32,6 @@ import archiveRoutes from './Routes/archiveRoutes.js';
 // APP
 // ==========================
 const app = express();
-app.use(cookieParser());
 
 // ==========================
 // CORS
