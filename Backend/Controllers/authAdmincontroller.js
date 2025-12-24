@@ -77,6 +77,20 @@ export const loginSuperviseur = async (req, res) => {
       expiresIn: '7d'
     });
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 12 * 60 * 60 * 1000
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
     await logActivite({
       type_activite: 'security',
       categorie: 'auth',
@@ -88,8 +102,6 @@ export const loginSuperviseur = async (req, res) => {
 
     res.json({
       message: 'Connexion Superviseur réussie',
-      jwtTokenAdmin: token,
-      refreshTokenAdmin: refreshToken,
       role: payload.role,
       permissions: payload.permissions
     });
@@ -158,10 +170,22 @@ export const loginAdmin = async (req, res) => {
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 12 * 60 * 60 * 1000
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
     res.json({
       message: 'Connexion réussie',
-      jwtTokenAdmin: token,
-      refreshTokenAdmin: refreshToken,
       userEmailAdmin: user.email,
       adminId: user.id,
       role: payload.role,
@@ -194,6 +218,8 @@ export const logoutAdmin = async (req, res) => {
   try {
     const adminId = req.userId;
     await supabase.from('admins').update({ status: 'Inactif' }).eq('id', adminId);
+    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None' });
+    res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'None' });
     res.json({ message: 'Déconnexion réussie' });
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });

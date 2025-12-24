@@ -91,6 +91,20 @@ export const loginSuperAdminBySecret = async (req, res) => {
       expiresIn: '7d'
     });
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 12 * 60 * 60 * 1000
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
     /* 6️⃣ Journalisation connexion */
     await logActivite({
       type_activite: 'security',
@@ -103,8 +117,6 @@ export const loginSuperAdminBySecret = async (req, res) => {
 
     return res.json({
       message: 'Connexion Super Admin réussie',
-      jwtTokenAdmin: token,
-      refreshTokenAdmin: refreshToken,
       role: payload.role,
       permissions: payload.permissions
     });
@@ -219,5 +231,17 @@ export const createAdminBySuperAdmin = async (req, res) => {
       message: 'Erreur serveur',
       erreur: err.message
     });
+  }
+};
+
+export const logoutSuperAdmin = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    await supabase.from('admins').update({ status: 'Inactif' }).eq('id', adminId);
+    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None' });
+    res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'None' });
+    res.json({ message: 'Déconnexion réussie' });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };

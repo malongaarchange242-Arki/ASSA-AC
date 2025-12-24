@@ -105,5 +105,8 @@ router.delete(
   deleteCompanySafe
 );
 
+// Déconnexion compagnie
+router.post('/logout', verifyToken, checkRole(['Company']), logoutCompany);
+
 
 export default router;

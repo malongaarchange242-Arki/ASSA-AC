@@ -33,4 +33,11 @@ router.post(
   createAdminBySuperAdmin
 );
 
+router.post(
+  '/auth/super/logout',
+  verifyToken,
+  checkRole(['Super Admin']),
+  logoutSuperAdmin
+);
+
 export default router;

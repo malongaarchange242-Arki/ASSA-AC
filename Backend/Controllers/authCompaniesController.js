@@ -206,6 +206,13 @@ export const validateOtpAndSetPassword = async (req, res) => {
       status: 'Actif'
     }, process.env.JWT_SECRET, { expiresIn: '12h' });
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 12 * 60 * 60 * 1000
+    });
+
     await logActivite({
       module: "Compagnies",
       type_activite: "update",
@@ -220,7 +227,6 @@ export const validateOtpAndSetPassword = async (req, res) => {
 
     res.json({
       message: 'Mot de passe défini, connexion réussie',
-      token,
       id_companie: company.id,
       company: { ...updatedCompany[0], password_hash: undefined, otp: undefined }
     });
@@ -253,6 +259,13 @@ export const loginCompany = async (req, res) => {
       status: company.status
     }, process.env.JWT_SECRET, { expiresIn: '12h' });
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 12 * 60 * 60 * 1000
+    });
+
     await logActivite({
       module: 'Authentification',
       type_activite: 'create',
@@ -266,7 +279,6 @@ export const loginCompany = async (req, res) => {
 
     res.json({
       message: 'Connexion réussie',
-      token,
       id_companie: company.id,
       company: { ...company, password_hash: undefined, otp: undefined }
     });
@@ -536,6 +548,17 @@ export const updateCompanyInfo = async (req, res) => {
 
 
 // ----------------- Mettre à jour une compagnie -----------------
+
+export const logoutCompany = async (req, res) => {
+  try {
+    const companyId = req.user.id_companie;
+    await supabase.from('companies').update({ status: 'Inactif' }).eq('id', companyId);
+    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None' });
+    res.json({ message: 'Déconnexion réussie' });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+  }
+};
 
 export const updateCompany = async (req, res) => {
   try {

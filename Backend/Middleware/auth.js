@@ -1,25 +1,23 @@
 import jwt from 'jsonwebtoken';
 
-/* ---------------------------------------------------------
-   🔹 Middleware : vérifie le token et reconstruit req.user
-----------------------------------------------------------*/
+/* ---------------------------------------------------------   🔹 Middleware : vérifie le token et reconstruit req.user----------------------------------------------------------*/
 export const verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   let token = null;
 
-  // 1) Authorization: Bearer <token>
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  // 1) Cookie 'token'
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  // 2) Authorization: Bearer <token>
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+  if (!token && authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.slice(7).trim();
   }
 
-  // 2) x-access-token header
+  // 3) x-access-token header
   if (!token && req.headers['x-access-token']) {
     token = String(req.headers['x-access-token']).trim();
-  }
-
-  // 3) Cookie 'token'
-  if (!token && req.cookies && req.cookies.token) {
-    token = req.cookies.token;
   }
 
   if (!token) return res.status(401).json({ message: 'Token manquant' });
