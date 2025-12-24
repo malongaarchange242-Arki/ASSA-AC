@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             airportSelect.appendChild(option);
         });
     
-    const API_BASE = 'https://assa-ac-jyn4.onrender.com';
+    const API_BASE = 'http://localhost:5002';
     const form = document.getElementById('company-registration-form');
     const saveButton = document.getElementById('save-button');
     const REDIRECT_DELAY_MS = 1000;

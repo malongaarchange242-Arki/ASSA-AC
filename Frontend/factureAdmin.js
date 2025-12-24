@@ -325,7 +325,7 @@ async function voirFacture(numeroFacture) {
         console.log("📡 → Recherche des preuves de paiement…");
 
         const response = await fetch(
-            `https://assa-ac-jyn4.onrender.com/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
+            `http://localhost:5002/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
             { headers: { "Authorization": `Bearer ${token}` } }
         );
 

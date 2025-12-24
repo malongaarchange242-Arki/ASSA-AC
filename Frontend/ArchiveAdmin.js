@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
-    const API_BASE = 'https://assa-ac-jyn4.onrender.com;
+    const API_BASE = 'https://assa-ac-jyn4.onrender.com';
 
     /* =====================================================
        AUTH

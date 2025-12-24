@@ -2,7 +2,7 @@
 // ====================================================================
 // 📌 CONFIG API
 // ====================================================================
-const API_BASE = "https://assa-ac-jyn4.onrender.com";
+const API_BASE = "http://localhost:5002";
 
 let ALL_INVOICES = []; 
 let currentSortColumn = null;

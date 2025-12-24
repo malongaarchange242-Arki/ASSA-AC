@@ -2,7 +2,7 @@
     CONFIG
 ============================================================ */
 
-window.API_BASE = "https://assa-ac-jyn4.onrender.com";
+window.API_BASE = "http://localhost:5002";
 
 function getToken() {
     return localStorage.getItem("jwtTokenCompany");
@@ -215,7 +215,7 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
     try {
         const token = localStorage.getItem("jwtTokenCompany");
 
-        const response = await fetch("https://assa-ac-jyn4.onrender.com/api/companies/update-password", {
+        const response = await fetch("http://localhost:5002/api/companies/update-password", {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",

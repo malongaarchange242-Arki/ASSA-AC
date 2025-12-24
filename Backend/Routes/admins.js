@@ -5,12 +5,13 @@ import { verifyToken } from '../Middleware/auth.js';
 import { checkRole } from '../Middleware/role.js';
 import {
   loginAdmin,
+  loginSuperviseur, 
   logoutAdmin,
   createCompany,
   listAdmins,
   updateAdminPassword,
   refreshTokenAdmin
-} from '../Controllers/authAdmincontroller.js'; 
+} from '../Controllers/authAdmincontroller.js';
 
 const router = express.Router();
 
@@ -32,7 +33,9 @@ const upload = multer({
 // -----------------------------
 // Routes publiques
 // -----------------------------
-router.post('/login', loginAdmin); // Login admin
+router.post('/login', loginAdmin); // Login admin normal
+router.post('/login/superviseur', loginSuperviseur);// Superviseur
+
 
 // -----------------------------
 // Routes protégées (JWT)
@@ -61,9 +64,10 @@ router.post(
 router.get(
   '/admins',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['Super Admin']),
   listAdmins
 );
+
 
 // -----------------------------
 // Mettre à jour le mot de passe

@@ -1,0 +1,58 @@
+<!-- aside.html (fragment) -->
+<div class="aside-inner" role="document" aria-label="Créer une facture">
+    <header class="aside-header">
+        <h2>Créer une facture</h2>
+        <button id="closeAside" class="icon-btn" type="button" aria-label="Fermer le panneau">
+            <span aria-hidden="true">✕</span>
+            <span class="sr-only">Fermer</span>
+        </button>
+    </header>
+
+    <main class="aside-body">
+        <form id="invoiceForm" autocomplete="off" novalidate>
+            <div class="grid-2">
+                <label>
+                    <div class="label-small">N° facture</div>
+                    <input name="invoiceNumber" id="aside-invoice-number" type="text" readonly>
+                </label>
+                <label>
+                    <div class="label-small">Date</div>
+                    <input name="date" id="aside-date" type="date" required>
+                </label>
+            </div>
+
+            <div class="field">
+                <label>
+                    <div class="label-small">Client</div>
+                    <input name="client" id="aside-client" type="text" placeholder="Nom du client" required>
+                </label>
+            </div>
+
+            <fieldset class="items-fieldset">
+                <legend>Lignes de facture</legend>
+
+                <div id="aside-items" class="items-list">
+                    <!-- lignes ajoutées dynamiquement -->
+                </div>
+
+                <div class="items-actions">
+                    <button id="aside-add-item" type="button" class="btn">+ Ajouter une ligne</button>
+                </div>
+            </fieldset>
+
+            <div class="summary">
+                <div>TOTAL : <strong id="aside-grand-total">0 Frs CFA</strong></div>
+                <div id="aside-total-words" class="muted small"></div>
+            </div>
+
+            <div class="form-actions">
+                <button id="aside-save" type="submit" class="btn primary">Enregistrer</button>
+                <button id="aside-save-draft" type="button" class="btn">Enregistrer brouillon</button>
+            </div>
+        </form>
+    </main>
+
+    <footer class="aside-footer">
+        <small>Les champs obligatoires sont marqués.</small>
+    </footer>
+</div>
