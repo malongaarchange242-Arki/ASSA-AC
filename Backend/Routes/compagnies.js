@@ -9,9 +9,10 @@ import {
   requestFirstLoginOtp,
   validateOtpAndSetPassword,
   loginCompany,
+  logoutCompany,
   listCompanies,
-  archiveCompany,      // archivage au lieu de suppression
-  restoreCompany,      // restauration si nécessaire
+  archiveCompany,
+  restoreCompany,
   getCompanyById,
   updateCompanyInfo,
   updateCompany,
@@ -19,6 +20,7 @@ import {
   updateCompanyPassword,
   me
 } from '../Controllers/authCompaniesController.js';
+
 
 const router = express.Router();
 
