@@ -91,20 +91,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // 3. UTILITAIRE API (FETCH AVEC TOKEN)
     // ============================================================
     async function fetchWithAdmin(url, options = {}) {
-        const token = localStorage.getItem('jwtTokenAdmin');
-        
-        if (!token) {
-            alert('Session expirée ou invalide. Veuillez vous reconnecter.');
-            window.location.href = 'Index.html'; // Redirection vers login
-            throw new Error('Token manquant');
-        }
-
         if (!options.headers) options.headers = {};
         options.headers['Content-Type'] = 'application/json';
-        options.headers['Authorization'] = `Bearer ${token}`;
+        options.credentials = 'include';
 
         try {
             const res = await fetch(url, options);
+            console.log('Fetch response:', res.status, 'Set-Cookie:', res.headers.get('Set-Cookie'));
 
             // Gestion des erreurs d'authentification
             if (res.status === 401 || res.status === 403) {

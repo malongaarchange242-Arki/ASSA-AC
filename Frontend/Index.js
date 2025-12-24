@@ -108,12 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Fonction fetch avec Auth (Code original conservé)
     // ==========================
     async function fetchWithAuth(url, options = {}, isCompany = false) {
-        const token = isCompany ? localStorage.getItem('jwtTokenCompany') : localStorage.getItem('jwtTokenAdmin');
         if (!options.headers) options.headers = {};
         options.headers['Content-Type'] = 'application/json';
-        if (token) options.headers['Authorization'] = `Bearer ${token}`;
+        options.credentials = 'include';
     
         const res = await fetch(url, options);
+        console.log('Fetch response:', res.status, 'Set-Cookie:', res.headers.get('Set-Cookie'));
     
         if (res.status === 401) {
             throw new Error('Token expiré, reconnectez-vous');
@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ email }),
                 credentials: 'include'
             });
+            console.log('Check email response:', res.status);
     
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Erreur serveur');
@@ -183,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 resetToInitialView();
             }
         } catch (err) {
-            console.error(err);
+            console.error('Erreur vérification email:', err);
             alert(err.message || 'Erreur lors de la vérification');
             resetToInitialView();
         } finally {
@@ -235,13 +236,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE}/api/companies/first-login-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentEmail })
+                body: JSON.stringify({ email: currentEmail }),
+                credentials: 'include'
             });
+            console.log('Request OTP response:', res.status);
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Erreur serveur');
             alert(`Un code OTP a été envoyé à ${currentEmail}.`);
         } catch (err) {
-            console.error(err);
+            console.error('Erreur demande OTP:', err);
             alert('Impossible d\'envoyer l\'OTP. Réessayez.');
             resetToInitialView();
         }
@@ -279,14 +282,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentEmail, otp: otp, password: password })
+                body: JSON.stringify({ email: currentEmail, otp: otp, password: password }),
+                credentials: 'include'
             });
+            console.log('Validate OTP response:', res.status, 'Set-Cookie:', res.headers.get('Set-Cookie'));
     
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
     
             // Logique de connexion Compagnie existante
-            localStorage.setItem('jwtTokenCompany', data.token);
             localStorage.setItem('userRoleCompany', 'company');
             localStorage.setItem('userEmailCompany', currentEmail);
             localStorage.setItem('id_companie', data.id_companie);
@@ -295,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'AccueilCompagnie.html';
 
         } catch (err) {
-            console.error(err);
+            console.error('Erreur validation OTP:', err);
             alert(err.message || 'Erreur validation OTP');
         }
     }
@@ -317,23 +321,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentEmail, password })
+                body: JSON.stringify({ email: currentEmail, password }),
+                credentials: 'include'
             });
+            console.log('Login response:', res.status, 'Set-Cookie:', res.headers.get('Set-Cookie'));
     
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
     
             if (isCompany) {
-                localStorage.setItem('jwtTokenCompany', data.token);
                 localStorage.setItem('userRoleCompany', 'company');
                 localStorage.setItem('userEmailCompany', currentEmail);
                 localStorage.setItem('id_companie', data.id_companie);
                 window.location.href = 'AccueilCompagnie.html';
             } else {
-                const adminToken = data.jwtTokenAdmin || data.token || data.accessToken || data.access_token;
-                const adminRefresh = data.refreshTokenAdmin || data.refreshToken || data.refresh_token;
-                if (adminToken) localStorage.setItem('jwtTokenAdmin', adminToken);
-                if (adminRefresh) localStorage.setItem('refreshTokenAdmin', adminRefresh);
                 localStorage.setItem('userRoleAdmin', currentRole);
                 localStorage.setItem('userEmailAdmin', currentEmail);
                 localStorage.setItem('adminId', data.adminId || data.id || data.adminId);
@@ -342,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             alert(`Connexion réussie ! Bienvenue ${currentRole}.`);
         } catch (err) {
-            console.error(err);
+            console.error('Erreur login:', err);
             alert(err.message || 'Erreur lors de la connexion');
         }
     }
