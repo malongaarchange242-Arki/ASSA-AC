@@ -35,7 +35,7 @@ const getPermissions = (profile) => {
 /* ---------------------------------------------------------
    🔹 LOGOUT
 ----------------------------------------------------------*/
-export const logout = (req, res) => {
+export const logoutAdmin = (req, res) => {
   res.cookie('token', '', {
     httpOnly: true,
     expires: new Date(0),

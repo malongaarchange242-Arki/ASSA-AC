@@ -10,7 +10,7 @@ import {
   listAdmins,
   updateAdminPassword,
   refreshTokenAdmin,
-  meAdmin
+  // me
 } from '../Controllers/authAdmincontroller.js';
 
 const router = express.Router();
@@ -37,10 +37,10 @@ router.post('/login/superviseur', loginSuperviseur);
 router.post('/token/refresh', refreshTokenAdmin);
 router.post('/logout', logoutAdmin);
 
-/* ---------------------------------------------------------
-   🔐 SESSION
-----------------------------------------------------------*/
-router.get('/me', verifyToken, meAdmin);
+// /* ---------------------------------------------------------
+//    🔐 SESSION
+// ----------------------------------------------------------*/
+// router.get('/me', verifyToken, me);
 
 /* ---------------------------------------------------------
    🏢 COMPAGNIES
