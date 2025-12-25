@@ -2,6 +2,21 @@
 import supabase from '../Config/db.js';
 
 /* ---------------------------------------------------------
+   🔧 UTILITAIRE : normalisation des rôles
+---------------------------------------------------------- */
+const normalizeRole = (role) => {
+  if (!role) return null;
+
+  return role
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '');
+};
+
+/* ---------------------------------------------------------
    🔍 Vérifie le rôle d'un utilisateur via son email
    - Route publique
    - Aucun JWT / cookie
@@ -17,9 +32,9 @@ export const checkUserRoleByEmail = async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     /* =========================
-       🔹 SUPERVISEUR
+       🔹 SUPERVISOR
     ========================= */
-    const { data: superviseur, error: supErr } = await supabase
+    const { data: supervisor, error: supErr } = await supabase
       .from('superviseurs')
       .select('id, email, archived')
       .eq('email', normalizedEmail)
@@ -31,9 +46,10 @@ export const checkUserRoleByEmail = async (req, res) => {
       return res.status(500).json({ message: 'Erreur serveur' });
     }
 
-    if (superviseur) {
+    if (supervisor) {
       return res.json({
-        role: 'Superviseur',
+        exists: true,
+        role: 'supervisor',
         has_password: true
       });
     }
@@ -54,8 +70,12 @@ export const checkUserRoleByEmail = async (req, res) => {
     }
 
     if (admin) {
+      const role = normalizeRole(admin.profile);
+
       return res.json({
-        role: admin.profile, // Administrateur | Super Admin
+        exists: true,
+        role: 'admin', // 🔥 rôle machine unique
+        admin_level: role === 'superadmin' ? 'superadmin' : 'admin',
         has_password: true
       });
     }
@@ -65,7 +85,7 @@ export const checkUserRoleByEmail = async (req, res) => {
     ========================= */
     const { data: company, error: compErr } = await supabase
       .from('companies')
-      .select('id, email, status')
+      .select('id, email, status, has_password')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
@@ -76,8 +96,10 @@ export const checkUserRoleByEmail = async (req, res) => {
 
     if (company) {
       return res.json({
-        role: 'Company',
-        status: company.status || 'Inactif'
+        exists: true,
+        role: 'company',
+        has_password: Boolean(company.has_password),
+        status: company.status ?? 'inactive'
       });
     }
 
@@ -85,7 +107,7 @@ export const checkUserRoleByEmail = async (req, res) => {
        ❌ AUCUN COMPTE
     ========================= */
     return res.status(404).json({
-      role: 'unknown',
+      exists: false,
       message: 'Aucun compte associé à cet email'
     });
 

@@ -36,79 +36,78 @@ router.post('/validate-otp', validateOtpAndSetPassword);
 router.post('/login', loginCompany);
 
 // ----------------- Routes protégées -----------------
-
 // Lister toutes les compagnies
 router.get(
   '/all',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['admin', 'supervisor']),
   listCompanies
 );
 
-// Profil de la compagnie authentifiée
-router.get('/me', verifyToken, me);
-
-// Modifier une compagnie
+// Modifier une compagnie (admin/supervisor)
 router.put(
   '/update-company/:id',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['admin', 'supervisor']),
   upload.single('logo_url'),
   updateCompany
 );
 
+// Update profil compagnie
 router.put(
   '/update',
   verifyToken,
-  checkRole(['Company']),
+  checkRole(['company']),
   upload.single('logo_url'),
   updateCompanyInfo
 );
 
-// Modifier le mot de passe (compagnie connectée)
+// Mot de passe compagnie
 router.put(
   '/update-password',
   verifyToken,
-  checkRole(['Company']),
+  checkRole(['company']),
   updateCompanyPassword
 );
 
-
-
-// Archiver une compagnie
+// Archivage
 router.delete(
   '/:id',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['admin', 'supervisor']),
   archiveCompany
 );
 
-// Restaurer une compagnie
+// Restauration
 router.patch(
   '/restore/:id',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['admin', 'supervisor']),
   restoreCompany
 );
 
-// Récupérer une compagnie par ID
+// Get by id
 router.get(
   '/:id',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['admin', 'supervisor']),
   getCompanyById
 );
 
-// Supprimer une compagnie définitivement
+// Suppression définitive
 router.delete(
   '/delete/:id',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
+  checkRole(['admin', 'supervisor']),
   deleteCompanySafe
 );
 
-// Déconnexion compagnie
-router.post('/logout', verifyToken, checkRole(['Company']), logoutCompany);
-
+// Logout compagnie
+router.post(
+  '/logout',
+  verifyToken,
+  checkRole(['company']),
+  logoutCompany
+);
 
 export default router;

@@ -9,32 +9,23 @@ import {
   createCompany,
   listAdmins,
   updateAdminPassword,
-  refreshTokenAdmin
+  refreshTokenAdmin,
+  meAdmin
 } from '../Controllers/authAdmincontroller.js';
 
 const router = express.Router();
 
 /* ---------------------------------------------------------
-   📦 Multer (stockage mémoire)
+   📦 Multer (mémoire)
 ----------------------------------------------------------*/
-const storage = multer.memoryStorage();
-
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif'
-    ];
-
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Format non autorisé (PNG, JPG, GIF uniquement)'));
-    }
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+    allowed.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Format non autorisé'));
   }
 });
 
@@ -43,20 +34,16 @@ const upload = multer({
 ----------------------------------------------------------*/
 router.post('/login', loginAdmin);
 router.post('/login/superviseur', loginSuperviseur);
+router.post('/token/refresh', refreshTokenAdmin);
+router.post('/logout', logoutAdmin);
 
 /* ---------------------------------------------------------
-   🔐 AUTH / TOKENS
+   🔐 SESSION
 ----------------------------------------------------------*/
-
-// Logout → supprime les cookies
-router.post('/logout', verifyToken, logoutAdmin);
-
-// Refresh token → lit refreshToken depuis cookie
-router.post('/token/refresh', refreshTokenAdmin);
+router.get('/me', verifyToken, meAdmin);
 
 /* ---------------------------------------------------------
    🏢 COMPAGNIES
-   - Admin / Superviseur uniquement
 ----------------------------------------------------------*/
 router.post(
   '/create-company',
@@ -67,8 +54,7 @@ router.post(
 );
 
 /* ---------------------------------------------------------
-   👥 ADMINS / SUPERVISEURS
-   - Super Admin uniquement
+   👥 ADMINS
 ----------------------------------------------------------*/
 router.get(
   '/admins',
@@ -79,7 +65,6 @@ router.get(
 
 /* ---------------------------------------------------------
    🔑 MOT DE PASSE
-   - Tout admin connecté
 ----------------------------------------------------------*/
 router.post(
   '/update-password',

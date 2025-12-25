@@ -52,22 +52,16 @@ export const logout = (req, res) => {
   return res.status(200).json({ message: 'Déconnexion réussie' });
 };
 
-/* ---------------------------------------------------------
-   🔹 Login Superviseur
-----------------------------------------------------------*/
 export const loginSuperviseur = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        message: 'Email et mot de passe requis'
-      });
+      return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 🔎 Recherche superviseur
     const { data: superviseur, error } = await supabase
       .from('superviseurs')
       .select('*')
@@ -76,33 +70,26 @@ export const loginSuperviseur = async (req, res) => {
       .single();
 
     if (error || !superviseur) {
-      return res.status(401).json({
-        message: 'Email ou mot de passe incorrect'
-      });
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // 🔐 Vérification mot de passe
     const passwordOk = await bcrypt.compare(password, superviseur.password);
     if (!passwordOk) {
-      return res.status(401).json({
-        message: 'Email ou mot de passe incorrect'
-      });
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // 🎯 Rôle UNIQUE et cohérent
-    const role = 'Superviseur';
+    // ✅ RÔLE MACHINE
+    const role = 'supervisor';
 
     const permissions =
-      superviseur.permissions && superviseur.permissions.length > 0
+      superviseur.permissions?.length > 0
         ? superviseur.permissions
         : getPermissions(role);
 
-    // 🔑 Payload JWT
     const payload = {
       id: superviseur.id,
       email: superviseur.email,
       role,
-      nom_complet: superviseur.nom_complet,
       permissions
     };
 
@@ -116,7 +103,6 @@ export const loginSuperviseur = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // 🌍 Cookies (dev + prod)
     const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('token', token, {
@@ -133,48 +119,31 @@ export const loginSuperviseur = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    // 📝 Log activité
-    await logActivite({
-      type_activite: 'security',
-      categorie: 'auth',
-      module: 'superviseur-login',
-      description: 'Connexion Superviseur',
-      id_superviseur: superviseur.id,
-      utilisateur_email: superviseur.email
-    });
-
-    // ✅ Réponse
     return res.json({
-      message: 'Connexion Superviseur réussie',
+      message: 'Connexion réussie',
       role,
       permissions
     });
 
   } catch (err) {
     console.error('Erreur loginSuperviseur :', err);
-    return res.status(500).json({
-      message: 'Erreur serveur'
-    });
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
-/* ---------------------------------------------------------
-   🔹 LOGIN ADMIN (VERSION SURE)
-----------------------------------------------------------*/
+
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res.status(400).json({ message: 'Email et mot de passe requis' });
-    }
-
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ message: 'Configuration JWT manquante' });
     }
 
     const { data: user, error } = await supabase
       .from('admins')
       .select('*')
-      .eq('email', email.toLowerCase())
+      .eq('email', email.toLowerCase().trim())
+      .eq('archived', false)
       .single();
 
     if (error || !user) {
@@ -186,19 +155,27 @@ export const loginAdmin = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    const profile = user.profile;
-    const permissions = getPermissions(profile);
+    // ✅ RÔLE MACHINE UNIQUE
+    const role = 'admin';
+
+    const permissions = getPermissions(role);
 
     const payload = {
       id: user.id,
       email: user.email,
-      role: profile,
-      nom_complet: user.nom_complet,
+      role,
       permissions
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
-    const refreshToken = jwt.sign({ id: user.id, role: profile }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '12h'
+    });
+
+    const refreshToken = jwt.sign(
+      { id: user.id, role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
 
     const isProd = process.env.NODE_ENV === 'production';
 
@@ -216,41 +193,15 @@ export const loginAdmin = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    await logActivite({
-      type_activite: 'security',
-      categorie: 'auth',
-      module: 'admin-login',
-      description: 'Connexion Admin',
-      id_admin: user.id,
-      utilisateur_email: user.email
+    return res.json({
+      message: 'Connexion réussie',
+      role,
+      permissions
     });
 
-    return res.json({
-      message: 'Connexion Admin réussie',
-      role: profile,
-      permissions,
-      token, 
-      refreshToken
-    });
   } catch (err) {
     console.error('Erreur loginAdmin :', err);
     return res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-
-/* ---------------------------------------------------------
-   🔹 LOGOUT ADMIN
-----------------------------------------------------------*/
-export const logoutAdmin = async (req, res) => {
-  try {
-    const adminId = req.userId;
-    await supabase.from('admins').update({ status: 'Inactif' }).eq('id', adminId);
-    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None' });
-    res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'None' });
-    res.json({ message: 'Déconnexion réussie' });
-  } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
   }
 };
 
@@ -428,7 +379,6 @@ export const listAdmins = async (req, res) => {
     });
   }
 };
-
 
 
 /* ---------------------------------------------------------

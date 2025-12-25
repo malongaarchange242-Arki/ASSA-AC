@@ -394,6 +394,37 @@ export const me = async (req, res) => {
   }
 };
 
+export const logoutCompany = async (req, res) => {
+  try {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    await supabase
+      .from('companies')
+      .update({ status: 'Inactif' })
+      .eq('id', req.user.id_companie);
+
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
+      path: '/'
+    });
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
+      path: '/'
+    });
+
+    return res.json({ message: 'Déconnexion réussie' });
+
+  } catch (err) {
+    console.error('logoutCompany error:', err);
+    return res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ----------------- Lister toutes les compagnies -----------------
 export const listCompanies = async (req, res) => {
   try {
@@ -609,18 +640,6 @@ export const updateCompanyInfo = async (req, res) => {
 
 
 // ----------------- Mettre à jour une compagnie -----------------
-
-export const logoutCompany = async (req, res) => {
-  try {
-    const companyId = req.user.id_companie;
-    await supabase.from('companies').update({ status: 'Inactif' }).eq('id', companyId);
-    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None' });
-    res.json({ message: 'Déconnexion réussie' });
-  } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
-  }
-};
-
 export const updateCompany = async (req, res) => {
   try {
     const { id } = req.params;

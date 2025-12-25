@@ -1,18 +1,62 @@
 import jwt from 'jsonwebtoken';
 
 /* ---------------------------------------------------------
-   🔐 Middleware principal : vérification JWT (COOKIE FIRST)
+   🔧 UTILITAIRE : normalisation des rôles (SOURCE UNIQUE)
+---------------------------------------------------------- */
+const normalizeRole = (role) => {
+  if (!role) return null;
+
+  return role
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '');
+};
+
+/* ---------------------------------------------------------
+   👤 Construction de req.user (ADMIN / SUPERVISOR / COMPANY)
+---------------------------------------------------------- */
+const buildUserObject = (decoded) => {
+  const role = normalizeRole(decoded.role);
+
+  if (['supervisor', 'superviseur'].includes(role)) {
+    return {
+      id: decoded.id,
+      role: 'supervisor',
+      email: decoded.email,
+      permissions: decoded.permissions ?? []
+    };
+  }
+
+  if (['admin', 'administrateur', 'superadmin'].includes(role)) {
+    return {
+      id: decoded.id,
+      role: 'admin',
+      email: decoded.email,
+      permissions: decoded.permissions ?? [],
+      id_companie: decoded.id_companie ?? null
+    };
+  }
+
+  if (['company', 'compagnie', 'entreprise'].includes(role)) {
+    return {
+      id: decoded.id,
+      role: 'company',
+      email: decoded.email,
+      id_companie: decoded.id_companie ?? decoded.id
+    };
+  }
+
+  throw new Error(`Rôle utilisateur inconnu : ${decoded.role}`);
+};
+
+/* ---------------------------------------------------------
+   🔐 Middleware JWT — COOKIE ONLY
 ---------------------------------------------------------- */
 export const verifyToken = (req, res, next) => {
-  let token = null;
-
-  if (req.cookies?.token) {
-    token = req.cookies.token;
-  } else if (req.headers.authorization?.startsWith('Bearer ')) {
-    token = req.headers.authorization.slice(7).trim();
-  } else if (req.headers['x-access-token']) {
-    token = String(req.headers['x-access-token']).trim();
-  }
+  const token = req.cookies?.token;
 
   if (!token) {
     return res.status(401).json({ message: 'Non authentifié' });
@@ -21,9 +65,10 @@ export const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded; // 🔥 SOURCE UNIQUE
-    next();
+    // 🔥 SOURCE UNIQUE DE VÉRITÉ
+    req.user = buildUserObject(decoded);
 
+    next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Session expirée' });
@@ -33,68 +78,9 @@ export const verifyToken = (req, res, next) => {
 };
 
 
-/* ---------------------------------------------------------
-   👤 Construction de req.user (ADMIN / SUPERVISOR / COMPANY)
----------------------------------------------------------- */
-const buildUserObject = (decoded) => {
-  const adminRoles = [
-    'Admin',
-    'Administrateur',
-    'Super Admin'
-  ];
-
-  const supervisorRoles = ['supervisor', 'Superviseur'];
-
-  const companyRoles = ['Company', 'Compagnie'];
-
-  // 🔹 SUPERVISEUR
-  if (supervisorRoles.includes(decoded.role)) {
-    return {
-      id: decoded.id,
-      role: 'supervisor',
-      email: decoded.email,
-      nom_complet: decoded.nom_complet ?? null,
-      permissions: decoded.permissions ?? []
-    };
-  }
-
-  // 🔹 ADMIN
-  if (adminRoles.includes(decoded.role)) {
-    return {
-      id: decoded.id,
-      role: decoded.role,
-      email: decoded.email,
-      nom_complet: decoded.nom_complet ?? null,
-      permissions: decoded.permissions ?? [],
-      id_companie: decoded.id_companie ?? null
-    };
-  }
-
-  // 🔹 COMPANY
-  if (companyRoles.includes(decoded.role)) {
-    return {
-      id: decoded.id,
-      role: decoded.role,
-      email: decoded.email,
-      id_companie: decoded.id_companie ?? decoded.id
-    };
-  }
-
-  throw new Error('Rôle utilisateur inconnu dans le token');
-};
-
-/* ---------------------------------------------------------
-   🛡️ Vérification de rôles (souple)
----------------------------------------------------------- */
 export const checkRole = (allowedRoles = []) => (req, res, next) => {
   if (!req.user?.role) {
     return res.status(401).json({ message: 'Utilisateur non authentifié' });
-  }
-
-  if (allowedRoles.length === 0) {
-    return res.status(500).json({
-      message: 'Configuration route invalide (roles manquants)'
-    });
   }
 
   if (!allowedRoles.includes(req.user.role)) {
