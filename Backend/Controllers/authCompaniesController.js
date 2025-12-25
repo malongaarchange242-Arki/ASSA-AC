@@ -197,105 +197,169 @@ export const validateOtpAndSetPassword = async (req, res) => {
 
     if (updateError) return res.status(500).json({ message: 'Erreur serveur', erreur: updateError.message });
 
-    const token = jwt.sign({
+    const payload = {
       id: company.id,
-      role: 'Company',
-      id_companie: company.id,
-      company_name: company.company_name,
       email: company.email,
-      status: 'Actif'
-    }, process.env.JWT_SECRET, { expiresIn: '12h' });
+      role: 'Company',
+      company_name: company.company_name,
+      id_companie: company.id
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '12h'
+    });
+
+    const refreshToken = jwt.sign(
+      { id: company.id, role: 'Company' },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000
     });
 
-    await logActivite({
-      module: "Compagnies",
-      type_activite: "update",
-      categorie: "company",
-      description: "Activation automatique du compte et définition du mot de passe",
-      id_companie: company.id,
-    
-      utilisateur_nom: "Système"
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
-    
-    
 
-    res.json({
-      message: 'Mot de passe défini, connexion réussie',
+    await logActivite({
+      type_activite: 'security',
+      categorie: 'auth',
+      module: 'company-set-password',
+      description: 'Définition du mot de passe par la compagnie',
       id_companie: company.id,
-      company: { ...updatedCompany[0], password_hash: undefined, otp: undefined }
+      utilisateur_email: company.email
     });
+
+    return res.json({
+      message: 'Mot de passe défini avec succès',
+      token,
+      refreshToken,
+      id_companie: company.id,
+      company_name: company.company_name
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    console.error('Erreur validateOtpAndSetPassword :', err);
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
-// ----------------- Connexion -----------------
+// ----------------- LOGIN COMPAGNIE -----------------
 export const loginCompany = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: 'Email et mot de passe requis' });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email et mot de passe requis' });
+    }
 
-    const { data: companies, error } = await supabase.from('companies').select('*').eq('email', email);
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
-    if (!companies?.length) return res.status(404).json({ message: 'Compagnie introuvable' });
+    const { data: company, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .single();
 
-    const company = companies[0];
-    if (!await bcrypt.compare(password, company.password_hash)) return res.status(400).json({ message: 'Mot de passe incorrect' });
+    if (error || !company) {
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+    }
 
-    await supabase.from('companies').update({ last_login: new Date() }).eq('id', company.id);
+    if (!company.password_hash) {
+      return res.status(401).json({ message: 'Veuillez d\'abord définir votre mot de passe.' });
+    }
 
-    const token = jwt.sign({
+    const passwordOk = await bcrypt.compare(password, company.password_hash);
+    if (!passwordOk) {
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+    }
+
+    const payload = {
       id: company.id,
-      role: 'Company',
-      id_companie: company.id,
-      company_name: company.company_name,
       email: company.email,
-      status: company.status
-    }, process.env.JWT_SECRET, { expiresIn: '12h' });
+      role: 'Company',
+      company_name: company.company_name,
+      id_companie: company.id
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '12h'
+    });
+
+    const refreshToken = jwt.sign(
+      { id: company.id, role: 'Company' },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000
     });
 
-    await logActivite({
-      module: 'Authentification',
-      type_activite: 'create',
-      categorie: 'auth',
-      description: `Connexion de la compagnie ${company.company_name}`,
-      id_companie: company.id,
-      utilisateur_nom: company.company_name,
-      utilisateur_email: company.email || null
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
-    
 
-    res.json({
-      message: 'Connexion réussie',
+    await supabase
+      .from('companies')
+      .update({ last_login: new Date() })
+      .eq('id', company.id);
+
+    await logActivite({
+      type_activite: 'security',
+      categorie: 'auth',
+      module: 'company-login',
+      description: 'Connexion de la compagnie',
       id_companie: company.id,
-      company: { ...company, password_hash: undefined, otp: undefined }
+      utilisateur_email: company.email
     });
+
+    return res.json({
+      message: 'Connexion réussie',
+      token,
+      refreshToken,
+      id_companie: company.id,
+      company_name: company.company_name
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    console.error('Erreur loginCompany :', err);
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
+
 
 // ----------------- Profil de la compagnie -----------------
 export const me = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+      return res.status(401).json({ message: 'Non authentifié' });
     }
 
-    const companyId = req.user.id_companie;
+    // ADMIN / SUPERVISOR → juste infos token
+    if (req.user.role !== 'Company') {
+      return res.json({
+        message: 'Profil utilisateur',
+        user: req.user
+      });
+    }
 
+    // COMPANY → infos complètes
     const { data, error } = await supabase
       .from('companies')
       .select(`
@@ -310,28 +374,25 @@ export const me = async (req, res) => {
         airport_code,
         logo_url,
         status,
-        created_at,
-        updated_at
+        created_at
       `)
-      .eq('id', companyId)
+      .eq('id', req.user.id_companie)
       .single();
 
     if (error) {
-      return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
+      return res.status(500).json({ message: 'Erreur serveur' });
     }
 
-    return res.status(200).json({
+    return res.json({
       message: 'Profil compagnie',
       user: req.user,
       company: data
     });
 
   } catch (err) {
-    return res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
-
-
 
 // ----------------- Lister toutes les compagnies -----------------
 export const listCompanies = async (req, res) => {

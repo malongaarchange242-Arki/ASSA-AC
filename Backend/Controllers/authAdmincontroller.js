@@ -14,23 +14,47 @@ import { logActivite } from '../Services/journalService.js';
 
 
 /* ---------------------------------------------------------
-   🔹 Profils spéciaux et permissions
+   🔹 Permissions selon profil
 ----------------------------------------------------------*/
-const getProfileByPassword = (password) => {
-  if (password === 'ASSA2025A') return 'Superviseur';
-  if (password === 'ASSA2025SA') return 'Super Admin';
-  return null;
-};
-
 const getPermissions = (profile) => {
   switch (profile) {
-    case 'Administrateur': return ['manage_admins','create_company','view_stats'];
-    case 'Superviseur': return ['view_companies','view_stats'];
-    case 'Super Admin': return ['manage_admins','create_company','view_stats','all_access'];
-    default: return [];
+    case 'Administrateur':
+      return ['manage_admins', 'create_company', 'view_stats'];
+
+    case 'Superviseur':
+      return ['view_companies', 'view_stats'];
+
+    case 'Super Admin':
+      return ['manage_admins', 'create_company', 'view_stats', 'all_access'];
+
+    default:
+      return [];
   }
 };
 
+/* ---------------------------------------------------------
+   🔹 LOGOUT
+----------------------------------------------------------*/
+export const logout = (req, res) => {
+  res.cookie('token', '', {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
+  });
+  res.cookie('refreshToken', '', {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
+  });
+
+  return res.status(200).json({ message: 'Déconnexion réussie' });
+};
+
+/* ---------------------------------------------------------
+   🔹 Login Superviseur
+----------------------------------------------------------*/
 export const loginSuperviseur = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -41,80 +65,98 @@ export const loginSuperviseur = async (req, res) => {
       });
     }
 
-    const { data: user, error } = await supabase
-      .from('admins')
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 🔎 Recherche superviseur
+    const { data: superviseur, error } = await supabase
+      .from('superviseurs')
       .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .eq('profile', 'Superviseur')
+      .eq('email', normalizedEmail)
       .eq('archived', false)
       .single();
 
-    if (error || !user) {
-      return res.status(400).json({
-        message: 'Identifiants invalides'
+    if (error || !superviseur) {
+      return res.status(401).json({
+        message: 'Email ou mot de passe incorrect'
       });
     }
 
-    if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(400).json({
-        message: 'Identifiants invalides'
+    // 🔐 Vérification mot de passe
+    const passwordOk = await bcrypt.compare(password, superviseur.password);
+    if (!passwordOk) {
+      return res.status(401).json({
+        message: 'Email ou mot de passe incorrect'
       });
     }
 
+    // 🎯 Rôle UNIQUE et cohérent
+    const role = 'Superviseur';
+
+    const permissions =
+      superviseur.permissions && superviseur.permissions.length > 0
+        ? superviseur.permissions
+        : getPermissions(role);
+
+    // 🔑 Payload JWT
     const payload = {
-      id: user.id,
-      email: user.email,
-      role: 'Superviseur',
-      nom_complet: user.nom_complet,
-      permissions: ['view_companies', 'view_stats']
+      id: superviseur.id,
+      email: superviseur.email,
+      role,
+      nom_complet: superviseur.nom_complet,
+      permissions
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: '12h'
     });
 
-    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: '7d'
-    });
+    const refreshToken = jwt.sign(
+      { id: superviseur.id, role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // 🌍 Cookies (dev + prod)
+    const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    // 📝 Log activité
     await logActivite({
       type_activite: 'security',
       categorie: 'auth',
       module: 'superviseur-login',
       description: 'Connexion Superviseur',
-      id_admin: user.id,
-      utilisateur_email: user.email
+      id_superviseur: superviseur.id,
+      utilisateur_email: superviseur.email
     });
 
-    res.json({
+    // ✅ Réponse
+    return res.json({
       message: 'Connexion Superviseur réussie',
-      role: payload.role,
-      permissions: payload.permissions
+      role,
+      permissions
     });
 
   } catch (err) {
     console.error('Erreur loginSuperviseur :', err);
-    res.status(500).json({
-      message: 'Erreur serveur',
-      erreur: err.message
+    return res.status(500).json({
+      message: 'Erreur serveur'
     });
   }
 };
-
 /* ---------------------------------------------------------
    🔹 LOGIN ADMIN (VERSION SURE)
 ----------------------------------------------------------*/
@@ -125,9 +167,8 @@ export const loginAdmin = async (req, res) => {
       return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
 
-    if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-      console.error("JWT_SECRET ou JWT_REFRESH_SECRET non défini !");
-      return res.status(500).json({ message: "Configuration JWT manquante" });
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Configuration JWT manquante' });
     }
 
     const { data: user, error } = await supabase
@@ -137,76 +178,63 @@ export const loginAdmin = async (req, res) => {
       .single();
 
     if (error || !user) {
-      return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+    const passwordOk = await bcrypt.compare(password, user.password);
+    if (!passwordOk) {
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // Sécurité : si les fonctions n’existent pas, éviter crash
-    const safeGetProfileByPassword = typeof getProfileByPassword === "function"
-      ? getProfileByPassword
-      : () => null;
-
-    const safeGetPermissions = typeof getPermissions === "function"
-      ? getPermissions
-      : () => [];
-
-    // Déterminer profil
-    let profile = user.profile;
-    const specialProfile = safeGetProfileByPassword(password);
-    if (specialProfile) profile = specialProfile;
+    const profile = user.profile;
+    const permissions = getPermissions(profile);
 
     const payload = {
       id: user.id,
       email: user.email,
       role: profile,
       nom_complet: user.nom_complet,
-      id_companie: user.id_companie || null,
-      permissions: safeGetPermissions(profile),
+      permissions
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
-    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    const refreshToken = jwt.sign({ id: user.id, role: profile }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+
+    const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    res.json({
-      message: 'Connexion réussie',
-      userEmailAdmin: user.email,
-      adminId: user.id,
-      role: payload.role,
-      permissions: payload.permissions,
-      id_companie: payload.id_companie
-    });
-
     await logActivite({
-      type_activite: 'system',
+      type_activite: 'security',
       categorie: 'auth',
-      module: 'login',
-      description: 'Connexion administrateur',
+      module: 'admin-login',
+      description: 'Connexion Admin',
       id_admin: user.id,
-      utilisateur_email: user.email,
-      utilisateur_nom: user.nom_complet
+      utilisateur_email: user.email
     });
-    
 
+    return res.json({
+      message: 'Connexion Admin réussie',
+      role: profile,
+      permissions,
+      token, 
+      refreshToken
+    });
   } catch (err) {
     console.error('Erreur loginAdmin :', err);
-    res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 

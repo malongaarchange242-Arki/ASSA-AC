@@ -8,30 +8,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer } from 'ws';
-
-// Detect if running on Render
-const isRender =
-  process.env.RENDER === "true" ||
-  !!process.env.RENDER_EXTERNAL_URL ||
-  !!process.env.RENDER_SERVICE_ID;
-
-
-// Routes imports
-import adminRoutes from './Routes/admins.js';
-import companyRoutes from './Routes/compagnies.js';
-import factureRoutes from './Routes/factureRoutes.js';
-import journalRoutes from './Routes/journalActiviteRoutes.js';
-import authRoutes from './Routes/auth.js';
-import messagesRoutesFactory from './Routes/messages.js';
-import contestationsRoutesFactory from './Routes/contestations.js';
-import preuveRoutes from './Routes/preuveRoutes.js';
-import parametreRoutes from './Routes/parametreRoutes.js';
-import archiveRoutes from './Routes/archiveRoutes.js';
+import cookieParser from 'cookie-parser';
 
 // ==========================
 // APP
 // ==========================
 const app = express();
+
+// 🔥 OBLIGATOIRE SUR RENDER (cookies secure)
+app.set('trust proxy', 1);
 
 // ==========================
 // CORS
@@ -51,25 +36,44 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.error('CORS non autorisé pour cet origin :', origin);
+      console.error('CORS non autorisé :', origin);
       callback(new Error('CORS non autorisé'), false);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-access-token',
+    'X-Requested-With'
+  ],
   credentials: true
 };
 
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ==========================
 // ROUTES API
 // ==========================
+import adminRoutes from './Routes/admins.js';
+import companyRoutes from './Routes/compagnies.js';
+import factureRoutes from './Routes/factureRoutes.js';
+import journalRoutes from './Routes/journalActiviteRoutes.js';
+import authRoutes from './Routes/auth.js';
+import messagesRoutesFactory from './Routes/messages.js';
+import contestationsRoutesFactory from './Routes/contestations.js';
+import preuveRoutes from './Routes/preuveRoutes.js';
+import parametreRoutes from './Routes/parametreRoutes.js';
+import archiveRoutes from './Routes/archiveRoutes.js';
+
 app.use('/api/admins', adminRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/factures', factureRoutes);
@@ -78,10 +82,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/preuves', preuveRoutes);
 app.use('/api/parametres', parametreRoutes);
 app.use('/api/archives', archiveRoutes);
+
+// Websocket routes
 app.use('/api/messages', messagesRoutesFactory(broadcastToRoom));
 app.use('/api/contestations', contestationsRoutesFactory(broadcastToRoom));
 
-// 404 route
+// 404 API
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Route API introuvable' });
 });
@@ -98,7 +104,6 @@ app.use(express.static(clientDir));
 // ==========================
 // SERVE UPLOADS
 // ==========================
-// Toujours utiliser /uploads du projet
 const uploadPath = path.join(process.cwd(), 'uploads');
 app.use('/uploads', express.static(uploadPath));
 
@@ -145,7 +150,7 @@ function broadcastToRoom(roomKey, payload) {
 
 wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
-    let data = null;
+    let data;
     try { data = JSON.parse(raw); } catch { return; }
 
     if (data.type === 'join') {
@@ -172,36 +177,6 @@ app.use((err, req, res, next) => {
     erreur: err.message
   });
 });
-
-// import nodemailer from "nodemailer";
-
-// const transporter = nodemailer.createTransport({
-//     host: process.env.SMTP_HOST,
-//     port: Number(process.env.SMTP_PORT),
-//     secure: process.env.SMTP_SECURE === "true",
-//     auth: {
-//         user: process.env.SMTP_USER,
-//         pass: process.env.SMTP_PASS
-//     }
-// });
-
-
-// app.get("/test-email", async (req, res) => {
-//   try {
-//     await transporter.sendMail({
-//       from: process.env.SMTP_USER,
-//       to: process.env.SMTP_USER,
-//       subject: "TEST | SMTP fonctionne 🎉",
-//       text: "Ceci est un email de test depuis Nodemailer."
-//     });
-
-//     res.send("Email envoyé !");
-//   } catch (err) {
-//     console.error("❌ TEST EMAIL ERROR :", err);
-//     res.status(500).send(err.message);
-//   }
-// });
-
 
 // ==========================
 // START SERVER

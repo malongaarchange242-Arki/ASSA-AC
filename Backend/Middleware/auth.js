@@ -1,50 +1,62 @@
 import jwt from 'jsonwebtoken';
 
-/* ---------------------------------------------------------   🔹 Middleware : vérifie le token et reconstruit req.user----------------------------------------------------------*/
+/* ---------------------------------------------------------
+   🔐 Middleware principal : vérification JWT (COOKIE FIRST)
+---------------------------------------------------------- */
 export const verifyToken = (req, res, next) => {
   let token = null;
 
-  // 1) Cookie 'token'
-  if (req.cookies && req.cookies.token) {
+  if (req.cookies?.token) {
     token = req.cookies.token;
-  }
-
-  // 2) Authorization: Bearer <token>
-  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-  if (!token && authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.slice(7).trim();
-  }
-
-  // 3) x-access-token header
-  if (!token && req.headers['x-access-token']) {
+  } else if (req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.slice(7).trim();
+  } else if (req.headers['x-access-token']) {
     token = String(req.headers['x-access-token']).trim();
   }
 
-  if (!token) return res.status(401).json({ message: 'Token manquant' });
+  if (!token) {
+    return res.status(401).json({ message: 'Non authentifié' });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log("🔥 TOKEN DECODED :", decoded);
-
-    req.user = buildUserObject(decoded);
-    req.userId = req.user.id;
-
+    req.user = decoded; // 🔥 SOURCE UNIQUE
     next();
+
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expiré' });
+      return res.status(401).json({ message: 'Session expirée' });
     }
     return res.status(401).json({ message: 'Token invalide' });
   }
 };
 
+
 /* ---------------------------------------------------------
-   🔹 Construit req.user selon rôle ADMIN/COMPAGNIE
-----------------------------------------------------------*/
+   👤 Construction de req.user (ADMIN / SUPERVISOR / COMPANY)
+---------------------------------------------------------- */
 const buildUserObject = (decoded) => {
-  const adminRoles = ['Admin', 'Administrateur', 'Superviseur', 'Super Admin'];
+  const adminRoles = [
+    'Admin',
+    'Administrateur',
+    'Super Admin'
+  ];
+
+  const supervisorRoles = ['supervisor', 'Superviseur'];
+
   const companyRoles = ['Company', 'Compagnie'];
+
+  // 🔹 SUPERVISEUR
+  if (supervisorRoles.includes(decoded.role)) {
+    return {
+      id: decoded.id,
+      role: 'supervisor',
+      email: decoded.email,
+      nom_complet: decoded.nom_complet ?? null,
+      permissions: decoded.permissions ?? []
+    };
+  }
 
   // 🔹 ADMIN
   if (adminRoles.includes(decoded.role)) {
@@ -52,9 +64,9 @@ const buildUserObject = (decoded) => {
       id: decoded.id,
       role: decoded.role,
       email: decoded.email,
-      nom_complet: decoded.nom_complet || null,
-      permissions: decoded.permissions || [],
-      id_companie: decoded.id_companie || decoded.company_id || null,
+      nom_complet: decoded.nom_complet ?? null,
+      permissions: decoded.permissions ?? [],
+      id_companie: decoded.id_companie ?? null
     };
   }
 
@@ -64,11 +76,7 @@ const buildUserObject = (decoded) => {
       id: decoded.id,
       role: decoded.role,
       email: decoded.email,
-      nom_complet: decoded.nom_complet || null,
-      permissions: decoded.permissions || [],
-      // Pour les compagnies, c’est forcément leur ID
-      id_companie: decoded.id_companie ?? decoded.company_id ?? decoded.id ?? null,
-      company_name: decoded.company_name || null,
+      id_companie: decoded.id_companie ?? decoded.id
     };
   }
 
@@ -76,19 +84,23 @@ const buildUserObject = (decoded) => {
 };
 
 /* ---------------------------------------------------------
-   🔹 Vérification des rôles
-----------------------------------------------------------*/
+   🛡️ Vérification de rôles (souple)
+---------------------------------------------------------- */
 export const checkRole = (allowedRoles = []) => (req, res, next) => {
-  const role = req.user?.role;
+  if (!req.user?.role) {
+    return res.status(401).json({ message: 'Utilisateur non authentifié' });
+  }
 
-  if (!role) return res.status(401).json({ message: 'Utilisateur non authentifié' });
+  if (allowedRoles.length === 0) {
+    return res.status(500).json({
+      message: 'Configuration route invalide (roles manquants)'
+    });
+  }
 
-  const defaultAdminRoles = ['Admin', 'Administrateur', 'Superviseur', 'Super Admin'];
-
-  const rolesToCheck = allowedRoles.length > 0 ? allowedRoles : defaultAdminRoles;
-
-  if (!rolesToCheck.includes(role)) {
-    return res.status(403).json({ message: `Accès refusé : rôle "${role}" non autorisé` });
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({
+      message: `Accès refusé (rôle : ${req.user.role})`
+    });
   }
 
   next();

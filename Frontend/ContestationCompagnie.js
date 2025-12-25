@@ -40,53 +40,44 @@ function toggleTheme() {
     setTheme(currentTheme === 'dark' ? 'light' : 'dark');
 }
 
+async function fetchWithAuth(url, options = {}) {
+    const res = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+            ...(options.headers || {})
+        }
+    });
+
+    if (res.status === 401) {
+        window.location.href = 'login.html';
+        throw new Error('Non authentifié');
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Erreur serveur');
+
+    return data;
+}
+
 // ====================================================================
 //  CHARGER NOM + LOGO DE LA COMPAGNIE CONNECTÉE
 // ====================================================================
 async function loadCompanyInfo() {
-    const token = localStorage.getItem("jwtTokenCompany");
-    if (!token) return;
-
     try {
-        const response = await fetch(`${API_BASE}/api/companies/me`, {
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
+        const data = await fetchWithAuth(`${API_BASE}/api/companies/me`);
 
-        if (!response.ok) {
-            console.error("❌ Erreur API /companies/me :", response.status);
-            return;
-        }
-
-        const data = await response.json();
-        console.log("🏢 Compagnie connectée :", data);
-
-        //  Les vrais données sont dans data.company
         const company = data.company;
 
-        const nameEl = document.getElementById("company-name");
-        const logoEl = document.getElementById("company-logo");
+        document.getElementById("company-name").textContent =
+            company.company_name || "Compagnie";
 
-        if (nameEl) {
-            nameEl.textContent = company.company_name || "Compagnie";
-        }
-
-        if (logoEl) {
-            //  TON logo_url est déjà une URL complète => NE PAS prefixer API_BASE
-            logoEl.src = company.logo_url
-                ? company.logo_url
-                : "https://placehold.co/40x40/1e40af/ffffff?text=?";
-
-            logoEl.alt = company.company_name || "Logo compagnie";
-        }
-
+        document.getElementById("company-logo").src =
+            company.logo_url || "https://placehold.co/40x40";
     } catch (err) {
-        console.error("❌ Erreur loadCompanyInfo() :", err);
+        console.error(err);
     }
 }
-
-
 
 /**
  * Remplit le menu déroulant de la vue Contestations avec les factures contestables.
@@ -95,34 +86,32 @@ async function renderContestationsView() {
     const select = document.getElementById('invoice-select-contestation');
     if (!select) return;
 
-    const token = localStorage.getItem('jwtTokenCompany');
-    if (!token) {
-        select.innerHTML = '<option value="">Connexion requise</option>';
-        return;
-    }
-
-    let base = API_BASE;
-    let url = `${base}/api/factures/company`;
+    let url = `${API_BASE}/api/factures/company`;
     let resp;
 
     try {
         resp = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` }
+            credentials: 'include' // 🔥 ENVOI AUTOMATIQUE DU COOKIE
         });
     } catch (e) {
         // 🔁 fallback local
-        base = 'http://localhost:5002';
-        url = `${base}/api/factures/company`;
-        resp = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` }
+        resp = await fetch(`http://localhost:5002/api/factures/company`, {
+            credentials: 'include'
         });
     }
 
-    const data = await resp.json().catch(() => []);
-    const SERVER_INVOICES = Array.isArray(data) ? data : [];
+    // ❌ Non authentifié
+    if (resp.status === 401) {
+        select.innerHTML = '<option value="">Session expirée</option>';
+        window.location.href = 'login.html';
+        return;
+    }
 
-    // ✅ FILTRE : UNIQUEMENT IMPAYÉE
-    const unpaidInvoices = SERVER_INVOICES.filter(inv =>
+    const data = await resp.json().catch(() => []);
+    const invoices = Array.isArray(data) ? data : [];
+
+    // ✅ FILTRE : UNIQUEMENT IMPAYÉES
+    const unpaidInvoices = invoices.filter(inv =>
         inv.status &&
         ['impayée', 'impayee'].includes(inv.status.toLowerCase())
     );
@@ -149,7 +138,6 @@ async function renderContestationsView() {
 
     select.innerHTML = options;
 }
-
 
 /**
  * Ouvre la modal d'état.
@@ -208,99 +196,92 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-        // 4. Gestionnaire pour le formulaire de Contestations
-    const contestationForm = document.getElementById('contestations-form');
-    const fileInputContestation = document.getElementById('file-upload-contestation');
-    const fileDisplayContestation = document.getElementById('file-upload-display-contestation');
+      // 4. Gestionnaire pour le formulaire de Contestations
+const contestationForm = document.getElementById('contestations-form');
+const fileInputContestation = document.getElementById('file-upload-contestation');
+const fileDisplayContestation = document.getElementById('file-upload-display-contestation');
 
-    if (contestationForm) {
-        contestationForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const invoiceId = document.getElementById('invoice-select-contestation').value;
-            const explanation = document.getElementById('dispute-explanation').value;
-            const files = fileInputContestation.files ? Array.from(fileInputContestation.files) : [];
+if (contestationForm) {
+    contestationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            if (!invoiceId || !explanation) {
-                showModal('Erreur de Formulaire', 'Veuillez remplir tous les champs obligatoires (Facture, Explication).');
+        const invoiceId = document.getElementById('invoice-select-contestation').value;
+        const explanation = document.getElementById('dispute-explanation').value;
+        const files = fileInputContestation.files
+            ? Array.from(fileInputContestation.files)
+            : [];
+
+        if (!invoiceId || !explanation) {
+            showModal(
+                'Erreur de Formulaire',
+                'Veuillez remplir tous les champs obligatoires (Facture, Explication).'
+            );
+            return;
+        }
+
+        try {
+            const fd = new FormData();
+            fd.append('numero_facture', invoiceId);
+            fd.append('explication', explanation);
+            files.forEach(f => fd.append('files', f));
+
+            let resp;
+            try {
+                resp = await fetch(`${API_BASE}/api/contestations/upload_contestation`, {
+                    method: 'POST',
+                    credentials: 'include', // 🔥 COOKIE ENVOYÉ ICI
+                    body: fd
+                });
+            } catch {
+                // 🔁 fallback local
+                resp = await fetch(`http://localhost:5002/api/contestations/upload_contestation`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: fd
+                });
+            }
+
+            // ❌ session expirée / non authentifiée
+            if (resp.status === 401) {
+                showModal(
+                    'Session expirée',
+                    'Veuillez vous reconnecter.'
+                );
+                window.location.href = 'login.html';
                 return;
             }
 
-            const token = localStorage.getItem('jwtTokenCompany');
-            if (!token) { 
-                showModal('Authentification requise', 'Veuillez vous reconnecter.'); 
-                return; 
-            }
+            const payload = await resp.json().catch(() => ({}));
 
-            try {
-                const fd = new FormData();
-                fd.append('numero_facture', invoiceId);
-                fd.append('explication', explanation);
-
-                const jwt = localStorage.getItem('jwtTokenCompany');
-                let cid = localStorage.getItem('id_companie');
-
-                if (!cid) {
-                    try {
-                        const payload = JSON.parse(decodeURIComponent(escape(atob(jwt.split('.')[1]))));
-                        cid = payload.id_companie || payload.company_id;
-                    } catch {}
-                }
-
-                if (cid) fd.append('id_companie', cid);
-                files.forEach(f => fd.append('files', f));
-
-                let resp;
-                try {
-                    resp = await fetch(`${API_BASE}/api/contestations/upload_contestation`, { 
-                        method: 'POST', 
-                        headers: { 'Authorization': `Bearer ${token}` }, 
-                        body: fd 
-                    });
-                } catch (e) {
-                    resp = await fetch(`http://localhost:5002/api/contestations/upload_contestation`, { 
-                        method: 'POST', 
-                        headers: { 'Authorization': `Bearer ${token}` }, 
-                        body: fd 
-                    });
-                }
-
-                const payload = await resp.json().catch(() => ({}));
-                if (!resp.ok) { 
-                    showModal('Erreur', payload.message || 'Échec de la soumission'); 
-                    return; 
-                }
-
-                try {
-                    const atts = (payload?.payload?.attachments || []).map(a => ({
-                        url: a.file_url,
-                        name: a.file_name
-                    }));
-                    const ctx = { invoiceId, text: `Contestation pour la facture ${invoiceId}` };
-                    localStorage.setItem('lastProofAttachments', JSON.stringify(atts));
-                    localStorage.setItem('lastProofContext', JSON.stringify(ctx));
-                } catch {}
-
+            if (!resp.ok) {
                 showModal(
-                    'Contestation Soumise',
-                    `Votre contestation pour la facture <strong>${invoiceId}</strong> a été soumise.`
+                    'Erreur',
+                    payload.message || 'Échec de la soumission'
                 );
-
-                contestationForm.reset();
-                if (fileDisplayContestation) {
-                    fileDisplayContestation.textContent = 'PDF, PNG, JPG (MAX. 5 fichiers)';
-                    fileDisplayContestation.classList.remove('file-selected');
-                }
-
-                // 🚫 Suppression de la redirection
-                // (plus de window.location.href)
-
-            } catch (err) {
-                console.error('Erreur soumission contestation:', err);
-                showModal('Erreur', 'Une erreur est survenue lors de la soumission.');
+                return;
             }
-        });
-    }
 
+            showModal(
+                'Contestation Soumise',
+                `Votre contestation pour la facture <strong>${invoiceId}</strong> a été soumise.`
+            );
+
+            contestationForm.reset();
+            if (fileDisplayContestation) {
+                fileDisplayContestation.textContent =
+                    'PDF, PNG, JPG (MAX. 5 fichiers)';
+                fileDisplayContestation.classList.remove('file-selected');
+            }
+
+        } catch (err) {
+            console.error('Erreur soumission contestation:', err);
+            showModal(
+                'Erreur',
+                'Une erreur est survenue lors de la soumission.'
+            );
+        }
+    });
+}
 
     // 5. Affichage du nom du fichier (Contestations)
     if (fileInputContestation && fileDisplayContestation) {

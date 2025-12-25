@@ -1,11 +1,10 @@
-// routes/authAdminRoutes.js
 import express from 'express';
 import multer from 'multer';
 import { verifyToken } from '../Middleware/auth.js';
 import { checkRole } from '../Middleware/role.js';
 import {
   loginAdmin,
-  loginSuperviseur, 
+  loginSuperviseur,
   logoutAdmin,
   createCompany,
   listAdmins,
@@ -15,52 +14,62 @@ import {
 
 const router = express.Router();
 
-// -----------------------------
-// Multer configuration (stockage en mémoire)
-// -----------------------------
+/* ---------------------------------------------------------
+   📦 Multer (stockage mémoire)
+----------------------------------------------------------*/
 const storage = multer.memoryStorage();
+
 const upload = multer({
   storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
-    // Autoriser uniquement certains types de fichiers
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Format non autorisé. Seuls PNG, JPEG et GIF sont acceptés.'));
-  },
-  limits: { fileSize: 5 * 1024 * 1024 } // Limite 5MB
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif'
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Format non autorisé (PNG, JPG, GIF uniquement)'));
+    }
+  }
 });
 
-// -----------------------------
-// Routes publiques
-// -----------------------------
-router.post('/login', loginAdmin); // Login admin normal
-router.post('/login/superviseur', loginSuperviseur);// Superviseur
+/* ---------------------------------------------------------
+   🔓 ROUTES PUBLIQUES
+----------------------------------------------------------*/
+router.post('/login', loginAdmin);
+router.post('/login/superviseur', loginSuperviseur);
 
+/* ---------------------------------------------------------
+   🔐 AUTH / TOKENS
+----------------------------------------------------------*/
 
-// -----------------------------
-// Routes protégées (JWT)
-// -----------------------------
+// Logout → supprime les cookies
 router.post('/logout', verifyToken, logoutAdmin);
 
-router.post('/token/refresh', refreshTokenAdmin); // Pas besoin de verifyToken ici
+// Refresh token → lit refreshToken depuis cookie
+router.post('/token/refresh', refreshTokenAdmin);
 
-// -----------------------------
-// Créer une compagnie
-// - Accessible uniquement aux Admin / Superviseur
-// - Upload du logo via Multer
-// -----------------------------
+/* ---------------------------------------------------------
+   🏢 COMPAGNIES
+   - Admin / Superviseur uniquement
+----------------------------------------------------------*/
 router.post(
   '/create-company',
   verifyToken,
-  checkRole(['Administrateur', 'Superviseur']),
-  upload.single('logo_url'), // Le champ du formulaire attendu est "logo_url"
+  checkRole(['Administrateur', 'Superviseur', 'Super Admin']),
+  upload.single('logo_url'),
   createCompany
 );
 
-// -----------------------------
-// Lister tous les admins / superviseurs
-// - Accessible uniquement aux Admin / Superviseur
-// -----------------------------
+/* ---------------------------------------------------------
+   👥 ADMINS / SUPERVISEURS
+   - Super Admin uniquement
+----------------------------------------------------------*/
 router.get(
   '/admins',
   verifyToken,
@@ -68,11 +77,10 @@ router.get(
   listAdmins
 );
 
-
-// -----------------------------
-// Mettre à jour le mot de passe
-// - Accessible à tout admin connecté
-// -----------------------------
+/* ---------------------------------------------------------
+   🔑 MOT DE PASSE
+   - Tout admin connecté
+----------------------------------------------------------*/
 router.post(
   '/update-password',
   verifyToken,

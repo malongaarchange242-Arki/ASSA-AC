@@ -1,15 +1,15 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Référence au bouton de bascule
+/* =========================================================
+   🌗 THEME (inchangé – OK avec localStorage)
+========================================================= */
+document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
 
-    // 2. Fonction pour appliquer le thème
     function applyTheme(theme) {
         if (theme === 'dark') {
             body.classList.add('dark-mode');
             localStorage.setItem('theme', 'dark');
             if (themeToggle) {
-                // Icône Soleil pour passer au mode clair
                 themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
                 themeToggle.title = "Passer au Mode Clair";
             }
@@ -17,164 +17,137 @@ document.addEventListener('DOMContentLoaded', async () => {
             body.classList.remove('dark-mode');
             localStorage.setItem('theme', 'light');
             if (themeToggle) {
-                // Icône Lune pour passer au mode sombre
                 themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
                 themeToggle.title = "Passer au Mode Sombre";
             }
         }
     }
 
-    // 3. Détecter et appliquer le thème au chargement
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
         applyTheme(savedTheme);
     } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        // Utiliser la préférence système si aucune n'est enregistrée
         applyTheme('dark');
     } else {
-        applyTheme('light'); // Par défaut au mode clair
+        applyTheme('light');
     }
 
-    // 4. Écouteur d'événement pour le basculement
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(newTheme);
+            const current = body.classList.contains('dark-mode') ? 'dark' : 'light';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
         });
     }
 });
 
-
+/* =========================================================
+   🔐 AUTH COOKIE-BASED
+========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
+        return origin.includes(':5002')
+            ? origin
+            : 'https://assa-ac-jyn4.onrender.com';
     })();
 
-    const adminTokenKey = 'jwtTokenAdmin';
-    const adminRefreshKey = 'refreshTokenAdmin';
-    const companyTokenKey = 'jwtTokenCompany';
-    const companyRefreshKey = 'refreshTokenCompany';
+    /* -----------------------------------------
+       👤 Vérifier session via cookie
+    ------------------------------------------ */
+    async function checkSession() {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/me`, {
+                method: 'GET',
+                credentials: 'include' // 🔥 OBLIGATOIRE POUR COOKIES
+            });
 
-    let token = localStorage.getItem(adminTokenKey) || localStorage.getItem(companyTokenKey);
-    let refreshKey = localStorage.getItem(adminTokenKey) ? adminRefreshKey : companyRefreshKey;
-    let role = localStorage.getItem(adminTokenKey)
-        ? 'admin'
-        : localStorage.getItem(companyTokenKey)
-            ? 'company'
-            : null;
+            if (!res.ok) throw new Error('Non authentifié');
 
-    let userEmail =
-        role === 'admin'
-            ? localStorage.getItem('userEmailAdmin')
-            : localStorage.getItem('userEmailCompany');
+            return await res.json();
+        } catch (err) {
+            return null;
+        }
+    }
 
-    if (!token || !role) {
-        alert("Vous n'êtes pas connecté !");
+    const user = await checkSession();
+
+    if (!user) {
+        alert("Session expirée, veuillez vous reconnecter.");
         window.location.href = 'login.html';
         return;
     }
 
-    // Affichage utilisateur
+    /* -----------------------------------------
+       🧑 Affichage utilisateur
+    ------------------------------------------ */
     const userNameSpan = document.getElementById('user-name');
     if (userNameSpan) {
-        userNameSpan.innerHTML = `${userEmail || 'Utilisateur'} <i class="fas fa-caret-down"></i>`;
+        userNameSpan.innerHTML = `${user.email || 'Utilisateur'} <i class="fas fa-caret-down"></i>`;
     }
 
-    // =========================
-    // REFRESH TOKEN
-    // =========================
-    async function refreshToken() {
-        const refreshToken = localStorage.getItem(refreshKey);
-        if (!refreshToken || role !== 'admin') return false;
-
-        try {
-            const res = await fetch(`${API_BASE}/api/admins/token/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-
-            const newToken = data.token || data.accessToken || data.access_token;
-            if (!newToken) throw new Error('Token manquant');
-
-            localStorage.setItem(adminTokenKey, newToken);
-            token = newToken;
-            return true;
-        } catch (err) {
-            console.error('Erreur refresh token :', err);
-            return false;
-        }
-    }
-
-
-
-    // =========================
-    // FETCH AUTH
-    // =========================
-    async function fetchAuth(url, options = {}) {
-        if (!token) throw new Error('Token manquant');
-
-        options.headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'x-access-token': token
-        };
-
-        let res = await fetch(url, options);
+    /* -----------------------------------------
+       🔄 FETCH AUTH (cookie only)
+    ------------------------------------------ */
+    window.fetchAuth = async (url, options = {}) => {
+        const res = await fetch(url, {
+            ...options,
+            credentials: 'include', // ✅ cookie envoyé automatiquement
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
+            }
+        });
 
         if (res.status === 401) {
-            const refreshed = await refreshToken();
-            if (!refreshed) throw new Error('Session expirée');
-
-            options.headers.Authorization = `Bearer ${token}`;
-            options.headers['x-access-token'] = token;
-            res = await fetch(url, options);
+            alert('Session expirée');
+            window.location.href = 'login.html';
+            throw new Error('Non authentifié');
         }
 
-        if (res.status === 403) throw new Error('Accès interdit');
+        if (res.status === 403) {
+            throw new Error('Accès interdit');
+        }
 
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `Erreur HTTP ${res.status}`);
+        if (!res.ok) {
+            throw new Error(data.message || `Erreur ${res.status}`);
+        }
 
         return data;
-    }
+    };
 });
 
+/* =========================================================
+   📂 ASIDE (inchangé)
+========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
     const aside = document.getElementById('facture-aside');
     const toggleAsideBtn = document.getElementById('toggleAside');
 
     if (toggleAsideBtn && aside) {
         toggleAsideBtn.addEventListener('click', async (e) => {
-            e.preventDefault(); // empêche d’ouvrir une autre page
+            e.preventDefault();
 
             try {
-                const res = await fetch('enregistrefacture.html'); // ton fichier formulaire
+                const res = await fetch('enregistrefacture.html');
                 const html = await res.text();
 
                 aside.innerHTML = html + `
-          <div class="p-4 text-center">
-            <button id="closeAside" class="icon-btn bg-red-600 text-white px-4 py-2 rounded-lg">
-              <i class="fas fa-times"></i> Fermer
-            </button>
-          </div>
-        `;
+                    <div class="p-4 text-center">
+                        <button id="closeAside"
+                            class="icon-btn bg-red-600 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-times"></i> Fermer
+                        </button>
+                    </div>
+                `;
                 aside.classList.add('open');
 
-                // bouton fermer
-                document.getElementById('closeAside').addEventListener('click', () => {
-                    aside.classList.remove('open');
-                });
-            } catch (err) {
-                aside.innerHTML = '<p class="p-4 text-red-600">Erreur de chargement du formulaire.</p>';
+                document.getElementById('closeAside')
+                    .addEventListener('click', () => aside.classList.remove('open'));
+            } catch {
+                aside.innerHTML = '<p class="p-4 text-red-600">Erreur de chargement.</p>';
                 aside.classList.add('open');
             }
         });
     }
 });
-
