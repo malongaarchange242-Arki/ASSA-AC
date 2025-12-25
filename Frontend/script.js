@@ -72,33 +72,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ================== Factures ==================
     async function chargerFactures() {
-        try {
-            const factures = await fetchWithAuth(`${API_BASE}/api/factures`);
+    try {
+        const response = await fetchWithAuth(`${API_BASE}/api/factures`);
 
-            if (!statCards.factures) return;
+        if (!statCards.factures) return;
 
-            statCards.factures.textContent = Array.isArray(factures) ? factures.length : '0';
+        // 🔥 EXTRACTION CORRECTE
+        const factures = Array.isArray(response)
+            ? response
+            : Array.isArray(response.factures)
+                ? response.factures
+                : [];
 
-            if (statCards.contestees) {
-                const contestees = Array.isArray(factures)
-                    ? factures.filter(f =>
-                        (f.status || '')
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '')
-                            .trim()
-                            .toLowerCase() === 'contestee'
-                    )
-                    : [];
+        // TOTAL
+        statCards.factures.textContent = factures.length;
 
-                statCards.contestees.textContent = contestees.length;
-            }
+        // CONTESTÉES
+        if (statCards.contestees) {
+            const contestees = factures.filter(f => {
+                const statut = (f.status || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim()
+                    .toLowerCase();
 
-        } catch (err) {
-            console.error('Erreur récupération factures :', err);
-            statCards.factures.textContent = '0';
-            if (statCards.contestees) statCards.contestees.textContent = '0';
+                return statut === 'contestee';
+            });
+
+            statCards.contestees.textContent = contestees.length;
         }
+
+    } catch (err) {
+        console.error('Erreur récupération factures :', err);
+        statCards.factures.textContent = '0';
+        if (statCards.contestees) statCards.contestees.textContent = '0';
     }
+}
 
     // ================== INIT ==================
     await chargerCompanies();

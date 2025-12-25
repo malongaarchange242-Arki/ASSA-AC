@@ -293,71 +293,94 @@ export const createFacture = async (req, res) => {
 
 
 // READ : Factures de la compagnie connectée
-// READ : Factures de la compagnie connectée
+// READ : Factures accessibles à l'utilisateur connecté
 export const getInvoicesByCompany = async (req, res) => {
   try {
-    const userRole = req.user?.role;
+    /* =======================================================
+       0️⃣ USER CONTEXT (SOURCE UNIQUE)
+    ======================================================== */
+    const userRole = req.user?.role;           // admin | supervisor | company | superadmin
     const userId = req.user?.id;
     const id_companie = req.user?.id_companie;
 
     let companyIds = [];
 
     /* =======================================================
-       1️⃣ RÉCUPÉRATION DES COMPAGNIES ACCESSIBLES
+       1️⃣ DÉTERMINER LES COMPAGNIES ACCESSIBLES
     ======================================================== */
-    if (String(userRole).toLowerCase() === "company") {
-      if (id_companie) companyIds = [id_companie];
-    } 
-    else if (["Admin", "Administrateur", "Superviseur", "Super Admin", "SuperAdmin"].includes(userRole)) {
+    if (userRole === "company") {
+      if (!id_companie) {
+        return res.status(403).json({ message: "Compagnie non autorisée" });
+      }
+      companyIds = [id_companie];
+    }
 
-      // --- Companies par table admin_companies
-      const { data: links } = await supabase
+    else if (["admin", "supervisor"].includes(userRole)) {
+
+      // 1. Companies liées à l’admin
+      const { data: links, error: linkError } = await supabase
         .from("admin_companies")
         .select("company_id")
         .eq("admin_id", userId);
+
+      if (linkError) throw linkError;
 
       if (links?.length) {
         companyIds = links.map(l => l.company_id).filter(Boolean);
       }
 
-      // --- Companies dont l’admin est propriétaire
+      // 2. Companies possédées par l’admin
       if (!companyIds.length) {
-        const { data: ownedCompanies } = await supabase
+        const { data: ownedCompanies, error: ownError } = await supabase
           .from("companies")
           .select("id")
           .eq("id_admin", userId);
 
+        if (ownError) throw ownError;
+
         if (ownedCompanies?.length) {
-          companyIds = ownedCompanies.map(c => c.id).filter(Boolean);
+          companyIds = ownedCompanies.map(c => c.id);
         }
       }
 
-      if (!companyIds.length && id_companie) companyIds = [id_companie];
+      // 3. Fallback id_companie
+      if (!companyIds.length && id_companie) {
+        companyIds = [id_companie];
+      }
     }
 
+    else if (userRole === "superadmin") {
+      // SuperAdmin → accès global
+      companyIds = null;
+    }
+
+    else {
+      return res.status(403).json({ message: "Rôle non autorisé" });
+    }
 
     /* =======================================================
-       2️⃣ RÉCUPÉRATION FACTURES
+       2️⃣ RÉCUPÉRATION FACTURES (NULL SAFE)
     ======================================================== */
     let query = supabase
       .from("factures")
       .select("*")
-      .eq("archived", false);
+      .or("archived.is.null,archived.eq.false");
 
-    // Admin sauf SuperAdmin : limiter aux companies autorisées
-    if (!["Super Admin", "SuperAdmin"].includes(userRole)) {
-      if (companyIds.length) query = query.in("id_companie", companyIds);
-      else return res.status(200).json([]);
+    if (companyIds && companyIds.length) {
+      query = query.in("id_companie", companyIds);
     }
 
-    const { data: invoices, error } = await query.order("date_emission", { ascending: false });
+    const { data: invoices, error } = await query
+      .order("date_emission", { ascending: false });
 
     if (error) throw error;
-    if (!invoices) return res.status(404).json({ message: "Aucune facture trouvée" });
 
+    if (!invoices?.length) {
+      return res.status(200).json([]);
+    }
 
     /* =======================================================
-       3️⃣ RÉCUPÉRER PREUVES DE PAIEMENT
+       3️⃣ PREUVES DE PAIEMENT
     ======================================================== */
     const { data: proofs } = await supabase
       .from("preuve_paiement")
@@ -368,60 +391,52 @@ export const getInvoicesByCompany = async (req, res) => {
       proofMap[p.numero_facture] = p.fichier_url;
     });
 
-
     /* =======================================================
-       4️⃣ RÉCUPÉRER CONTESTATIONS (JSONB correct)
+       4️⃣ CONTESTATIONS (JSONB SAFE)
     ======================================================== */
     const { data: contestations } = await supabase
       .from("contestation")
       .select("*");
 
     const contestMap = {};
-
     contestations?.forEach(c => {
-
-      // fichiers est JSONB → déjà un array
       const fichiers = Array.isArray(c.fichiers) ? c.fichiers : [];
-
       contestMap[c.facture_id] = {
         explication: c.explication,
         statut: c.statut,
         date_contestation: c.date_contestation,
-        fichiers: fichiers,
-        fichier_url: fichiers.length ? fichiers[0].file_url : null,
-        file_name: fichiers.length ? fichiers[0].file_name : null
+        fichiers,
+        fichier_url: fichiers[0]?.file_url || null,
+        file_name: fichiers[0]?.file_name || null
       };
     });
 
-
     /* =======================================================
-       5️⃣ CONSTRUIRE RÉSULTAT FINAL
+       5️⃣ FORMAT FINAL POUR LE FRONT
     ======================================================== */
     const result = invoices.map(f => ({
       id: f.id,
       numero_facture: f.numero_facture,
-      date: f.date_emission || "",
+      date: f.date_emission,
+      due_date: f.date_limite,
       amount: Number(f.montant_total || 0),
       status: f.statut || "Impayée",
-      due_date: f.date_limite || "",
       client: f.nom_client,
 
-      // Preuve de paiement
       preuve_paiement_url: proofMap[f.numero_facture] || null,
-
-      // Contestation JSONB
       contestation: contestMap[f.id] || null
     }));
-
 
     return res.status(200).json(result);
 
   } catch (err) {
-    console.error("❌ Erreur getInvoicesByCompany:", err);
-    return res.status(500).json({ message: "Erreur serveur", error: err.message });
+    console.error("❌ getInvoicesByCompany ERROR:", err);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: err.message
+    });
   }
 };
-
 
 // ===============================================================
 // READ : Facture par numéro
