@@ -10,27 +10,50 @@ import {
 const router = express.Router();
 
 // ============================================
-// Routes Journal d'activité avec rôles
+// Journal d'activité — ROUTES SÉCURISÉES
 // ============================================
 
-// 1️⃣ Toutes les activités : uniquement admin/superviseur
-router.get('/', verifyToken, checkRole(['Admin','Administrateur','Superviseur','Super Admin']), getAllActivites);
+// 1️⃣ Toutes les activités : admin + supervisor
+router.get(
+  '/',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  getAllActivites
+);
 
-// 2️⃣ Activités par admin : admin/superviseur/super admin
-router.get('/admin/:id_admin', verifyToken, checkRole(['Admin','Administrateur','Superviseur','Super Admin']), getActivitesByAdmin);
+// 2️⃣ Activités par admin : admin + supervisor
+router.get(
+  '/admin/:id_admin',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  getActivitesByAdmin
+);
 
-// 3️⃣ Activités par compagnie : accessible par la compagnie elle-même ou admin/superviseur/super admin
-router.get('/companie/:id_companie', verifyToken, (req, res, next) => {
-  // Autorisation personnalisée
-  if (
-    req.user.role === 'Company' && req.user.id_companie === Number(req.params.id_companie)
-  ) {
-    return next();
-  }
-  checkRole(['Admin','Administrateur','Superviseur','Super Admin'])(req, res, next);
-}, getActivitesByCompanie);
+// 3️⃣ Activités par compagnie
+router.get(
+  '/companie/:id_companie',
+  verifyToken,
+  (req, res, next) => {
+    // ✔️ La compagnie peut voir SES activités
+    if (
+      req.user.role === 'company' &&
+      String(req.user.id_companie) === String(req.params.id_companie)
+    ) {
+      return next();
+    }
 
-// 4️⃣ Activités récentes : admin/superviseur/super admin
-router.get('/recent', verifyToken, checkRole(['Admin','Administrateur','Superviseur','Super Admin']), getRecentActivites);
+    // ✔️ Admin / Supervisor peuvent tout voir
+    return checkRole(['admin', 'supervisor'])(req, res, next);
+  },
+  getActivitesByCompanie
+);
+
+// 4️⃣ Activités récentes : admin + supervisor
+router.get(
+  '/recent',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  getRecentActivites
+);
 
 export default router;

@@ -1,16 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ==========================
-    // API BASE
-    // ==========================
+    // --- CONSERVATION DES VRAIES ROUTES POUR LE RESTE DU FLUX ---
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002')
-            ? origin
-            : 'https://assa-ac-jyn4.onrender.com';
+        return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
     })();
 
     // ==========================
-    // DOM
+    // 1. Éléments du DOM
     // ==========================
     const emailSection = document.getElementById('emailSection');
     const otpSection = document.getElementById('otpSection');
@@ -39,62 +35,99 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentRole = '';
     let isChecking = false;
     let typingTimer;
-
     const doneTypingInterval = 300;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/;
 
     // ==========================
-    // RESET / UI
+    // MODE RESET (SIMULATION)
     // ==========================
-    function showSection(section) {
-        allSections.forEach(s => s.classList.remove('visible'));
-        setTimeout(() => section.classList.add('visible'), 10);
+    let isResetMode = false;
+    const SIMULATED_RESET_OTP = '123456';
+
+    // ==========================
+    // 2. Effet flottant inputs
+    // ==========================
+    function checkFloatingState(input, group) {
+        if (input.value.length > 0 || document.activeElement === input) group.classList.add('floating');
+        else group.classList.remove('floating');
+    }
+
+    const inputGroups = [
+        { input: emailInput, group: document.getElementById('emailInputGroup') },
+        { input: passwordInput, group: document.getElementById('passwordInputGroup') },
+        { input: otpCodeInput, group: document.getElementById('otpInputGroup') },
+        { input: otpPasswordInput, group: otpPasswordGroup }
+    ];
+
+    inputGroups.forEach(({ input, group }) => {
+        input.addEventListener('focus', () => checkFloatingState(input, group));
+        input.addEventListener('blur', () => checkFloatingState(input, group));
+        input.addEventListener('input', () => checkFloatingState(input, group));
+        checkFloatingState(input, group);
+    });
+
+    // ==========================
+    // 3. Utilitaires UI
+    // ==========================
+    function showSection(sectionToShow) {
+        allSections.forEach(section => section.classList.remove('visible'));
+        setTimeout(() => sectionToShow.classList.add('visible'), 10);
     }
 
     function resetToInitialView() {
-        currentEmail = '';
-        currentRole = '';
-        isChecking = false;
+        isResetMode = false;
+
+        document.getElementById('otpSection').querySelector('h2').textContent = 'Vérification de sécurité';
+        document.getElementById('otpSection').querySelector('p').textContent =
+            'Un code d\'accès unique vous a été envoyé par email.';
+
+        otpPasswordInput.placeholder = 'Définir un mot de passe';
 
         passwordField.classList.remove('visible');
-        actionButtonContainer.classList.remove('visible');
         otpPasswordGroup.style.display = 'none';
 
-        emailInput.readOnly = false;
-        emailInput.value = '';
         passwordInput.value = '';
         otpCodeInput.value = '';
         otpPasswordInput.value = '';
 
+        actionButtonContainer.classList.remove('visible');
         mainTitle.textContent = 'Connexion';
         subTitle.textContent = 'Utilisez votre email pour vous connecter';
+
+        emailInput.readOnly = false;
+        currentRole = '';
+        currentEmail = '';
 
         showSection(emailSection);
         emailInput.focus();
     }
 
     // ==========================
-    // ROLE NORMALIZATION
+    // 4. FETCH AVEC COOKIE AUTH
     // ==========================
-    function normalizeRole(role) {
-        if (!role) return null;
+    async function fetchWithAuth(url, options = {}) {
+        if (!options.headers) options.headers = {};
+        options.headers['Content-Type'] = 'application/json';
 
-        return role
-            .toString()
-            .trim()
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/\s+/g, '');
+        const res = await fetch(url, {
+            ...options,
+            credentials: 'include'
+        });
+
+        if (res.status === 401) throw new Error('Session expirée. Veuillez vous reconnecter.');
+        if (res.status === 403) throw new Error('Accès refusé. Permissions insuffisantes.');
+
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.message || 'Erreur serveur');
+
+        return data;
     }
 
     // ==========================
-    // CHECK EMAIL
+    // 5. Vérification email
     // ==========================
     async function verifyEmailOnServer(email) {
         if (isChecking) return;
-        if (!emailRegex.test(email)) return;
-
         isChecking = true;
         currentEmail = email;
 
@@ -103,48 +136,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
-                credentials: 'include' // 🍪
+                credentials: 'include'
             });
 
             const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Email non reconnu');
 
-            if (!res.ok) throw new Error(data.message || 'Erreur serveur');
-
-            const role = normalizeRole(data.role);
-            currentRole = role;
+            currentRole = data.role;
+            alert(`Email reconnu ✔️ Rôle détecté : ${currentRole}`);
 
             emailInput.readOnly = true;
-
             passwordField.classList.remove('visible');
             actionButtonContainer.classList.remove('visible');
             otpPasswordGroup.style.display = 'none';
 
-            // ==========================
-            // ROLE HANDLING
-            // ==========================
-            if (role === 'admin' || role === 'superadmin' || role === 'superviseur' || role === 'supervisor') {
+            if (data.role === 'admin' || data.role === 'supervisor') {
                 passwordField.classList.add('visible');
                 actionButtonContainer.classList.add('visible');
-                mainTitle.textContent = 'Mot de passe';
-                subTitle.textContent = 'Veuillez entrer votre mot de passe.';
                 passwordInput.focus();
-                return;
-            }
-
-            if (role === 'company') {
+            } else if (data.role === 'company') {
                 if (!data.has_password) {
+                    alert('Premier accès détecté. Envoi du code OTP…');
                     showSection(otpSection);
                     otpPasswordGroup.style.display = 'block';
                     await requestOtp();
                 } else {
                     passwordField.classList.add('visible');
                     actionButtonContainer.classList.add('visible');
-                    passwordInput.focus();
                 }
-                return;
+            } else {
+                alert('Rôle inconnu.');
+                resetToInitialView();
             }
-
-            throw new Error(`Rôle "${data.role}" non pris en charge`);
         } catch (err) {
             alert(err.message);
             resetToInitialView();
@@ -154,66 +177,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================
-    // OTP
+    // 6. OTP (company)
     // ==========================
     async function requestOtp() {
-        await fetch(`${API_BASE}/api/companies/first-login-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: currentEmail }),
-            credentials: 'include'
-        });
-    }
-
-    async function validateOtp() {
-        const otp = otpCodeInput.value.trim();
-        const password = otpPasswordInput.value.trim();
-
-        if (!otp || !password) return alert('Champs requis');
-
-        const res = await fetch(`${API_BASE}/api/companies/validate-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: currentEmail, otp, password }),
-            credentials: 'include'
-        });
-
-        const data = await res.json();
-        if (!res.ok) return alert(data.message);
-
-        window.location.href = 'AccueilCompagnie.html';
+        try {
+            await fetch(`${API_BASE}/api/companies/first-login-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail }),
+                credentials: 'include'
+            });
+            alert(`Code OTP envoyé à ${currentEmail}`);
+        } catch {
+            alert('Erreur lors de l’envoi du code OTP.');
+            resetToInitialView();
+        }
     }
 
     // ==========================
-    // LOGIN (COOKIE-BASED)
+    // 7. LOGIN STANDARD
     // ==========================
     async function loginStandard() {
-        const password = passwordInput.value.trim();
-        if (!password) return alert('Mot de passe requis');
+        try {
+            const url =
+                currentRole === 'admin' || currentRole === 'supervisor'
+                    ? `${API_BASE}/api/admins/login`
+                    : `${API_BASE}/api/companies/login`;
 
-        let url;
-        if (['admin', 'superadmin', 'superviseur', 'supervisor'].includes(currentRole)) {
-            url = `${API_BASE}/api/admins/login`;
-        } else if (currentRole === 'company') {
-            url = `${API_BASE}/api/companies/login`;
-        } else {
-            return alert('Rôle inconnu');
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail, password: passwordInput.value }),
+                credentials: 'include'
+            });
+
+            if (!res.ok) throw new Error('Email ou mot de passe incorrect');
+
+            alert('Connexion réussie ✔️ Redirection en cours…');
+
+            window.location.href =
+                currentRole === 'company'
+                    ? 'AccueilCompagnie.html'
+                    : 'AccueilAdmin.html';
+        } catch (err) {
+            alert(err.message);
         }
-
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: currentEmail, password }),
-            credentials: 'include' // 🍪 COOKIE AUTH
-        });
-
-        const data = await res.json();
-        if (!res.ok) return alert(data.message);
-
-        window.location.href =
-            currentRole === 'company'
-                ? 'AccueilCompagnie.html'
-                : 'AccueilAdmin.html';
     }
 
     // ==========================
@@ -221,16 +229,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================
     emailInput.addEventListener('input', () => {
         clearTimeout(typingTimer);
-        const value = emailInput.value.trim();
-        if (emailRegex.test(value)) {
-            typingTimer = setTimeout(() => verifyEmailOnServer(value), doneTypingInterval);
+        if (emailRegex.test(emailInput.value)) {
+            typingTimer = setTimeout(
+                () => verifyEmailOnServer(emailInput.value),
+                doneTypingInterval
+            );
         }
     });
 
     mainButton.addEventListener('click', loginStandard);
-    document.getElementById('validateOtpButton')?.addEventListener('click', validateOtp);
-    resendOtpLink?.addEventListener('click', e => { e.preventDefault(); requestOtp(); });
-    backToEmail2?.addEventListener('click', e => { e.preventDefault(); resetToInitialView(); });
 
     resetToInitialView();
 });

@@ -5,60 +5,53 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
+        return origin.includes(':5002')
+            ? origin
+            : 'https://assa-ac-jyn4.onrender.com';
     })();
 
     const tableBody = document.querySelector('#table-activites tbody');
     const searchInput = document.querySelector('.search-bar input');
 
-    // Si la page n'a pas de tableau → on sort sans erreur
     if (!tableBody) {
-        console.warn('Journal activité : tableau non présent sur cette page');
+        console.warn('Journal activité : tableau non présent');
         return;
     }
 
     // =========================
-    // UI - Libellés & icônes
+    // UI - Types activité
     // =========================
     const TYPE_UI = {
         create: { label: 'Création', icon: 'fa-plus-circle' },
         update: { label: 'Modification', icon: 'fa-pen' },
         delete: { label: 'Suppression', icon: 'fa-trash' },
         system: { label: 'Système', icon: 'fa-cog' }
-};
-
-
-    // =========================
-    // AUTH SIMPLE (lecture seule)
-    // =========================
-    const adminToken = localStorage.getItem('jwtTokenAdmin');
-    const companyToken = localStorage.getItem('jwtTokenCompany');
-
-    const token = adminToken || companyToken;
-    const role = adminToken ? 'admin' : companyToken ? 'company' : null;
-
-    if (!token || !role) {
-        tableBody.innerHTML =
-            `<tr><td colspan="4" style="text-align:center;color:red;">
-                Session expirée. Veuillez vous reconnecter.
-            </td></tr>`;
-        return;
-    }
+    };
 
     // =========================
-    // FETCH AUTH (sans refresh)
+    // FETCH AUTH (COOKIE)
     // =========================
     async function fetchAuth(url) {
         const res = await fetch(url, {
+            method: 'GET',
+            credentials: 'include', // 🔥 COOKIE JWT
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                'x-access-token': token
+                'Content-Type': 'application/json'
             }
         });
 
+        if (res.status === 401) {
+            throw new Error('Non authentifié. Veuillez vous reconnecter.');
+        }
+
+        if (res.status === 403) {
+            throw new Error('Accès refusé : permissions insuffisantes.');
+        }
+
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || 'Erreur serveur');
+        if (!res.ok) {
+            throw new Error(data.message || 'Erreur serveur');
+        }
 
         return data;
     }
@@ -68,24 +61,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================
     async function chargerActivites() {
         try {
-            const url =
-                role === 'admin'
-                    ? `${API_BASE}/api/journal/recent?limit=5`
-                    : `${API_BASE}/api/companies/journal/recent?limit=5`;
-
-            const result = await fetchAuth(url);
+            /**
+             * 👉 Le backend décide du rôle (admin / company)
+             * 👉 Une seule route suffit si tu veux :
+             *    /api/journal/recent
+             */
+            const result = await fetchAuth(
+                `${API_BASE}/api/journal/recent?limit=5`
+            );
 
             if (!result.success || !Array.isArray(result.activites)) {
                 throw new Error('Format de données invalide');
             }
 
             renderTable(result.activites);
+
         } catch (err) {
             console.error('Journal activité:', err);
-            tableBody.innerHTML =
-                `<tr><td colspan="4" style="text-align:center;color:red;">
-                    ${err.message}
-                </td></tr>`;
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align:center;color:red;">
+                        ${err.message}
+                    </td>
+                </tr>
+            `;
         }
     }
 
@@ -96,36 +95,39 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '';
 
         if (!activites.length) {
-            tableBody.innerHTML =
-                `<tr><td colspan="4" style="text-align:center;">
-                    Aucune activité trouvée
-                </td></tr>`;
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align:center;">
+                        Aucune activité trouvée
+                    </td>
+                </tr>
+            `;
             return;
         }
 
         activites.forEach(act => {
             const tr = document.createElement('tr');
-        
+
             const type = TYPE_UI[act.type_activite] || {
                 label: act.type_activite || '-',
                 icon: 'fa-info-circle'
             };
-        
+
             tr.innerHTML = `
                 <td>
                     <i class="fas ${type.icon}"></i> ${type.label}
                 </td>
                 <td>${act.description || act.objet || '-'}</td>
                 <td>${act.utilisateur || '-'}</td>
-                <td>${act.date_activite
-                    ? new Date(act.date_activite).toLocaleString()
-                    : '-'}
+                <td>
+                    ${act.date_activite
+                        ? new Date(act.date_activite).toLocaleString()
+                        : '-'}
                 </td>
             `;
-        
+
             tableBody.appendChild(tr);
         });
-        
 
         if (searchInput?.value) {
             filtrer(searchInput.value);

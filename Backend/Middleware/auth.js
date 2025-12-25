@@ -83,7 +83,10 @@ export const checkRole = (allowedRoles = []) => (req, res, next) => {
     return res.status(401).json({ message: 'Utilisateur non authentifié' });
   }
 
-  if (!allowedRoles.includes(req.user.role)) {
+  const userRole = normalizeRole(req.user.role);
+  const normalizedAllowedRoles = allowedRoles.map(normalizeRole);
+
+  if (!normalizedAllowedRoles.includes(userRole)) {
     return res.status(403).json({
       message: `Accès refusé (rôle : ${req.user.role})`
     });

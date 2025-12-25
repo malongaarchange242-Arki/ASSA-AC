@@ -1,14 +1,14 @@
 import express from 'express';
 import {
-    createFacture,
-    getFactureByNumero,
-    updateFacture,
-    archiveFacture,
-    updateFactureStatut,
-    generateRef,
-    getInvoicesByCompany,
-    confirmerFacture,
-    deleteFacture
+  createFacture,
+  getFactureByNumero,
+  updateFacture,
+  archiveFacture,
+  updateFactureStatut,
+  generateRef,
+  getInvoicesByCompany,
+  confirmerFacture,
+  deleteFacture
 } from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
@@ -16,81 +16,85 @@ import { verifyToken, checkRole } from '../Middleware/auth.js';
 const router = express.Router();
 
 // ===========================================================
-// ROUTES SPÉCIFIQUES (toujours avant les routes génériques)
+// ROUTES SPÉCIFIQUES
 // ===========================================================
 
-// GENERER REF
-router.get('/generate-ref', verifyToken, generateRef);
+// GÉNÉRER RÉFÉRENCE
+router.get('/generate-ref', verifyToken, checkRole(['admin', 'supervisor']), generateRef);
 
-// LISTE FACTURES
+// LISTE DES FACTURES (admin/supervisor voient tout, company voit les siennes)
 router.get(
-    '/',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
-    getInvoicesByCompany
+  '/',
+  verifyToken,
+  checkRole(['admin', 'supervisor', 'company']),
+  getInvoicesByCompany
 );
 
-// FACTURES PAR COMPAGNIE
+// FACTURES PAR COMPAGNIE (même logique)
 router.get(
-    '/company',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
-    getInvoicesByCompany
+  '/company',
+  verifyToken,
+  checkRole(['admin', 'supervisor', 'company']),
+  getInvoicesByCompany
 );
 
-// CONFIRMER FACTURE (PAYÉE)  ⭐ IMPORTANT : avant /:numero_facture
+// CONFIRMER FACTURE (payée)
 router.put(
-    '/confirm/:numero_facture',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
-    confirmerFacture
+  '/confirm/:numero_facture',
+  verifyToken,
+  checkRole(['admin', 'supervisor', 'company']),
+  confirmerFacture
 );
 
-// SUPPRIMER DÉFINITIVEMENT  ⭐ IMPORTANT
+// SUPPRESSION DÉFINITIVE (admin / supervisor)
 router.delete(
-    '/delete/:numero_facture',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
-    deleteFacture
+  '/delete/:numero_facture',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  deleteFacture
 );
 
-// MISE À JOUR DU STATUT  ⭐ IMPORTANT
+// MISE À JOUR DU STATUT (admin / supervisor)
 router.put(
-    '/statut',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
-    updateFactureStatut
+  '/statut',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  updateFactureStatut
 );
 
 // ===========================================================
-// ROUTES GÉNÉRIQUES (à mettre après les spécifiques)
+// ROUTES GÉNÉRIQUES (APRÈS LES SPÉCIFIQUES)
 // ===========================================================
 
 // CRÉER FACTURE
 router.post(
-    '/',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin', 'Company']),
-    createFacture
+  '/',
+  verifyToken,
+  checkRole(['admin', 'supervisor', 'company']),
+  createFacture
 );
 
-// FACTURE PAR NUMERO
-router.get('/:numero_facture', verifyToken, getFactureByNumero);
+// FACTURE PAR NUMÉRO (authentifié)
+router.get(
+  '/:numero_facture',
+  verifyToken,
+  getFactureByNumero
+);
 
-// MISE À JOUR FACTURE
+// METTRE À JOUR FACTURE (admin / supervisor)
 router.put(
-    '/:numero_facture',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
-    updateFacture
+  '/:numero_facture',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  updateFacture
 );
 
-// ARCHIVER FACTURE
+// ARCHIVER FACTURE (admin / supervisor)
 router.delete(
-    '/:numero_facture',
-    verifyToken,
-    checkRole(['Admin', 'Administrateur', 'Superviseur', 'Super Admin']),
-    archiveFacture
+  '/:numero_facture',
+  verifyToken,
+  checkRole(['admin', 'supervisor']),
+  archiveFacture
 );
 
 export default router;

@@ -1,66 +1,129 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Référence au bouton de bascule
+       const themeToggle = document.getElementById('theme-toggle');
+       const body = document.body;
+   
+       // 2. Fonction pour appliquer le thème
+       function applyTheme(theme) {
+           if (theme === 'dark') {
+               body.classList.add('dark-mode');
+               localStorage.setItem('theme', 'dark');
+               if (themeToggle) {
+                   // Icône Soleil pour passer au mode clair
+                   themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                   themeToggle.title = "Passer au Mode Clair";
+               }
+           } else {
+               body.classList.remove('dark-mode');
+               localStorage.setItem('theme', 'light');
+               if (themeToggle) {
+                   // Icône Lune pour passer au mode sombre
+                   themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                   themeToggle.title = "Passer au Mode Sombre";
+               }
+           }
+       }
+   
+       // 3. Détecter et appliquer le thème au chargement
+       const savedTheme = localStorage.getItem('theme');
+       if (savedTheme) {
+           applyTheme(savedTheme);
+       } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+           // Utiliser la préférence système si aucune n'est enregistrée
+           applyTheme('dark');
+       } else {
+           applyTheme('light'); // Par défaut au mode clair
+       }
+   
+       // 4. Écouteur d'événement pour le basculement
+       if (themeToggle) {
+           themeToggle.addEventListener('click', () => {
+               const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+               const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+               applyTheme(newTheme);
+           });
+       }
+   });
 
-    /* =============================
-       THEME (OK avec localStorage)
-    ============================= */
-    const themeToggle = document.getElementById('theme-toggle');
-    const body = document.body;
+document.addEventListener('DOMContentLoaded', async () => {
 
-    function applyTheme(theme) {
-        body.classList.toggle('dark-mode', theme === 'dark');
-        localStorage.setItem('theme', theme);
-        if (themeToggle) {
-            themeToggle.innerHTML =
-                theme === 'dark'
-                    ? '<i class="fas fa-sun"></i>'
-                    : '<i class="fas fa-moon"></i>';
-        }
-    }
-
-    applyTheme(
-        localStorage.getItem('theme') ||
-        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    );
-
-    themeToggle?.addEventListener('click', () => {
-        applyTheme(body.classList.contains('dark-mode') ? 'light' : 'dark');
-    });
-
-    /* =============================
-       CONFIG API
-    ============================= */
+    /* =====================================================
+       CONFIG
+    ===================================================== */
+    const TOKEN_KEY = 'jwtTokenAdmin';
+    const REFRESH_KEY = 'refreshTokenAdmin';
     const API_BASE = 'https://assa-ac-jyn4.onrender.com';
 
-    /* =============================
-       FETCH AUTH (COOKIE)
-    ============================= */
-    async function fetchWithAuth(url, options = {}) {
-        const res = await fetch(url, {
-            ...options,
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
-        });
+    /* =====================================================
+       AUTH
+    ===================================================== */
+    let token = localStorage.getItem(TOKEN_KEY);
 
-        if (res.status === 401) {
-            window.location.href = 'login.html';
-            throw new Error('Non authentifié');
-        }
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || 'Erreur serveur');
-
-        return data;
-    }
-
-    /* =============================
-       SESSION CHECK
-    ============================= */
-    try {
-        await fetchWithAuth(`${API_BASE}/auth/me`);
-    } catch {
+    if (!token) {
+        alert("Vous n'êtes pas connecté !");
+        window.location.href = 'login.html';
         return;
     }
 
+    const getRefreshToken = () => localStorage.getItem(REFRESH_KEY);
+
+    const setToken = (newToken) => {
+        localStorage.setItem(TOKEN_KEY, newToken);
+        token = newToken;
+    };
+
+    const clearTokens = () => {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_KEY);
+    };
+
+    async function refreshToken() {
+        try {
+            const res = await fetch(`${API_BASE}/admins/token/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken: getRefreshToken() })
+            });
+
+            if (!res.ok) return false;
+
+            const data = await res.json();
+            if (data.token) {
+                setToken(data.token);
+                return true;
+            }
+            return false;
+        } catch {
+            return false;
+        }
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        options.headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...(options.headers || {})
+        };
+
+        let res = await fetch(url, options);
+
+        if (res.status === 401) {
+            const refreshed = await refreshToken();
+            if (!refreshed) {
+                clearTokens();
+                alert('Session expirée');
+                window.location.href = 'login.html';
+                throw new Error('Token expiré');
+            }
+            options.headers.Authorization = `Bearer ${token}`;
+            res = await fetch(url, options);
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Erreur API');
+
+        return data;
+    }
 
     /* =====================================================
        DOM
@@ -525,4 +588,6 @@ function downloadArchiveCSV() {
     ===================================================== */
     await loadArchives();
    
+
+
 });
