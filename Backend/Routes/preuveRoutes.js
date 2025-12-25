@@ -10,28 +10,34 @@ import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
 
-// Upload preuve
+// ==============================
+// 📤 Upload preuve de paiement
+// ==============================
 router.post(
     '/upload',
     verifyToken,
-    checkRole(['Company', 'Administrateur']),
+    checkRole(['admin', 'supervisor', 'company']),
     uploadMiddleware,
     uploadPreuvesPaiement
 );
 
-// Récupérer preuves par numéro facture
+// ==============================
+// 📄 Preuves par numéro facture
+// ==============================
 router.get(
     '/by-facture/:numero_facture',
     verifyToken,
-    checkRole(['Company', 'Administrateur']),
+    checkRole(['admin', 'supervisor', 'company']),
     getPreuvesByFacture
 );
 
-// Récupérer une preuve par ID
+// ==============================
+// 🔍 Preuve par ID
+// ==============================
 router.get(
     '/:id',
     verifyToken,
-    checkRole(['Company', 'Administrateur']),
+    checkRole(['admin', 'supervisor', 'company']),
     getPreuveById
 );
 

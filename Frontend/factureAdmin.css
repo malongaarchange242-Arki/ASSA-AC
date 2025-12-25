@@ -684,6 +684,60 @@ body.dark-mode .facture-table tbody tr:hover {
     font-weight: 700;
 }
 
+/* CONFIRMER → BLEU */
+.btn-confirmer {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-confirmer:hover {
+    background: #1d4ed8;
+}
+
+/* REFAIRE → ROUGE */
+.btn-refaire {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 6px;
+}
+
+.btn-refaire:hover {
+    background: #b91c1c;
+}
+
+/* SUPPRIMER */
+.btn-delete {
+    background: #374151;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background: #111827;
+}
+
+/* VOIR */
+.btn-view {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+
 /* ================== Page header & controls ================== */
 .company-management {
     padding: 22px;

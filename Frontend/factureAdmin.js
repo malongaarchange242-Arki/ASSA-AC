@@ -2,523 +2,272 @@
 /* 💡 GESTION DU THÈME (LIGHT/DARK MODE) */
 /* ========================================================= */
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Référence au bouton de bascule
-       const themeToggle = document.getElementById('theme-toggle');
-       const body = document.body;
-   
-       // 2. Fonction pour appliquer le thème
-       function applyTheme(theme) {
-           if (theme === 'dark') {
-               body.classList.add('dark-mode');
-               localStorage.setItem('theme', 'dark');
-               if (themeToggle) {
-                   // Icône Soleil pour passer au mode clair
-                   themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                   themeToggle.title = "Passer au Mode Clair";
-               }
-           } else {
-               body.classList.remove('dark-mode');
-               localStorage.setItem('theme', 'light');
-               if (themeToggle) {
-                   // Icône Lune pour passer au mode sombre
-                   themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-                   themeToggle.title = "Passer au Mode Sombre";
-               }
-           }
-       }
-   
-       // 3. Détecter et appliquer le thème au chargement
-       const savedTheme = localStorage.getItem('theme');
-       if (savedTheme) {
-           applyTheme(savedTheme);
-       } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-           // Utiliser la préférence système si aucune n'est enregistrée
-           applyTheme('dark');
-       } else {
-           applyTheme('light'); // Par défaut au mode clair
-       }
-   
-       // 4. Écouteur d'événement pour le basculement
-       if (themeToggle) {
-           themeToggle.addEventListener('click', () => {
-               const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
-               const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-               applyTheme(newTheme);
-           });
-       }
-   });
-   
+document.addEventListener("DOMContentLoaded", () => {
+    const themeToggle = document.getElementById("theme-toggle");
+    const body = document.body;
+
+    function applyTheme(theme) {
+        if (theme === "dark") {
+            body.classList.add("dark-mode");
+            localStorage.setItem("theme", "dark");
+            themeToggle && (themeToggle.innerHTML = '<i class="fas fa-sun"></i>');
+        } else {
+            body.classList.remove("dark-mode");
+            localStorage.setItem("theme", "light");
+            themeToggle && (themeToggle.innerHTML = '<i class="fas fa-moon"></i>');
+        }
+    }
+
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) applyTheme(savedTheme);
+    else applyTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+    themeToggle?.addEventListener("click", () => {
+        applyTheme(body.classList.contains("dark-mode") ? "light" : "dark");
+    });
+});
+
+/* ========================================================= */
+/* 🌐 CONFIG API */
+/* ========================================================= */
+
 const API_URL = "https://assa-ac-jyn4.onrender.com/api/factures";
-const token = localStorage.getItem("jwtTokenAdmin");
 
-if (!token) {
-    alert("Votre session a expiré. Veuillez vous reconnecter.");
-    window.location.href = "Index.html";
-}
+/* ============================================================ */
+/* VARIABLES GLOBALES */
+/* ============================================================ */
 
-/* ============================================================
-   VARIABLES GLOBALES
-   ============================================================ */
-let FACTURES = [];   // Stocke toutes les factures
-let COMPAGNIES = []; // Stocke la liste unique des compagnies
+let FACTURES = [];
+let COMPAGNIES = [];
 
-/* ============================================================
-   1️⃣ CHARGER LES FACTURES
-   ============================================================ */
+/* ============================================================ */
+/* 1️⃣ CHARGER LES FACTURES (COOKIE AUTH) */
+/* ============================================================ */
+
 async function chargerFactures() {
-    try {   
-        const res = await fetch(API_URL, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
+    try {
+        const res = await fetch(API_URL, { credentials: "include" });
 
-        const data = await res.json();
-
-        if (!res.ok) {
-            throw new Error(data.message || "Erreur chargement factures");
+        if (res.status === 401) {
+            window.location.href = "Index.html";
+            return;
         }
 
-        FACTURES = Array.isArray(data) ? data : data.factures || [];
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
 
-        console.log("FACTURES REÇUES :", FACTURES);
+        FACTURES = Array.isArray(data) ? data : data.factures || [];
 
         extraireCompagnies();
         remplirListeCompagnies();
         paginateFactures(FACTURES, 8);
 
     } catch (err) {
-        console.error("ERREUR CHARGEMENT:", err);
+        console.error(err);
         alert("Impossible de charger les factures.");
     }
 }
 
-/* ============================================================
-   2️⃣ EXTRAIRE LA LISTE DES COMPAGNIES
-   ============================================================ */
+/* ============================================================ */
+/* 2️⃣ EXTRAIRE COMPAGNIES */
+/* ============================================================ */
+
 function extraireCompagnies() {
     COMPAGNIES = [...new Set(FACTURES.map(f => f.client).filter(Boolean))];
-    console.log("COMPAGNIES :", COMPAGNIES);
 }
 
-/* ============================================================
-   3️⃣ REMPLIR LA LISTE DÉROULANTE DES COMPAGNIES
-   ============================================================ */
-function remplirListeCompagnies() {
-    const select = document.querySelectorAll(".report-select")[1]; // 2e select = compagnie
+/* ============================================================ */
+/* 3️⃣ SELECT COMPAGNIES */
+/* ============================================================ */
 
+function remplirListeCompagnies() {
+    const select = document.querySelectorAll(".report-select")[1];
     select.innerHTML = `<option value="">Par compagnies</option>`;
 
-    COMPAGNIES.forEach(comp => {
-        select.innerHTML += `<option value="${comp}">${comp}</option>`;
+    COMPAGNIES.forEach(c => {
+        select.innerHTML += `<option value="${c}">${c}</option>`;
     });
 
     select.addEventListener("change", filtrerFactures);
 }
 
-/* ============================================================
-   4️⃣ REMPLIR LE TABLEAU
-============================================================ */
+/* ============================================================ */
+/* 4️⃣ TABLEAU */
+/* ============================================================ */
+
 function remplirTableau(factures) {
-    // 🔥 1. Charger les factures supprimées stockées dans localStorage
     const hidden = JSON.parse(localStorage.getItem("factures_supprimees") || "[]");
-
-    // 🔥 2. Filtrer AVANT d'afficher
-    factures = factures.filter(f => !hidden.includes(f.numero_facture));
-
     const tbody = document.getElementById("factureTableBody");
     tbody.innerHTML = "";
 
-    factures.forEach(fact => {
-        const numeroFacture = fact.numero_facture;
-        const compagnie = fact.client;
-        const dateEmission = fact.date;
-        const montant = fact.amount;
-        const statut = fact.status;
-        const fichierUrl = fact.fichier_url || "";
+    factures
+        .filter(f => !hidden.includes(f.numero_facture))
+        .forEach(f => {
+            const statutClass =
+                f.status === "Payée" ? "payee" :
+                f.status === "Contestée" ? "contester" : "en-attente";
 
-        const statutClass =
-            statut === "Payée" ? "payee" :
-            statut === "Contestée" ? "contester" :
-            "en-attente";
+            const action =
+                f.status === "Payée"
+                    ? `<span class="action-btn-confirmed">Confirmée</span>`
+                    : f.status === "Contestée"
+                        ? `
+                          <button class="btn-refaire" onclick="refaireFacture('${f.numero_facture}')">
+                              Refaire
+                          </button>
+                          <button class="btn-delete" onclick="supprimerFacture('${f.numero_facture}')">
+                              🗑
+                          </button>`
+                        : `
+                          <button class="btn-confirmer" onclick="confirmerFacture('${f.numero_facture}')">
+                              Confirmer
+                          </button>`;
 
-        const action =
-            statut === "Payée"
-                ? `<span class="action-btn-confirmed">Confirmée</span>`
-                : statut === "Contestée"
-                    ? `
-                        <button class="action-btn-delete" onclick="refaireFacture('${numeroFacture}')">
-                            Refaire
-                        </button>
-                        <button class="action-btn-remove" onclick="supprimerFacture('${numeroFacture}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    `
-                    : `
-                        <button class="action-btn-confirm" onclick="confirmerFacture('${numeroFacture}')">
-                            Confirmer
-                        </button>
-                    `;
-
-        tbody.innerHTML += `
-            <tr data-facture-id="${numeroFacture}" data-statut="${statut.toLowerCase()}">
-
-                <td>${numeroFacture}</td>
-                <td>${compagnie}</td>
-                <td>${dateEmission}</td>
-                <td>${Number(montant).toLocaleString()} XAF</td>
-
-                <td>
-                    <span class="status-badge ${statutClass}" id="statut-${numeroFacture}">
-                        ${statut}
-                    </span>
-                </td>
-
-                <td style="text-align:center;">
-                    <button class="action-btn-view" onclick="voirFacture('${numeroFacture}', '${fichierUrl}')">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </td>
-
-                <td style="text-align:right;">
-                    <div class="action-button-group" id="actions-${numeroFacture}">
-                        ${action}
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
+            tbody.innerHTML += `
+                <tr data-facture-id="${f.numero_facture}">
+                    <td>${f.numero_facture}</td>
+                    <td>${f.client}</td>
+                    <td>${f.date}</td>
+                    <td>${Number(f.amount).toLocaleString()} XAF</td>
+                    <td>
+                        <span class="status-badge ${statutClass}">
+                            ${f.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn-view" onclick="voirFacture('${f.numero_facture}')">👁</button>
+                    </td>
+                    <td>${action}</td>
+                </tr>`;
+        });
 }
+/* ============================================================ */
+/* 5️⃣ FILTRAGE */
+/* ============================================================ */
 
-
-
-/* ============================================================
-   5️⃣ FILTRAGE LOCAL PAR COMPAGNIE + RECHERCHE
-   ============================================================ */
-   function filtrerFactures() {
-    const selectStatut = document.getElementById("filter-statut");
-    const statutFiltre = selectStatut ? selectStatut.value : "";
-
-    const selectMois = document.querySelectorAll(".report-select")[0];  // filtre par mois
-    const selectComp = document.querySelectorAll(".report-select")[1];  // filtre par compagnie
-    const recherche = document.getElementById("searchInput").value.toLowerCase();
-
-    const moisFiltre = selectMois.value;       // "12", "11", "10"
-    const compagnieFiltre = selectComp.value;
+function filtrerFactures() {
+    const statut = document.getElementById("filter-statut")?.value || "";
+    const mois = document.querySelectorAll(".report-select")[0].value;
+    const comp = document.querySelectorAll(".report-select")[1].value;
+    const search = document.getElementById("searchInput").value.toLowerCase();
 
     const result = FACTURES.filter(f => {
+        const matchMois = !mois || new Date(f.date).getMonth() + 1 == mois;
+        const matchComp = !comp || f.client === comp;
+        const matchStatut = !statut || f.status?.toLowerCase() === statut;
+        const matchSearch =
+            f.client?.toLowerCase().includes(search) ||
+            f.numero_facture?.toLowerCase().includes(search);
 
-        // --- 📅 Filtre par mois ---
-        let matchMois = true;
-        if (moisFiltre && f.date) {
-            const moisFacture = new Date(f.date).getMonth() + 1;
-            matchMois = moisFacture.toString() === moisFiltre;
-        }
-    
-        // --- 🏢 Filtre par compagnie ---
-        const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
-    
-        // --- 💳 Filtre par statut ---
-        let matchStatut = true;
-        if (statutFiltre) {
-            matchStatut = f.status?.toLowerCase() === statutFiltre;
-        }
-    
-        // --- 🔍 Recherche ---
-        const matchRecherche =
-            f.client.toLowerCase().includes(recherche) ||
-            f.numero_facture.toLowerCase().includes(recherche) ||
-            f.date.toLowerCase().includes(recherche);
-    
-        return matchMois && matchComp && matchStatut && matchRecherche;
+        return matchMois && matchComp && matchStatut && matchSearch;
     });
-    
-    paginateFactures(result, 8);
 
+    paginateFactures(result, 8);
 }
 
+/* ============================================================ */
+/* 6️⃣ ACTIONS */
+/* ============================================================ */
 
-function refaireFacture(numero) {
-    // Ajoute le numéro dans la session pour préremplir si besoin
-    sessionStorage.setItem("factureARefaire", numero);
+async function confirmerFacture(id) {
+    if (!confirm("Confirmer cette facture ?")) return;
 
-    // Redirection vers la page de création/modification
+    const res = await fetch(`${API_URL}/confirm/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        credentials: "include"
+    });
+
+    if (res.status === 401) return location.href = "Index.html";
+    await res.json();
+    chargerFactures();
+}
+
+async function supprimerFacture(id) {
+    if (!confirm("Supprimer cette facture ?")) return;
+
+    const res = await fetch(`${API_URL}/delete/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "include"
+    });
+
+    if (res.status === 401) return location.href = "Index.html";
+
+    let hidden = JSON.parse(localStorage.getItem("factures_supprimees") || "[]");
+    hidden.push(id);
+    localStorage.setItem("factures_supprimees", JSON.stringify(hidden));
+
+    document.querySelector(`tr[data-facture-id="${id}"]`)?.remove();
+}
+
+function refaireFacture(id) {
+    sessionStorage.setItem("factureARefaire", id);
     window.location.href = "EnregistreFacture.html";
 }
 
-// Quand on tape dans la recherche
-function appliquerRecherche() {
-    filtrerFactures();
-}
+/* ============================================================ */
+/* 7️⃣ VOIR FACTURE */
+/* ============================================================ */
 
-
-/* ============================================================
-   6️⃣ CONFIRMER FACTURE
-   ============================================================ */
-   async function confirmerFacture(id) {
-    if (!confirm("Confirmer cette facture comme payée ?")) return;
-
+async function voirFacture(numero) {
     try {
-        const res = await fetch(`${API_URL}/confirm/${encodeURIComponent(id)}`, {
-            method: "PUT",
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.message || "Erreur API");
-
-        alert("Facture confirmée !");
-        chargerFactures();
-
-    } catch (err) {
-        console.error("Erreur confirmation:", err);
-        alert(err.message);
-    }
-}
-
-
-/* ============================================================
-   7️⃣ SUPPRIMER FACTURE
-   ============================================================ */
-   async function supprimerFacture(numero) {
-    if (!confirm("Supprimer définitivement cette facture ?")) return;
-
-    try {
-        const encodedNumero = encodeURIComponent(numero);
-
-        const res = await fetch(`${API_URL}/delete/${encodedNumero}`, {
-            method: "DELETE",
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-
-        // 🔥 1. Stocker ce numéro comme "supprimé"
-        let hidden = JSON.parse(localStorage.getItem("factures_supprimees") || "[]");
-        if (!hidden.includes(numero)) hidden.push(numero);
-        localStorage.setItem("factures_supprimees", JSON.stringify(hidden));
-
-        // 🔥 2. Supprimer la ligne du tableau
-        const row = document.querySelector(`tr[data-facture-id="${numero}"]`);
-        if (row) row.remove();
-
-        alert("Facture retirée !");
-    } catch (err) {
-        console.error("Erreur front :", err);
-        alert("Erreur lors de la suppression.");
-    }
-}
-
-
-
-// /* ============================================================
-//    8️⃣ VOIR FACTURE
-//    ============================================================ */
-async function voirFacture(numeroFacture) {
-    const token = localStorage.getItem("jwtTokenAdmin");
-
-    console.log("🔍 voirFacture() appelé pour :", numeroFacture);
-
-    try {
-        // 1️⃣ Preuves de paiement classiques
-        console.log("📡 → Recherche des preuves de paiement…");
-
-        const response = await fetch(
-            `http://localhost:5002/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
-            { headers: { "Authorization": `Bearer ${token}` } }
+        const res = await fetch(
+            `https://assa-ac-jyn4.onrender.com/api/preuves/by-facture/${encodeURIComponent(numero)}`,
+            {
+                credentials: "include"
+            }
         );
 
-        const result = await response.json();
-
-        console.log("📥 Réponse API PREUVES :", result);
-
-        if (response.ok && result.preuves && result.preuves.length > 0) {
-            const preuve = result.preuves[result.preuves.length - 1];
-
-            console.log("🧾 Preuve trouvée :", preuve);
-
-            if (preuve.fichier_url) {
-                console.log("📄 Ouverture fichier preuve :", preuve.fichier_url);
-                window.open(preuve.fichier_url, "_blank");
-                return;
-            } else {
-                console.warn("⚠️ La preuve n’a pas de fichier_url !");
-            }
-        } else {
-            console.log("ℹ️ Aucune preuve classique trouvée.");
-        }
-
-        // 2️⃣ Vérifier la contestation liée à la facture
-        console.log("📡 → Recherche de la contestation dans FACTURES…");
-
-        const facture = FACTURES.find(f => f.numero_facture === numeroFacture);
-
-        console.log("🧾 Facture trouvée :", facture);
-
-        if (facture && facture.contestation) {
-            const contest = facture.contestation;
-
-            console.log("📄 Contestation trouvée :", contest);
-            console.log("📦 Champ fichiers :", contest.fichiers);
-
-            // 🟢 S'assurer que c'est un tableau
-            const files = Array.isArray(contest.fichiers) ? contest.fichiers : [];
-
-            console.log("🗂️ fichiers[] normalisé :", files);
-
-            if (files.length > 0) {
-                console.log("📁 Premier fichier :", files[0]);
-
-                if (files[0].file_url) {
-                    console.log("📄 Ouverture fichier contestation :", files[0].file_url);
-                    window.open(files[0].file_url, "_blank");
-                    return;
-                } else {
-                    console.warn("⚠️ Fichier trouvé mais pas de file_url !");
-                }
-            }
-
-            alert("La contestation n'a pas de fichier joint.");
+        if (res.status === 401 || res.status === 403) {
+            alert("Session expirée. Veuillez vous reconnecter.");
+            window.location.href = "Index.html";
             return;
-        } else {
-            console.log("ℹ️ Aucune contestation trouvée.");
         }
 
-        // 3️⃣ Aucun fichier
-        alert("Aucune preuve (paiement ou contestation) n’a été téléversée pour cette facture.");
+        const data = await res.json();
+        const preuve = data?.preuves?.at(-1);
+
+        if (preuve?.fichier_url) {
+            window.open(preuve.fichier_url, "_blank");
+        } else {
+            alert("Aucune preuve disponible.");
+        }
 
     } catch (err) {
-        console.error("❌ Erreur voirFacture :", err);
-        alert("Impossible d'ouvrir la preuve.");
+        console.error(err);
+        alert("Erreur ouverture facture.");
     }
 }
 
-function paginateFactures(factures, rowsPerPage = 8) {
-    const pagination = document.getElementById("facture-pagination");
-    let currentPage = 1;
 
-    function renderPage() {
-        const start = (currentPage - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-        const pageData = factures.slice(start, end);
+/* ============================================================ */
+/* 8️⃣ PAGINATION */
+/* ============================================================ */
 
-        remplirTableau(pageData);
+function paginateFactures(data, size) {
+    let page = 1;
+    const pag = document.getElementById("facture-pagination");
+
+    function render() {
+        remplirTableau(data.slice((page - 1) * size, page * size));
     }
 
-    function renderPagination() {
-        pagination.innerHTML = "";
-        const totalPages = Math.ceil(factures.length / rowsPerPage);
+    pag.innerHTML = "";
+    const pages = Math.ceil(data.length / size);
 
-        if (totalPages <= 1) return;
-
-        for (let i = 1; i <= totalPages; i++) {
-            const btn = document.createElement("button");
-            btn.textContent = i;
-            btn.classList.toggle("active", i === currentPage);
-
-            btn.onclick = () => {
-                currentPage = i;
-                renderPage();
-                renderPagination();
-            };
-
-            pagination.appendChild(btn);
-        }
+    for (let i = 1; i <= pages; i++) {
+        const b = document.createElement("button");
+        b.textContent = i;
+        b.onclick = () => { page = i; render(); };
+        pag.appendChild(b);
     }
 
-    renderPage();
-    renderPagination();
+    render();
 }
 
-/* ============================================================
-   🔟 EXPORTER LA LISTE DES FACTURES (CSV)
-   ============================================================ */
-   function exporterFactures() {
-    // 🔁 On reprend EXACTEMENT les filtres actuels
-    const selectStatut = document.getElementById("filter-statut");
-    const statutFiltre = selectStatut ? selectStatut.value : "";
+/* ============================================================ */
+/* 🚀 LANCEMENT */
+/* ============================================================ */
 
-    const selectMois = document.querySelectorAll(".report-select")[0];
-    const selectComp = document.querySelectorAll(".report-select")[1];
-    const recherche = document.getElementById("searchInput")?.value.toLowerCase() || "";
-
-    const moisFiltre = selectMois.value;
-    const compagnieFiltre = selectComp.value;
-
-    const facturesFiltrees = FACTURES.filter(f => {
-        let matchMois = true;
-        if (moisFiltre && f.date) {
-            const moisFacture = new Date(f.date).getMonth() + 1;
-            matchMois = moisFacture.toString() === moisFiltre;
-        }
-
-        const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
-
-        let matchStatut = true;
-        if (statutFiltre) {
-            matchStatut = f.status?.toLowerCase() === statutFiltre;
-        }
-
-        const matchRecherche =
-            f.client?.toLowerCase().includes(recherche) ||
-            f.numero_facture?.toLowerCase().includes(recherche) ||
-            f.date?.toLowerCase().includes(recherche);
-
-        return matchMois && matchComp && matchStatut && matchRecherche;
-    });
-
-    if (!facturesFiltrees.length) {
-        alert("Aucune facture à exporter.");
-        return;
-    }
-
-    // 🧾 En-têtes CSV
-    const headers = [
-        "Numéro facture",
-        "Compagnie",
-        "Date",
-        "Montant (XAF)",
-        "Statut"
-    ];
-
-    const rows = facturesFiltrees.map(f => [
-        f.numero_facture,
-        f.client,
-        f.date,
-        f.amount,
-        f.status
-    ]);
-
-    // 🔥 BOM UTF-8 POUR EXCEL
-    const csvContent = "\uFEFF" + [
-        headers.join(";"),
-        ...rows.map(r => r.join(";"))
-    ].join("\n");
-
-    // ⬇️ Téléchargement
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `factures_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-
-    URL.revokeObjectURL(url);
-}
-
-
-/* ============================================================
-   9️⃣ LANCEMENT
-   ============================================================ */
 window.onload = chargerFactures;
-
-// Activation du filtre "Par mois"
-document.querySelectorAll(".report-select")[0].addEventListener("change", filtrerFactures);
-document
-    .getElementById("filter-statut")
-    .addEventListener("change", filtrerFactures);
-
-
-
+document.getElementById("filter-statut")?.addEventListener("change", filtrerFactures);
+document.querySelectorAll(".report-select")[0]?.addEventListener("change", filtrerFactures);

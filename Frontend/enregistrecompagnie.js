@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // ==================================================
-    // SUBMIT FORM
+    // SUBMIT FORM (CORRIGÉ)
     // ==================================================
     form.addEventListener("submit", async e => {
         e.preventDefault();
@@ -133,18 +133,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         saveButton.textContent = companyId ? "Modification..." : "Enregistrement...";
 
         try {
-            const formData = new FormData(form);
+            const formData = new FormData(form); // ✅ suffit
 
-            if (logoInput.files[0]) {
-                formData.append("logo_url", logoInput.files[0]);
-            }
-
+            // 🔥 ROUTE CORRECTE
             const url = companyId
-                ? `${API_BASE}/api/companies/update-company/${companyId}`
-                : `${API_BASE}/api/admins/create-company`;
+                ? `${API_BASE}/api/companies/update-company/${companyId}` // ADMIN
+                : `${API_BASE}/api/companies/update`; // COMPANY
 
             const res = await fetch(url, {
-                method: companyId ? "PUT" : "POST",
+                method: companyId ? "PUT" : "PUT",
                 credentials: "include",
                 body: formData
             });
@@ -161,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return;
             }
 
-            showMessage("Compagnie enregistrée avec succès", "success");
+            showMessage("Compagnie mise à jour avec succès", "success");
 
             setTimeout(() => {
                 window.location.href = "gestioncompagnie.html";
@@ -174,4 +171,5 @@ document.addEventListener("DOMContentLoaded", async () => {
             saveButton.disabled = false;
         }
     });
+
 });
