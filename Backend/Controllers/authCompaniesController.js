@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import supabase from '../Config/db.js';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
-import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -13,17 +12,6 @@ import {
 } from '../Services/archiveService.js';
 import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
 
-
-// ----------------- Configuration Multer (upload logo en mémoire) -----------------
-const uploadLogo = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Format non autorisé'));
-  }
-}).single('logo_url');
 
 
 // ----------------- Configuration Nodemailer -----------------

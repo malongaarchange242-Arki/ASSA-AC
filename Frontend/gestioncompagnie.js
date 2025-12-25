@@ -1,17 +1,17 @@
 let allCompanies = []; // Stocke toutes les compagnies pour la recherche
 
+/* =========================================================
+   GESTION DU THÈME (inchangé, OK avec localStorage)
+========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
- // 1. Référence au bouton de bascule
     const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
 
-    // 2. Fonction pour appliquer le thème
     function applyTheme(theme) {
         if (theme === 'dark') {
             body.classList.add('dark-mode');
             localStorage.setItem('theme', 'dark');
             if (themeToggle) {
-                // Icône Soleil pour passer au mode clair
                 themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
                 themeToggle.title = "Passer au Mode Clair";
             }
@@ -19,65 +19,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             body.classList.remove('dark-mode');
             localStorage.setItem('theme', 'light');
             if (themeToggle) {
-                // Icône Lune pour passer au mode sombre
                 themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
                 themeToggle.title = "Passer au Mode Sombre";
             }
         }
     }
 
-    // 3. Détecter et appliquer le thème au chargement
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
         applyTheme(savedTheme);
     } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        // Utiliser la préférence système si aucune n'est enregistrée
         applyTheme('dark');
     } else {
-        applyTheme('light'); // Par défaut au mode clair
+        applyTheme('light');
     }
 
-    // 4. Écouteur d'événement pour le basculement
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(newTheme);
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         });
     }
 });
 
+/* =========================================================
+   FETCH AVEC COOKIES + GESTION SESSION
+========================================================= */
+async function fetchWithAuth(url, options = {}) {
+    const res = await fetch(url, {
+        ...options,
+        credentials: 'include' // ✅ COOKIE AUTO
+    });
 
-// FIN GESTION DU THÈME
-/* ========================================================= */
-
-
-// --------------------------------------------------
-// Récupérer le token ADMIN
-// --------------------------------------------------
-function getToken() {
-    const token = localStorage.getItem('jwtTokenAdmin');
-    if (!token) {
-        alert("Vous n'êtes pas connecté !");
+    if (res.status === 401) {
         window.location.href = 'login.html';
-        throw new Error("Token manquant");
+        throw new Error('Session expirée');
     }
-    return token;
+
+    return res;
 }
 
-// --------------------------------------------------
-// Construire URL logo correctement
-// --------------------------------------------------
+/* =========================================================
+   LOGO
+========================================================= */
 function buildLogoUrl(logoUrl) {
     if (!logoUrl) return 'https://via.placeholder.com/60?text=Logo';
     if (logoUrl.startsWith('http')) return logoUrl;
-    // Supprime "logos/" si déjà présent pour éviter doublon
+
     return `https://iswllanzauyloulabutf.supabase.co/storage/v1/object/public/company-logos/${logoUrl.replace(/^logos\//, '')}`;
 }
 
-// --------------------------------------------------
-// Affichage des cartes compagnies
-// --------------------------------------------------
+/* =========================================================
+   RENDER COMPANIES
+========================================================= */
 function renderCompanies(companies) {
     const container = document.querySelector('.company-card-grid');
     container.innerHTML = '';
@@ -94,11 +88,12 @@ function renderCompanies(companies) {
         const card = document.createElement('div');
         card.className = `company-card status-${statusClass}`;
         card.dataset.id = c.id;
+
         card.innerHTML = `
             <div class="card-header">
                 <img src="${buildLogoUrl(c.logo_url)}" alt="Logo ${c.company_name}">
                 <h3>${c.company_name}</h3>
-                <span class="card-id">#${c.id || ''}</span>
+                <span class="card-id">#${c.id}</span>
             </div>
             <div class="card-body">
                 <p><strong>Représentant :</strong> ${c.representative_name || '-'}</p>
@@ -106,7 +101,7 @@ function renderCompanies(companies) {
                 <p><strong>Téléphone :</strong> ${c.phone_number || '-'}</p>
                 <p><strong>Adresse :</strong> ${c.full_address || '-'}, ${c.city || '-'}, ${c.country || '-'}</p>
                 <p><strong>Code Aéroport :</strong> ${c.airport_code || '-'}</p>
-                <p><strong>Statut :</strong> 
+                <p><strong>Statut :</strong>
                     <span class="status-badge ${statusClass}">${status}</span>
                 </p>
             </div>
@@ -115,124 +110,91 @@ function renderCompanies(companies) {
                 <button title="Supprimer"><i class="fas fa-trash"></i></button>
             </div>
         `;
+
         container.appendChild(card);
     });
 
     attachCardEvents();
 }
 
-// --------------------------------------------------
-// Événements Modifier / Supprimer
-// --------------------------------------------------
+/* =========================================================
+   ACTIONS SUR LES CARTES
+========================================================= */
 function attachCardEvents() {
     document.querySelectorAll('.company-card').forEach(card => {
         const companyId = card.dataset.id;
-        const token = getToken();
 
         // Modifier
         card.querySelector('button[title="Modifier"]').addEventListener('click', () => {
             window.location.href = `enregistrecompagnie.html?id=${companyId}`;
         });
 
-        // Supprimer (sécurisé)
-        // Supprimer une compagnie (définitif)
+        // Supprimer
         card.querySelector('button[title="Supprimer"]').addEventListener('click', async () => {
-
-            if (!confirm('⚠️ Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ?\nCette action est irréversible.')) {
-                return;
-            }
+            if (!confirm('⚠️ Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ?')) return;
 
             try {
-                const res = await fetch(
+                const res = await fetchWithAuth(
                     `https://assa-ac-jyn4.onrender.com/api/companies/delete/${companyId}`,
-                    {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    }
+                    { method: 'DELETE' }
                 );
 
                 const result = await res.json();
 
-                if (!res.ok) {
-                    throw new Error(result.message || 'Erreur lors de la suppression');
-                }
-
-                // ✅ Message succès
-                alert(`✅ Compagnie "${result.company?.company_name || ''}" supprimée avec succès`);
-
-                // ✅ Retirer la carte du DOM
+                alert(`✅ Compagnie "${result.company?.company_name || ''}" supprimée`);
                 card.remove();
-
-                // ✅ Mettre à jour la liste globale
                 allCompanies = allCompanies.filter(c => c.id.toString() !== companyId);
 
             } catch (err) {
                 console.error(err);
-                alert('❌ Erreur : ' + err.message);
+                alert('❌ ' + err.message);
             }
         });
-
     });
 }
 
-// --------------------------------------------------
-// Récupération des compagnies depuis l’API
-// --------------------------------------------------
+/* =========================================================
+   FETCH COMPANIES
+========================================================= */
 async function fetchCompanies() {
     const container = document.querySelector('.company-card-grid');
     container.innerHTML = '<p>Chargement des compagnies...</p>';
 
     try {
-        const token = getToken();
-
-        const res = await fetch('https://assa-ac-jyn4.onrender.com/api/companies/all', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!res.ok) throw new Error(`Erreur ${res.status} : ${res.statusText}`);
+        const res = await fetchWithAuth(
+            'https://assa-ac-jyn4.onrender.com/api/companies/all'
+        );
 
         const json = await res.json();
-        allCompanies = json.companies || []; 
+        allCompanies = json.companies || [];
         renderCompanies(allCompanies);
 
-        // Applique le filtre si une recherche était en cours (utile après l'actualisation)
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput && searchInput.value.trim() !== '') {
-            filterCompanies(searchInput.value.trim());
-        }
-
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">Erreur lors du chargement : ${err.message}</p>`;
-        console.error(err);
+        container.innerHTML = `<p style="color:red;">${err.message}</p>`;
     }
 }
 
-// --------------------------------------------------
-// Logique de Filtrage
-// --------------------------------------------------
+/* =========================================================
+   FILTRAGE
+========================================================= */
 function filterCompanies(query) {
-    const lowerQuery = query.toLowerCase();
-    const filtered = allCompanies.filter(c =>
-        c.company_name?.toLowerCase().includes(lowerQuery) ||
-        (c.id && c.id.toString().includes(lowerQuery)) ||
-        c.representative_name?.toLowerCase().includes(lowerQuery)
+    const q = query.toLowerCase();
+    renderCompanies(
+        allCompanies.filter(c =>
+            c.company_name?.toLowerCase().includes(q) ||
+            c.representative_name?.toLowerCase().includes(q) ||
+            c.id?.toString().includes(q)
+        )
     );
-    renderCompanies(filtered);
 }
 
-// --------------------------------------------------
-// Événement de Recherche dynamique
-// --------------------------------------------------
 document.addEventListener('input', e => {
     if (e.target.id === 'searchInput') {
         filterCompanies(e.target.value);
     }
 });
 
-
-// --------------------------------------------------
-// Charger au démarrage
-// --------------------------------------------------
+/* =========================================================
+   INIT
+========================================================= */
 fetchCompanies();
