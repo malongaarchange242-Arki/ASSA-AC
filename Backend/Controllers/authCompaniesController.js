@@ -62,6 +62,7 @@ const sendFirstLoginEmail = async (to, otp, tempPassword) => {
 };
 
 
+
 // ----------------- OTP première connexion -----------------
 export const requestFirstLoginOtp = async (req, res) => {
   try {
