@@ -1,24 +1,22 @@
 import express from 'express';
 import { verifyToken } from '../Middleware/auth.js';
 import { checkRole } from '../Middleware/role.js';
-import { getParametres, updateParametres } from '../Controllers/parametreAdminController.js';
+import {
+  getParametres,
+  updateParametres
+} from '../Controllers/parametreAdminController.js';
 
 const router = express.Router();
 
-// Récupérer les paramètres 
-router.get(
-  '/',
+const adminGuard = [
   verifyToken,
-  checkRole(['Administrateur']),
-  getParametres
-);
+  checkRole(['admin', 'superadmin'])
+];
 
-// Mettre à jour les paramètres 
-router.put(
-  '/',
-  verifyToken,
-  checkRole(['Administrateur']),
-  updateParametres
-);
+// Récupérer les paramètres
+router.get('/', adminGuard, getParametres);
+
+// Mettre à jour les paramètres
+router.put('/', adminGuard, updateParametres);
 
 export default router;

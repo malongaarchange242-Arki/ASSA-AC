@@ -1,82 +1,76 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Référence au bouton de bascule
-    const themeToggle = document.getElementById('theme-toggle');
-    const body = document.body;
+document.addEventListener('DOMContentLoaded', async () => {
 
-    // 2. Fonction pour appliquer le thème
-    function applyTheme(theme) {
-        if (theme === 'dark') {
-            body.classList.add('dark-mode');
-            localStorage.setItem('theme', 'dark');
-            if (themeToggle) {
-                // Icône Soleil pour passer au mode clair
-                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                themeToggle.title = "Passer au Mode Clair";
-            }
-        } else {
-            body.classList.remove('dark-mode');
-            localStorage.setItem('theme', 'light');
-            if (themeToggle) {
-                // Icône Lune pour passer au mode sombre
-                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-                themeToggle.title = "Passer au Mode Sombre";
-            }
+    /* =====================================================
+       1. CONFIGURATION API & AUTH (Cookies HTTP-Only)
+    ===================================================== */
+    const API_BASE = 'https://assa-ac-jyn4.onrender.com';
+
+    /**
+     * Tente de rafraîchir le token via le cookie de session
+     */
+    async function refreshToken() {
+        try {
+            const res = await fetch(`${API_BASE}/admins/token/refresh`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            return res.ok;
+        } catch (err) {
+            console.error("Échec rafraîchissement session:", err);
+            return false;
         }
     }
 
-    // 3. Détecter et appliquer le thème au chargement
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-        applyTheme(savedTheme);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        // Utiliser la préférence système si aucune n'est enregistrée
-        applyTheme('dark');
-    } else {
-        applyTheme('light'); // Par défaut au mode clair
+    /**
+     * Wrapper Fetch sécurisé avec gestion automatique du 401 (Expire)
+     */
+    async function fetchWithAuth(url, options = {}) {
+        options.credentials = 'include';
+        options.headers = {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+        };
+
+        try {
+            let res = await fetch(url, options);
+
+            // Si le token est expiré (401)
+            if (res.status === 401) {
+                const refreshed = await refreshToken();
+                if (refreshed) {
+                    // Deuxième tentative après refresh
+                    res = await fetch(url, options);
+                } else {
+                    // Redirection si refresh échoue
+                    window.location.href = 'login.html';
+                    return null;
+                }
+            }
+            return res;
+        } catch (err) {
+            console.error("Erreur réseau (vérifiez votre connexion ou l'état du serveur):", err);
+            throw err;
+        }
     }
 
-    // 4. Écouteur d'événement pour le basculement
-    if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(newTheme);
-        });
-    }
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-
-    // =============================
-    // 🔐 AUTH
-    // =============================
-    const token = localStorage.getItem('jwtTokenAdmin');
-    if (!token) {
-        console.error('Token admin manquant');
-        return;
-    }
-
-    // =============================
-    // 🎨 TYPES UI
-    // =============================
+    /* =====================================================
+       2. UI CONFIG & HELPERS
+    ===================================================== */
     const TYPE_UI = {
-        create:  { class: 'create',  icon: 'fas fa-file-invoice-dollar' },
+        create:  { class: 'create',  icon: 'fas fa-plus-circle' },
         update:  { class: 'update',  icon: 'fas fa-pen' },
-        delete:  { class: 'delete',  icon: 'fas fa-archive' },
+        delete:  { class: 'delete',  icon: 'fas fa-trash-alt' },
         archive: { class: 'delete',  icon: 'fas fa-archive' },
-        system:  { class: 'system',  icon: 'fas fa-sign-in-alt' }
+        system:  { class: 'system',  icon: 'fas fa-cog' }
     };
 
-    // =============================
-    // 👤 UTILISATEUR
-    // =============================
     function getUtilisateur(act) {
         return act.utilisateur_nom || act.utilisateur_email || 'Système';
     }
 
-    // =============================
-    // 📌 ELEMENTS DOM
-    // =============================
+    /* =====================================================
+       3. ELEMENTS DOM
+    ===================================================== */
     const activityList = document.querySelector('.activity-list');
     const filterUser   = document.getElementById('filter-user');
     const filterAction = document.getElementById('filter-action');
@@ -84,260 +78,184 @@ document.addEventListener('DOMContentLoaded', async () => {
     const refreshBtn   = document.querySelector('.filter-actions-bar button');
     const searchInput  = document.querySelector('.search-bar input');
 
-    if (!activityList) {
-        console.error('Liste activité introuvable');
-        return;
-    }
-
-    // =============================
-    // 🗃️ DATA
-    // =============================
     let allActivities = [];
 
-    // =============================
-    // 🔄 FETCH ACTIVITÉS
-    // =============================
+    /* =====================================================
+       4. LOGIQUE DE CHARGEMENT
+    ===================================================== */
     async function chargerActivites() {
         try {
-            const response = await fetch(
-                'https://assa-ac-jyn4.onrender.com/api/journal/recent?limit=50',
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP ${response.status}`);
-            }
+            const response = await fetchWithAuth(`${API_BASE}/api/journal/recent?limit=50`);
+            
+            if (!response) return; // Arrive si redirection login
+            if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
 
             const result = await response.json();
-
-            if (!result?.success || !Array.isArray(result.activites)) {
-                console.error('Format API invalide', result);
-                allActivities = [];
-            } else {
+            
+            if (result?.success && Array.isArray(result.activites)) {
                 allActivities = result.activites;
+                remplirFiltreUtilisateurs(allActivities);
+                appliquerFiltres();
             }
-
-            remplirFiltreUtilisateurs(allActivities);
-            appliquerFiltres();
-
         } catch (err) {
-            console.error('Erreur chargement journal :', err);
-            activityList.innerHTML = `
-                <li style="text-align:center; color:red; padding:15px;">
-                    Impossible de charger le journal d'activité
+            console.error('Erreur journal:', err);
+            if (activityList) {
+                activityList.innerHTML = `<li style="text-align:center; color:var(--danger); padding:20px;">
+                    <i class="fas fa-exclamation-triangle"></i> Erreur de connexion au serveur.
                 </li>`;
+            }
         }
     }
 
-    // =============================
-    // 👥 FILTRE UTILISATEURS
-    // =============================
-    function remplirFiltreUtilisateurs(activites) {
-        if (!filterUser) return;
-
-        filterUser.innerHTML = `<option value="">Tous</option>`;
-
-        const uniques = new Map();
-
-        activites.forEach(act => {
-            const nom = getUtilisateur(act);
-            if (!nom) return;
-
-            const key = nom.toLowerCase();
-            if (!uniques.has(key)) {
-                uniques.set(key, nom);
-            }
-        });
-
-        uniques.forEach(nom => {
-            const option = document.createElement('option');
-            option.value = nom.toLowerCase();
-            option.textContent = nom;
-            filterUser.appendChild(option);
-        });
-    }
-
-    // =============================
-    // 🎯 FILTRES
-    // =============================
+    /* =====================================================
+       5. FILTRES & PAGINATION
+    ===================================================== */
     function appliquerFiltres() {
         let filtered = [...allActivities];
+        
+        const userVal   = filterUser?.value.toLowerCase() || "";
+        const actionVal = filterAction?.value || "";
+        const dateVal   = filterDate?.value || "";
+        const query     = searchInput?.value.toLowerCase().trim() || "";
 
-        // 👤 Utilisateur
-        const userVal = filterUser.value.toLowerCase().trim();
+        // Filtre Utilisateur
         if (userVal) {
-            filtered = filtered.filter(act =>
-                getUtilisateur(act).toLowerCase().includes(userVal)
-            );
+            filtered = filtered.filter(act => getUtilisateur(act).toLowerCase() === userVal);
         }
 
-        // 🔄 Type
-        const actionVal = filterAction.value;
+        // Filtre Action
         if (actionVal) {
             filtered = filtered.filter(act => act.type_activite === actionVal);
         }
-
-        // 📅 Date
-        const dateVal = filterDate.value;
+        
+        // Filtre Date
         if (dateVal) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            const todayMs = today.getTime();
 
             filtered = filtered.filter(act => {
-                if (!act.date_activite) return false;
+                const actDate = new Date(act.date_activite);
+                actDate.setHours(0, 0, 0, 0);
+                const actMs = actDate.getTime();
 
-                const d = new Date(act.date_activite);
-                d.setHours(0, 0, 0, 0);
-
-                if (dateVal === 'yesterday') {
-                    const y = new Date(today);
-                    y.setDate(today.getDate() - 1);
-                    return d.getTime() === y.getTime();
-                }
-
-                if (dateVal === 'last7') {
-                    const last7 = new Date(today);
-                    last7.setDate(today.getDate() - 7);
-                    return d >= last7;
-                }
-
-                return d.getTime() === today.getTime();
+                if (dateVal === 'yesterday') return actMs === (todayMs - 86400000);
+                if (dateVal === 'last7') return actMs >= (todayMs - 7 * 86400000);
+                return actMs === todayMs; // 'today' par défaut
             });
         }
 
-        // 🔎 Recherche
-        const query = searchInput.value.toLowerCase().trim();
+        // Recherche textuelle
         if (query) {
-            filtered = filtered.filter(act =>
-                getUtilisateur(act).toLowerCase().includes(query) ||
-                (act.description || '').toLowerCase().includes(query)
+            filtered = filtered.filter(act => 
+                getUtilisateur(act).toLowerCase().includes(query) || 
+                (act.description || '').toLowerCase().includes(query) ||
+                (act.module || '').toLowerCase().includes(query)
             );
         }
 
         afficherActivites(filtered);
     }
 
-    // =============================
-    // 🖥️ AFFICHAGE
-    // =============================
-    function afficherActivites(activites) {
-        const pagination = document.getElementById('activity-pagination');
-    
-        paginateList({
-            data: activites,
-            container: activityList,
-            paginationContainer: pagination,
-            itemsPerPage: 8,
-            emptyMessage: "Aucune activité disponible",
-            renderItem: (act) => {
-                const type = TYPE_UI[act.type_activite] || TYPE_UI.system;
-                const user = getUtilisateur(act);
-                const date = act.date_activite
-                    ? new Date(act.date_activite).toLocaleString('fr-FR')
-                    : '-';
-    
-                const li = document.createElement('li');
-                li.className = 'activity-item';
-                li.innerHTML = `
-                    <div class="log-icon ${type.class}">
-                        <i class="${type.icon}"></i>
-                    </div>
-                    <div class="log-details">
-                        <strong>${user}</strong> — ${act.description || '-'}
-                        <div class="log-metadata">
-                            Module : ${act.module || '-'} |
-                            <span class="user-name">${user}</span> |
-                            <span class="time">${date}</span>
-                        </div>
-                    </div>
-                `;
-                return li;
-            }
-        });
-    }
-    
-
-    function paginateList({
-        data,
-        container,
-        renderItem,
-        paginationContainer,
-        itemsPerPage = 8,
-        emptyMessage = "Aucune donnée"
-    }) {
+    function paginateList({ data, container, renderItem, paginationContainer, itemsPerPage, emptyMessage }) {
         let currentPage = 1;
-    
-        function renderPage() {
+
+        const renderPage = () => {
             container.innerHTML = "";
-    
             const start = (currentPage - 1) * itemsPerPage;
             const end = start + itemsPerPage;
             const pageData = data.slice(start, end);
-    
+
             if (!pageData.length) {
-                container.innerHTML = `
-                    <li style="text-align:center; padding:15px; color:gray;">
-                        ${emptyMessage}
-                    </li>`;
+                container.innerHTML = `<li style="text-align:center; padding:30px; color:gray;">${emptyMessage}</li>`;
                 return;
             }
-    
-            pageData.forEach(item => {
-                container.appendChild(renderItem(item));
-            });
-        }
-    
-        function renderPagination() {
+
+            pageData.forEach(item => container.appendChild(renderItem(item)));
+        };
+
+        const renderPagination = () => {
+            if (!paginationContainer) return;
             paginationContainer.innerHTML = "";
             const totalPages = Math.ceil(data.length / itemsPerPage);
-    
             if (totalPages <= 1) return;
-    
+
             for (let i = 1; i <= totalPages; i++) {
                 const btn = document.createElement("button");
                 btn.textContent = i;
-                btn.classList.toggle("active", i === currentPage);
-    
+                btn.className = (i === currentPage) ? "active" : "";
                 btn.onclick = () => {
                     currentPage = i;
                     renderPage();
                     renderPagination();
                 };
-    
                 paginationContainer.appendChild(btn);
             }
-        }
-    
+        };
+
         renderPage();
         renderPagination();
     }
-    
 
-    function actualiserJournal() {
-        // Reset filtres
-        filterUser.value = '';
-        filterAction.value = '';
-        filterDate.value = '';
-        searchInput.value = '';
-    
-        // Reload data
-        chargerActivites();
+    function afficherActivites(activites) {
+        const pagination = document.getElementById('activity-pagination');
+        if (!activityList) return;
+
+        paginateList({
+            data: activites,
+            container: activityList,
+            paginationContainer: pagination,
+            itemsPerPage: 8,
+            emptyMessage: "Aucune activité trouvée pour ces critères.",
+            renderItem: (act) => {
+                const type = TYPE_UI[act.type_activite] || TYPE_UI.system;
+                const user = getUtilisateur(act);
+                const li = document.createElement('li');
+                li.className = 'activity-item';
+                li.innerHTML = `
+                    <div class="log-icon ${type.class}"><i class="${type.icon}"></i></div>
+                    <div class="log-details">
+                        <p><strong>${user}</strong> — ${act.description || '-'}</p>
+                        <div class="log-metadata">
+                            <span><i class="fas fa-layer-group"></i> ${act.module || 'Général'}</span>
+                            <span><i class="far fa-clock"></i> ${new Date(act.date_activite).toLocaleString('fr-FR')}</span>
+                        </div>
+                    </div>`;
+                return li;
+            }
+        });
     }
-    
 
-    // =============================
-    // 🎧 EVENTS
-    // =============================
-    [filterUser, filterAction, filterDate].forEach(el =>
-        el.addEventListener('change', appliquerFiltres)
-    );
+    function remplirFiltreUtilisateurs(activites) {
+        if (!filterUser) return;
+        const currentVal = filterUser.value;
+        filterUser.innerHTML = `<option value="">Tous les agents</option>`;
+        
+        const uniques = [...new Set(activites.map(act => getUtilisateur(act)))];
+        uniques.sort().forEach(nom => {
+            const option = document.createElement('option');
+            option.value = nom.toLowerCase();
+            option.textContent = nom;
+            filterUser.appendChild(option);
+        });
+        filterUser.value = currentVal;
+    }
 
-    searchInput.addEventListener('input', appliquerFiltres);
-    refreshBtn.addEventListener('click', actualiserJournal);
+    /* =====================================================
+       6. INITIALISATION & LISTENERS
+    ===================================================== */
+    [filterUser, filterAction, filterDate].forEach(el => el?.addEventListener('change', appliquerFiltres));
+    searchInput?.addEventListener('input', appliquerFiltres);
+    refreshBtn?.addEventListener('click', () => {
+        refreshBtn.innerHTML = '<i class="fas fa-sync fa-spin"></i>';
+        chargerActivites().finally(() => {
+            refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Actualiser';
+        });
+    });
 
-    // =============================
-    // ▶️ INIT
-    // =============================
+    // Lancement initial
     await chargerActivites();
-    setInterval(chargerActivites, 15000);
+    
+    // Auto-refresh toutes les 60 secondes
+    setInterval(chargerActivites, 60000);
 });
