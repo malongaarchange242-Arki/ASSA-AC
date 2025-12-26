@@ -3,7 +3,8 @@ import { verifyToken } from '../Middleware/auth.js';
 import { checkRole } from '../Middleware/role.js';
 import {
   getParametres,
-  updateParametres
+  updateParametres,
+  updatePassword
 } from '../Controllers/parametreAdminController.js';
 
 const router = express.Router();
@@ -18,5 +19,8 @@ router.get('/', adminGuard, getParametres);
 
 // Mettre à jour les paramètres
 router.put('/', adminGuard, updateParametres);
+
+// Changer le mot de passe
+router.post('/update-password', adminGuard, updatePassword);
 
 export default router;
