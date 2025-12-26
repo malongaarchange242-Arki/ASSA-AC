@@ -232,32 +232,24 @@ async function loadClients() {
         const companies = resData.companies || resData;
 
         companies.filter(c => c.status === 'Actif').forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.company_name;
-            opt.textContent = c.company_name;
-            clientSelect.appendChild(opt);
+                const opt = document.createElement('option');
+                opt.value = c.company_name;
+                opt.textContent = c.company_name;
+                clientSelect.appendChild(opt);
 
-            companiesData[c.company_name] = {
-                id: c.id,
-                airport: c.airport_code || '',
-                city: c.city || "Pointe-Noire"
-            };
-        });
+                companiesData[c.company_name] = {
+                    id: c.id,
+                    airport: c.airport_code || '',
+                    city: c.city || "Pointe-Noire"
+                };
+            });
+
     } catch (err) {
         console.error(err);
-        showMessage('Erreur: impossible de charger les compagnies. ' + err.message, 'error');
-        
-        // Fallback optionnel: données de simulation en cas d'erreur
-        // Ceci peut être retiré si vous voulez bloquer l'interface
-        /*
-        ['Asky', 'Camerco', 'Air France', 'Ethiopian Airlines', 'Autre'].forEach(name => {
-             const opt = document.createElement('option');
-             opt.value = name;
-             opt.textContent = name;
-             clientSelect.appendChild(opt);
-             companiesData[name] = { id: 999, airport: name === 'Asky' ? 'Lomé' : '', city: "Pointe-Noire" };
-        });
-        */
+        showMessage(
+            'Erreur : impossible de charger les compagnies. ' + err.message,
+            'error'
+        );
     }
 }
 
@@ -274,18 +266,21 @@ clientSelect.addEventListener('change', e => {
 
 async function fetchNextInvoiceId() {
     try {
-        // NOTE: credentials: 'include' envoie les cookies automatiquement
         const response = await fetch(`${API_BASE}/api/factures/generate-ref`, {
             method: "GET",
-            credentials: 'include',
-            headers: { 
-                "Content-Type": "application/json"
-            }
+            credentials: "include" // 🔐 cookie HttpOnly envoyé automatiquement
         });
 
+        // 🔒 Non authentifié / session expirée
+        if (response.status === 401) {
+            showMessage("Session expirée. Veuillez vous reconnecter.", "error");
+            return;
+        }
+
         if (!response.ok) {
-            if (response.status === 401) throw new Error("Non autorisé (Session expirée).");
-            throw new Error(`Impossible de générer la référence (Statut: ${response.status})`);
+            throw new Error(
+                `Impossible de générer la référence (Statut: ${response.status})`
+            );
         }
 
         const data = await response.json();
@@ -293,8 +288,10 @@ async function fetchNextInvoiceId() {
 
     } catch (error) {
         console.error(error);
-        showMessage("Erreur génération référence: " + error.message, 'error');
-        invoiceIdInput.value = "REF-ERR-0000"; // Valeur par défaut en cas d'erreur
+        showMessage(
+            "Erreur génération référence : " + error.message,
+            "error"
+        );
     }
 }
 
@@ -352,7 +349,7 @@ function showPreview() {
         const totalText = grandTotalSpan.textContent;
         const formattedDate = new Date(issueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-        // 3. EN-TÊTE
+        // 3. EN-TÊTE (CODE CORRIGÉ : Largeurs ajustées et Logo centré)
         const headerHTML = `
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
                 <tr>
@@ -480,7 +477,7 @@ function showPreview() {
     }
 }
 
-// ======================= IMPRESSION ET GESTION VUE =======================
+// ======================= IMPRESSION ET GESTION VUE (inchangé) =======================
 function printPreview() {
     try {
         alert("ATTENTION : Pour obtenir une facture propre, veuillez DÉSACTIVER les options 'En-têtes et pieds de page' dans les paramètres de la boîte de dialogue d'impression de votre navigateur.");
@@ -548,6 +545,7 @@ function closePreview() {
 }
 
 
+// ======================= ENVOI (inchangé) =======================
 // ======================= ENVOI =======================
 // La fonction accepte maintenant 'buttonElement' comme argument
 async function sendInvoice(buttonElement) {
@@ -556,11 +554,10 @@ async function sendInvoice(buttonElement) {
     // --- LOGIQUE ANTI-DOUBLE CLIC ---
     if (buttonElement) {
         buttonElement.disabled = true;
-        buttonElement.textContent = 'Enregistrement...'; // Message de chargement
+        buttonElement.textContent = 'Enregistrement...';
         buttonElement.classList.remove('bg-blue-600', 'hover:bg-blue-700');
         buttonElement.classList.add('bg-gray-400', 'cursor-not-allowed');
     }
-    // ------------------------------------------
 
     const items = Array.from(itemsContainer.querySelectorAll('tr')).map((row, idx) => ({
         numero_ligne: idx + 1,
@@ -568,19 +565,28 @@ async function sendInvoice(buttonElement) {
         destination: row.querySelector('select[name="zone"]').value,
         nombre_passagers: parseFloat(row.querySelector('input[name="qty"]').value),
         cout_unitaire: parseFloat(row.querySelector('input[name="price_value"]').value),
-        cout_total: (parseFloat(row.querySelector('input[name="qty"]').value) || 0) * (parseFloat(row.querySelector('input[name="price_value"]').value) || 0)
+        cout_total:
+            (parseFloat(row.querySelector('input[name="qty"]').value) || 0) *
+            (parseFloat(row.querySelector('input[name="price_value"]').value) || 0)
     }));
 
-    const totalNumeric = items.reduce((sum, item) => sum + (Number(item.cout_total) || 0), 0);
+    const totalNumeric = items.reduce(
+        (sum, item) => sum + (Number(item.cout_total) || 0),
+        0
+    );
 
     const compagnie = companiesData[clientSelect.value];
 
     const invoiceData = {
         nom_client: clientSelect.value,
-        objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
+        objet:
+            document.getElementById('purpose')?.value ||
+            'Redevance de Sécurité Aérienne Régionale (RSAR)',
         periode: document.getElementById('period')?.value || '',
         aeroport: document.getElementById('airport')?.value || '',
-        date_emission: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
+        date_emission:
+            document.getElementById('issue-date')?.value ||
+            new Date().toISOString().split('T')[0],
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
@@ -590,20 +596,26 @@ async function sendInvoice(buttonElement) {
     };
 
     try {
-        // NOTE: credentials: 'include' envoie les cookies automatiquement
-        // Plus besoin de Authorization header manuelle
         const response = await fetch(`${API_BASE}/api/factures`, {
             method: 'POST',
-            credentials: 'include',
+            credentials: "include", // 🔐 cookie HttpOnly
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(invoiceData)
         });
 
+        // 🔒 Session expirée / non autorisée
+        if (response.status === 401) {
+            showMessage("Session expirée. Veuillez vous reconnecter.", "error");
+            return;
+        }
+
         if (!response.ok) {
             const errData = await response.json();
-            throw new Error(`Erreur ${response.status}: ${JSON.stringify(errData)}`);
+            throw new Error(
+                errData?.error || `Erreur serveur (${response.status})`
+            );
         }
 
         showMessage('Facture envoyée avec succès !', 'success');
@@ -611,10 +623,13 @@ async function sendInvoice(buttonElement) {
 
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
-        showMessage('Erreur lors de l’envoi de la facture: ' + err.message, 'error');
+        showMessage(
+            'Erreur lors de l’envoi de la facture : ' + err.message,
+            'error'
+        );
 
     } finally {
-        // --- LOGIQUE ANTI-DOUBLE CLIC (Réactivation) ---
+        // --- RÉACTIVATION BOUTON ---
         if (buttonElement) {
             buttonElement.disabled = false;
             buttonElement.textContent = 'Envoyer & Enregistrer';
@@ -623,9 +638,7 @@ async function sendInvoice(buttonElement) {
         }
     }
 }
-
-
-// ======================= INITIALISATION =======================
+// ======================= INITIALISATION (inchangé) =======================
 window.onload = () => {
     try {
         const today = new Date();
@@ -652,13 +665,14 @@ function getPreviousMonthPeriod() {
     const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
     return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
-
-// Bascule et sauvegarde thème (Suppression du localStorage tel que demandé pour le nettoyage complet)
-const toggle = document.getElementById('theme-toggle');
-if (toggle) {
-    toggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        // Note : On ne sauvegarde plus la préférence dans localStorage
-        // pour respecter la consigne "retire tous les localstorage".
-    });
+// Appliquer la préférence au chargement
+if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
 }
+
+// Bascule et sauvegarde
+const toggle = document.getElementById('theme-toggle');
+toggle.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+});

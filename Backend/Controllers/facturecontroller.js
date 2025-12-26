@@ -109,21 +109,27 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
 // ===============================================================
 export const generateRef = async (req, res) => {
   try {
-    const role = req.user?.role;
-    const id_companie = req.user?.id_companie;
-    const isAdminRole = ['Admin','Administrateur','Superviseur','Super Admin','SuperAdmin'].includes(role);
-    const isCompanyRole = String(role).toLowerCase() === 'company';
+    const { role, id_companie } = req.user;
+
+    const isAdminRole = ['admin', 'supervisor', 'superadmin'].includes(role);
+    const isCompanyRole = role === 'company';
+
     if (!isAdminRole && !(isCompanyRole && id_companie)) {
-      return res.status(401).json({ message: 'Utilisateur non autorisé' });
+      return res.status(403).json({ message: 'Utilisateur non autorisé' });
     }
 
     const numero_facture = await generateNumeroFacture();
-    res.status(200).json({ numero_facture });
+    return res.status(200).json({ numero_facture });
+
   } catch (err) {
     console.error('Erreur génération référence :', err);
-    res.status(500).json({ message: 'Erreur génération référence', error: err.message });
+    return res.status(500).json({
+      message: 'Erreur génération référence',
+      error: err.message
+    });
   }
 };
+
 
 export const createFacture = async (req, res) => {
   const {
@@ -144,8 +150,10 @@ export const createFacture = async (req, res) => {
     const userRole = req.user?.role;
     const userId = req.user?.id;
 
-    if (!['Administrateur', 'Superviseur', 'Company'].includes(userRole)) {
-      return res.status(403).json({ message: 'Rôle non autorisé pour créer une facture.' });
+   if (!['admin', 'supervisor', 'superadmin', 'company'].includes(userRole)) {
+      return res.status(403).json({
+        message: 'Rôle non autorisé pour créer une facture.'
+      });
     }
 
     // Déterminer la compagnie
