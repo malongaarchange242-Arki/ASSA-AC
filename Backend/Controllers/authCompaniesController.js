@@ -284,15 +284,21 @@ export const me = async (req, res) => {
       return res.status(401).json({ message: 'Non authentifié' });
     }
 
-    // ADMIN / SUPERVISOR → juste infos token
+    // ⛔ Refus si pas un compte compagnie
     if (req.user.role !== 'company') {
-      return res.json({
-        message: 'Profil utilisateur',
-        user: req.user
+      return res.status(403).json({
+        error: 'NOT_COMPANY_ACCOUNT',
+        message: 'Ce compte n’est pas un compte compagnie'
       });
     }
 
-    // COMPANY → infos complètes
+    if (!req.user.id_companie) {
+      return res.status(404).json({
+        error: 'COMPANY_NOT_LINKED',
+        message: 'Aucune compagnie liée à ce compte'
+      });
+    }
+
     const { data, error } = await supabase
       .from('companies')
       .select(`
@@ -312,20 +318,22 @@ export const me = async (req, res) => {
       .eq('id', req.user.id_companie)
       .single();
 
-    if (error) {
-      return res.status(500).json({ message: 'Erreur serveur' });
+    if (error || !data) {
+      return res.status(404).json({
+        error: 'COMPANY_NOT_FOUND'
+      });
     }
 
     return res.json({
-      message: 'Profil compagnie',
-      user: req.user,
       company: data
     });
 
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
+
 
 // ----------------- REFRESH TOKEN COMPAGNIE -----------------
 export const refreshTokenCompany = async (req, res) => {

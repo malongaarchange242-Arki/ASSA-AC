@@ -1,26 +1,23 @@
+
 // ====================================================================
 // 📌 CONFIG API
 // ====================================================================
 const API_BASE = "https://assa-ac-jyn4.onrender.com";
 
-let ALL_INVOICES = [];
+let ALL_INVOICES = []; 
 let currentSortColumn = null;
 let currentSortDirection = 'asc';
 let CURRENT_PAGE = 1;
 const ITEMS_PER_PAGE = 6;
 
-// ====================================================================
-// 📌 ID COMPAGNIE (via cookie)
-// ====================================================================
-let CURRENT_COMPANY_ID = null;
 
-function getCompanyIdFromToken() {
-    return CURRENT_COMPANY_ID;
-}
+
 
 // ====================================================================
-// 📌 PAGINATION
+// 📌 RÉCUPÉRER L’ID DE LA COMPAGNIE VIA jwtTokenCompany
 // ====================================================================
+
+
 function getPaginatedInvoices() {
     const start = (CURRENT_PAGE - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
@@ -35,12 +32,13 @@ function renderPaginationControls() {
 
     container.innerHTML = `
         <div class="flex items-center justify-between mt-4">
-            <button onclick="changePage(${CURRENT_PAGE - 1})"
+            <button 
+                onclick="changePage(${CURRENT_PAGE - 1})"
                 ${CURRENT_PAGE === 1 ? 'disabled' : ''}
                 class="px-4 py-2 rounded-md text-sm font-medium
-                ${CURRENT_PAGE === 1
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'}">
+                       ${CURRENT_PAGE === 1
+                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                           : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'}">
                 ← Précédent
             </button>
 
@@ -48,12 +46,13 @@ function renderPaginationControls() {
                 Page ${CURRENT_PAGE} / ${totalPages || 1}
             </span>
 
-            <button onclick="changePage(${CURRENT_PAGE + 1})"
+            <button 
+                onclick="changePage(${CURRENT_PAGE + 1})"
                 ${CURRENT_PAGE === totalPages ? 'disabled' : ''}
                 class="px-4 py-2 rounded-md text-sm font-medium
-                ${CURRENT_PAGE === totalPages
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'}">
+                       ${CURRENT_PAGE === totalPages
+                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                           : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'}">
                 Suivant →
             </button>
         </div>
@@ -70,43 +69,60 @@ function changePage(page) {
 }
 
 // ====================================================================
-// 📌 CHARGER NOM + LOGO DE LA COMPAGNIE (COOKIE)
+//  CHARGER NOM + LOGO DE LA COMPAGNIE CONNECTÉE
 // ====================================================================
 async function loadCompanyInfo() {
     try {
         const response = await fetch(`${API_BASE}/api/companies/me`, {
-            credentials: 'include'
+            method: "GET",
+            credentials: "include" // 🔑 envoie automatiquement le cookie
         });
 
+        if (response.status === 401 || response.status === 403) {
+            console.error("🔒 Session expirée ou non autorisée");
+            return;
+        }
+
         if (!response.ok) {
-            console.error("❌ Erreur /companies/me :", response.status);
+            console.error("❌ Erreur API /companies/me :", response.status);
             return;
         }
 
         const data = await response.json();
-        if (!data.company) return;
+
+        if (!data.company) {
+            console.error("❌ Données compagnie manquantes", data);
+            return;
+        }
 
         const company = data.company;
-        CURRENT_COMPANY_ID = company.id;
+        console.log("🏢 Compagnie connectée :", company);
 
+        // Nom compagnie
         const nameEl = document.getElementById("company-name");
-        if (nameEl) nameEl.textContent = company.company_name || "Compagnie";
+        if (nameEl) {
+            nameEl.textContent = company.company_name || "Compagnie";
+        }
 
+        // Logo compagnie
         const logoEl = document.getElementById("company-logo");
         if (logoEl) {
             logoEl.src = company.logo_url?.trim()
                 ? company.logo_url
                 : "https://placehold.co/40x40/1e40af/ffffff?text=?";
+
             logoEl.alt = company.company_name || "Logo compagnie";
         }
 
     } catch (err) {
-        console.error("❌ Erreur loadCompanyInfo()", err);
+        console.error("❌ Erreur réseau loadCompanyInfo() :", err);
     }
 }
 
+
+
 // ====================================================================
-// 📌 THÈME
+// 📌 GESTION DU THÈME
 // ====================================================================
 function setTheme(mode) {
     const html = document.documentElement;
@@ -134,32 +150,40 @@ function setTheme(mode) {
 }
 
 function toggleTheme() {
-    setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+    const isDark = document.documentElement.classList.contains('dark');
+    setTheme(isDark ? 'light' : 'dark');
 }
 
-// ====================================================================
-// 📌 CHARGER LES FACTURES (COOKIE)
-// ====================================================================
-async function loadInvoices(companyId) {
-    if (!companyId) return;
 
+// ====================================================================
+// 📌 CHARGER LES FACTURES
+// ====================================================================
+async function loadInvoices() {
     try {
-        const response = await fetch(
-            `${API_BASE}/api/factures?compagnie_id=${companyId}`,
-            { credentials: 'include' }
-        );
+        const response = await fetch(`${API_BASE}/api/factures`, {
+            method: "GET",
+            credentials: "include" // 🔑 envoie le cookie JWT
+        });
 
-        if (!response.ok) {
-            console.error("❌ Erreur API factures :", response.status);
+        if (response.status === 401 || response.status === 403) {
+            console.error("🔒 Session expirée ou non autorisée");
             return;
         }
 
-        ALL_INVOICES = await response.json();
-        renderInvoices(ALL_INVOICES);
-        applySearch();
+        if (!response.ok) {
+            console.error("❌ Erreur API /api/factures :", response.status);
+            return;
+        }
+
+        ALL_INVOICES = await response.json(); // ⬅️ toutes les factures de la compagnie connectée
+
+        CURRENT_PAGE = 1;
+        renderInvoices(getPaginatedInvoices());
+        renderPaginationControls();
+        applySearch(); // ⬅️ recherche + tri
 
     } catch (err) {
-        console.error("❌ Erreur loadInvoices()", err);
+        console.error("❌ Erreur loadInvoices() :", err);
     }
 }
 
@@ -434,14 +458,29 @@ window.downloadRecapCSV = function () {
     URL.revokeObjectURL(url);
 };
 
-
-document.addEventListener('DOMContentLoaded', async () => {
+// ====================================================================
+// 📌 INIT
+// ====================================================================
+document.addEventListener('DOMContentLoaded', () => {
     setTheme(localStorage.getItem('theme') || 'light');
 
-    document.getElementById("search-input")?.addEventListener("input", applySearch);
+    const sidebar = document.getElementById('sidebar');
+    const openBtn = document.getElementById('open-sidebar-btn');
+    const closeBtn = document.getElementById('close-sidebar-btn');
 
-    await loadCompanyInfo();   // 🔥 attendre
-    loadInvoices();            // 🔥 maintenant OK
+    openBtn?.addEventListener('click', () =>
+        sidebar.classList.remove('-translate-x-full')
+    );
+
+    closeBtn?.addEventListener('click', () =>
+        sidebar.classList.add('-translate-x-full')
+    );
+
+    document.getElementById("search-input").addEventListener("input", applySearch);
+
+
+    loadCompanyInfo();  // ⬅️ ICI AJOUTÉ
+    loadInvoices();
 
     window.toggleTheme = toggleTheme;
     window.showModal = showModal;
