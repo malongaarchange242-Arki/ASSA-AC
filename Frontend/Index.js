@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- CONFIGURATION API ---
+    // --- CONSERVATION DES VRAIES ROUTES POUR LE RESTE DU FLUX ---
     const API_BASE = (() => {
         const origin = window.location.origin;
         return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
@@ -25,28 +25,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTitle = document.getElementById('mainTitle');
     const subTitle = document.getElementById('subTitle');
 
+    const backToEmail2 = document.getElementById('backToEmail2');
+    const resendOtpLink = document.getElementById('resendOtpLink');
+
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
-    const toggleOtpPasswordBtn = document.getElementById('toggleOtpPasswordBtn');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
 
     let currentEmail = '';
     let currentRole = '';
     let isChecking = false;
-    let authMode = 'login'; // ✅ AJOUT
     let typingTimer;
-
     const doneTypingInterval = 300;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/;
 
+    let isResetMode = false;
+    const SIMULATED_RESET_OTP = '123456';
+
     // ==========================
-    // 2. Gestion Effet Flottant
+    // 2. Effet flottant inputs
     // ==========================
     function checkFloatingState(input, group) {
-        if (!input || !group) return;
-        if (input.value.length > 0 || document.activeElement === input) {
-            group.classList.add('floating');
-        } else {
-            group.classList.remove('floating');
-        }
+        if (input.value.length > 0 || document.activeElement === input) group.classList.add('floating');
+        else group.classList.remove('floating');
     }
 
     const inputGroups = [
@@ -57,30 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     inputGroups.forEach(({ input, group }) => {
-        if (input && group) {
-            input.addEventListener('focus', () => checkFloatingState(input, group));
-            input.addEventListener('blur', () => checkFloatingState(input, group));
-            input.addEventListener('input', () => checkFloatingState(input, group));
-            checkFloatingState(input, group);
-        }
+        input.addEventListener('focus', () => checkFloatingState(input, group));
+        input.addEventListener('blur', () => checkFloatingState(input, group));
+        input.addEventListener('input', () => checkFloatingState(input, group));
+        checkFloatingState(input, group);
     });
 
     // ==========================
-    // 3. Toggle mot de passe
-    // ==========================
-    function setupPasswordToggle(button, input) {
-        if (!button || !input) return;
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            input.type = input.type === 'password' ? 'text' : 'password';
-        });
-    }
-
-    setupPasswordToggle(togglePasswordBtn, passwordInput);
-    setupPasswordToggle(toggleOtpPasswordBtn, otpPasswordInput);
-
-    // ==========================
-    // 4. UI helpers
+    // 3. Fonctions utilitaires
     // ==========================
     function showSection(sectionToShow) {
         allSections.forEach(section => section.classList.remove('visible'));
@@ -88,33 +72,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetToInitialView() {
-        authMode = 'login'; // ✅ RESET
+        isResetMode = false;
+
+        document.getElementById('otpSection').querySelector('h2').textContent = 'Vérification de sécurité';
+        document.getElementById('otpSection').querySelector('p').textContent =
+            'Un code d\'accès unique vous a été envoyé par email.';
+        otpPasswordInput.placeholder = 'Définir un mot de passe';
 
         passwordField.classList.remove('visible');
-        otpPasswordGroup.style.display = 'none';
-
         passwordInput.value = '';
         otpCodeInput.value = '';
         otpPasswordInput.value = '';
+        otpPasswordGroup.style.display = 'none';
 
         actionButtonContainer.classList.remove('visible');
         mainTitle.textContent = 'Connexion';
         subTitle.textContent = 'Utilisez votre email pour vous connecter';
-
         emailInput.readOnly = false;
         currentRole = '';
         currentEmail = '';
-
         showSection(emailSection);
         emailInput.focus();
-
-        inputGroups.forEach(({ input, group }) =>
-            checkFloatingState(input, group)
-        );
+        inputGroups.forEach(({ input, group }) => checkFloatingState(input, group));
     }
 
     // ==========================
-    // 5. API
+    // 4. Fetch avec cookies (MODIFIÉ)
+    // ==========================
+    async function fetchWithAuth(url, options = {}) {
+        options.credentials = 'include';
+        if (!options.headers) options.headers = {};
+        options.headers['Content-Type'] = 'application/json';
+
+        const res = await fetch(url, options);
+
+        if (res.status === 401) throw new Error('Session expirée');
+        if (res.status === 403) throw new Error('Accès interdit');
+
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.message || 'Erreur API');
+
+        return data;
+    }
+
+    // ==========================
+    // 5. Vérification email
     // ==========================
     async function verifyEmailOnServer(email) {
         if (isChecking) return;
@@ -125,130 +127,135 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE}/api/auth/check-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
+                body: JSON.stringify({ email }),
+                credentials: 'include'
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Email non reconnu');
+            if (!res.ok) throw new Error(data.message || 'Erreur serveur');
 
             currentRole = data.role;
+            passwordField.classList.remove('visible');
+            actionButtonContainer.classList.remove('visible');
+            otpPasswordGroup.style.display = 'none';
             emailInput.readOnly = true;
-
-            alert(`✅ Email validé : ${currentRole}`);
 
             if (data.role === 'admin' || data.role === 'supervisor') {
                 passwordField.classList.add('visible');
                 actionButtonContainer.classList.add('visible');
+                mainButton.textContent = 'Se Connecter';
+                mainTitle.textContent = 'Mot de passe';
+                subTitle.textContent = `Veuillez entrer votre mot de passe, ${data.role}.`;
                 passwordInput.focus();
-            }
-
-            if (data.role === 'company') {
+            } else if (data.role === 'company') {
                 if (!data.has_password) {
-                    authMode = 'otp'; // ✅ MODE OTP
-                    alert("🔑 Première connexion détectée. OTP envoyé.");
-
                     showSection(otpSection);
+                    mainTitle.textContent = 'Validation OTP';
+                    subTitle.textContent = 'Veuillez entrer le code OTP reçu par email.';
                     otpPasswordGroup.style.display = 'block';
+                    otpPasswordInput.focus();
                     await requestOtp();
                 } else {
                     passwordField.classList.add('visible');
                     actionButtonContainer.classList.add('visible');
+                    mainButton.textContent = 'Se Connecter';
+                    mainTitle.textContent = 'Mot de passe';
+                    subTitle.textContent = 'Veuillez entrer votre mot de passe.';
                     passwordInput.focus();
                 }
+            } else {
+                alert('Email non reconnu.');
+                resetToInitialView();
             }
         } catch (err) {
-            alert(`❌ ${err.message}`);
+            alert(err.message);
             resetToInitialView();
         } finally {
             isChecking = false;
         }
     }
 
+    // ==========================
+    // 6. OTP
+    // ==========================
     async function requestOtp() {
         await fetch(`${API_BASE}/api/companies/first-login-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ email: currentEmail })
         });
     }
 
-    async function validateOtpAndCreatePassword() {
-        if (!otpCodeInput.value || !otpPasswordInput.value) {
-            alert("⚠️ OTP et mot de passe requis");
+    async function validateOtp() {
+        const otp = otpCodeInput.value.trim();
+        const password = otpPasswordInput.value.trim();
+        if (!otp || !password) return alert('Champs requis');
+
+        if (isResetMode) {
+            if (otp !== SIMULATED_RESET_OTP) return alert('OTP invalide');
+            resetToInitialView();
             return;
         }
 
-        const res = await fetch(`${API_BASE}/api/companies/validate-otp`, {
+        await fetch(`${API_BASE}/api/companies/validate-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: currentEmail,
-                otp: otpCodeInput.value,
-                password: otpPasswordInput.value
-            })
+            credentials: 'include',
+            body: JSON.stringify({ email: currentEmail, otp, password })
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-            alert(data.message || 'OTP invalide');
-            return;
-        }
-
-        alert("🎉 Compte activé !");
         window.location.href = 'AccueilCompagnie.html';
     }
 
+    // ==========================
+    // 7. Login standard
+    // ==========================
     async function loginStandard() {
-        if (!passwordInput.value) {
-            alert("⚠️ Mot de passe requis");
-            return;
-        }
-
-        const url =
-            currentRole === 'admin' || currentRole === 'supervisor'
-                ? `${API_BASE}/api/admins/login`
-                : `${API_BASE}/api/companies/login`;
-
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: currentEmail,
-                password: passwordInput.value
-            })
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-            alert(data.message || 'Erreur de connexion');
-            return;
-        }
+        await fetch(
+            currentRole === 'company'
+                ? `${API_BASE}/api/companies/login`
+                : `${API_BASE}/api/admins/login`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: currentEmail, password: passwordInput.value })
+            }
+        );
 
         window.location.href =
-            currentRole === 'company'
-                ? 'AccueilCompagnie.html'
-                : 'AccueilAdmin.html';
+            currentRole === 'company' ? 'AccueilCompagnie.html' : 'AccueilAdmin.html';
     }
 
     // ==========================
-    // 6. Events
+    // 7. Voir / cacher le mot de passe
+    // ==========================
+    if (togglePasswordBtn && passwordInput) {
+        togglePasswordBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+
+            // Toggle icône
+            togglePasswordBtn.classList.toggle('fa-eye');
+            togglePasswordBtn.classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // ==========================
+    // 8. Events
     // ==========================
     emailInput.addEventListener('input', () => {
         clearTimeout(typingTimer);
-        if (emailRegex.test(emailInput.value)) {
-            typingTimer = setTimeout(
-                () => verifyEmailOnServer(emailInput.value),
-                doneTypingInterval
-            );
-        }
+        if (emailRegex.test(emailInput.value))
+            typingTimer = setTimeout(() => verifyEmailOnServer(emailInput.value), doneTypingInterval);
     });
 
-    mainButton.addEventListener('click', () => {
-        authMode === 'otp'
-            ? validateOtpAndCreatePassword()
-            : loginStandard();
-    });
+    mainButton.addEventListener('click', loginStandard);
+    document.getElementById('validateOtpButton').addEventListener('click', validateOtp);
+    resendOtpLink.addEventListener('click', e => { e.preventDefault(); requestOtp(); });
+    backToEmail2.addEventListener('click', e => { e.preventDefault(); resetToInitialView(); });
 
-    // Init
     resetToInitialView();
 });

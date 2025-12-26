@@ -5,9 +5,18 @@ const API_BASE = "https://assa-ac-jyn4.onrender.com";
 
 let ALL_INVOICES = [];
 let currentSortColumn = null;
-let currentSortDirection = "asc";
+let currentSortDirection = 'asc';
 let CURRENT_PAGE = 1;
 const ITEMS_PER_PAGE = 6;
+
+// ====================================================================
+// 📌 ID COMPAGNIE (via cookie)
+// ====================================================================
+let CURRENT_COMPANY_ID = null;
+
+function getCompanyIdFromToken() {
+    return CURRENT_COMPANY_ID;
+}
 
 // ====================================================================
 // 📌 PAGINATION
@@ -19,20 +28,19 @@ function getPaginatedInvoices() {
 }
 
 function renderPaginationControls() {
-    const container = document.getElementById("pagination-controls");
+    const container = document.getElementById('pagination-controls');
     if (!container) return;
 
     const totalPages = Math.ceil(ALL_INVOICES.length / ITEMS_PER_PAGE);
 
     container.innerHTML = `
         <div class="flex items-center justify-between mt-4">
-            <button 
-                onclick="changePage(${CURRENT_PAGE - 1})"
-                ${CURRENT_PAGE === 1 ? "disabled" : ""}
+            <button onclick="changePage(${CURRENT_PAGE - 1})"
+                ${CURRENT_PAGE === 1 ? 'disabled' : ''}
                 class="px-4 py-2 rounded-md text-sm font-medium
                 ${CURRENT_PAGE === 1
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300"}">
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'}">
                 ← Précédent
             </button>
 
@@ -40,13 +48,12 @@ function renderPaginationControls() {
                 Page ${CURRENT_PAGE} / ${totalPages || 1}
             </span>
 
-            <button 
-                onclick="changePage(${CURRENT_PAGE + 1})"
-                ${CURRENT_PAGE === totalPages ? "disabled" : ""}
+            <button onclick="changePage(${CURRENT_PAGE + 1})"
+                ${CURRENT_PAGE === totalPages ? 'disabled' : ''}
                 class="px-4 py-2 rounded-md text-sm font-medium
                 ${CURRENT_PAGE === totalPages
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300"}">
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'}">
                 Suivant →
             </button>
         </div>
@@ -63,12 +70,12 @@ function changePage(page) {
 }
 
 // ====================================================================
-// 🏢 INFOS COMPAGNIE (COOKIE AUTH)
+// 📌 CHARGER NOM + LOGO DE LA COMPAGNIE (COOKIE)
 // ====================================================================
 async function loadCompanyInfo() {
     try {
         const response = await fetch(`${API_BASE}/api/companies/me`, {
-            credentials: "include"
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -76,46 +83,72 @@ async function loadCompanyInfo() {
             return;
         }
 
-        const { company } = await response.json();
-        if (!company) return;
+        const data = await response.json();
+        if (!data.company) return;
 
-        document.getElementById("company-name").textContent =
-            company.company_name || "Compagnie";
+        const company = data.company;
+        CURRENT_COMPANY_ID = company.id;
+
+        const nameEl = document.getElementById("company-name");
+        if (nameEl) nameEl.textContent = company.company_name || "Compagnie";
 
         const logoEl = document.getElementById("company-logo");
         if (logoEl) {
             logoEl.src = company.logo_url?.trim()
                 ? company.logo_url
                 : "https://placehold.co/40x40/1e40af/ffffff?text=?";
+            logoEl.alt = company.company_name || "Logo compagnie";
         }
 
     } catch (err) {
-        console.error("❌ loadCompanyInfo()", err);
+        console.error("❌ Erreur loadCompanyInfo()", err);
     }
 }
 
 // ====================================================================
-// 📌 THÈME (localStorage OK)
+// 📌 THÈME
 // ====================================================================
 function setTheme(mode) {
     const html = document.documentElement;
-    html.classList.toggle("dark", mode === "dark");
-    localStorage.setItem("theme", mode);
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+
+    const isDark = mode === 'dark';
+    html.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', mode);
+
+    if (themeIcon) {
+        themeIcon.innerHTML = isDark
+            ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+               d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707
+                  M6.343 6.343l-.707-.707m12.728 0l-.707.707
+                  M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`
+            : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+               d="M20.354 15.354A9 9 0 018.646 3.646
+                  9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
+    }
+
+    if (themeText) {
+        themeText.textContent = isDark ? 'Mode Jour' : 'Mode Nuit';
+    }
 }
 
 function toggleTheme() {
-    const isDark = document.documentElement.classList.contains("dark");
-    setTheme(isDark ? "light" : "dark");
+    setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
 }
 
 // ====================================================================
-// 📌 FACTURES (COOKIE AUTH)
+// 📌 CHARGER LES FACTURES (COOKIE)
 // ====================================================================
 async function loadInvoices() {
+    const companyId = getCompanyIdFromToken();
+    if (!companyId) return;
+
     try {
-        const response = await fetch(`${API_BASE}/api/factures`, {
-            credentials: "include"
-        });
+        const response = await fetch(
+            `${API_BASE}/api/factures?compagnie_id=${companyId}`,
+            { credentials: 'include' }
+        );
 
         if (!response.ok) {
             console.error("❌ Erreur API factures :", response.status);
@@ -125,25 +158,25 @@ async function loadInvoices() {
         ALL_INVOICES = await response.json();
         renderInvoices(ALL_INVOICES);
         applySearch();
-        renderPaginationControls();
 
     } catch (err) {
-        console.error("❌ loadInvoices()", err);
+        console.error("❌ Erreur loadInvoices()", err);
     }
 }
 
-// ====================================================================
-// 🔍 SEARCH + TRI
-// ====================================================================
 function applySearch() {
-    const searchValue = document.getElementById("search-input").value.toLowerCase();
+    const searchValue = document.getElementById("search-input").value.trim().toLowerCase();
 
-    let filtered = ALL_INVOICES.filter(inv =>
-        Object.values(inv).some(v =>
-            String(v).toLowerCase().includes(searchValue)
-        )
-    );
+    let filtered = ALL_INVOICES.filter(inv => {
+        return (
+            (inv.id + "").toLowerCase().includes(searchValue) ||
+            (inv.date + "").toLowerCase().includes(searchValue) ||
+            (inv.amount + "").toLowerCase().includes(searchValue) ||
+            (inv.status + "").toLowerCase().includes(searchValue)
+        );
+    });
 
+    // On applique le tri actuel si existant
     if (currentSortColumn) {
         filtered = sortInvoices(filtered, currentSortColumn);
     }
@@ -152,10 +185,9 @@ function applySearch() {
 }
 
 function sortInvoices(invoices, column) {
-    currentSortDirection =
-        currentSortColumn === column && currentSortDirection === "asc"
-            ? "desc"
-            : "asc";
+    currentSortDirection = (currentSortColumn === column && currentSortDirection === 'asc')
+        ? 'desc'
+        : 'asc';
 
     currentSortColumn = column;
 
@@ -163,45 +195,144 @@ function sortInvoices(invoices, column) {
         let x = a[column];
         let y = b[column];
 
-        if (column === "amount") {
+        // Montant = nombre
+        if (column === 'amount') {
             x = Number(x);
             y = Number(y);
         }
 
-        return currentSortDirection === "asc" ? x - y : y - x;
+        // Comparaison par défaut
+        if (x < y) return currentSortDirection === 'asc' ? -1 : 1;
+        if (x > y) return currentSortDirection === 'asc' ? 1 : -1;
+        return 0;
     });
 }
 
+function triggerSort(column) {
+    let sorted = sortInvoices([...ALL_INVOICES], column);
+
+    // On applique aussi la recherche active
+    const searchValue = document.getElementById("search-input").value.trim();
+    if (searchValue !== "") {
+        sorted = sorted.filter(inv => {
+            return (
+                (inv.id + "").includes(searchValue) ||
+                (inv.date + "").includes(searchValue) ||
+                (inv.amount + "").includes(searchValue) ||
+                (inv.status + "").includes(searchValue)
+            );
+        });
+    }
+
+    renderInvoices(sorted);
+}
+
+
 // ====================================================================
-// 📊 RENDU FACTURES + KPI
+// 📌 RENDU DES FACTURES + KPI
 // ====================================================================
 function renderInvoices(INVOICES = []) {
-    const tableBody = document.getElementById("invoices-table-body");
+    const tableBody = document.getElementById('invoices-table-body');
     if (!tableBody) return;
 
-    let rowsHTML = "";
+    let rowsHTML = '';
+    let totalInvoices = 0;
     let disputeCount = 0;
 
     INVOICES.forEach(inv => {
+        totalInvoices++;
+
         const montant = Number(inv.amount) || 0;
-        const formattedXAF = montant.toLocaleString("fr-FR", {
-            style: "currency",
-            currency: "XAF",
+        const formattedXAF = montant.toLocaleString('fr-FR', {
+            style: 'currency',
+            currency: 'XAF',
+            minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
 
-        const status = (inv.status || "").toLowerCase();
-        if (status === "contestée" || status === "conteste") disputeCount++;
+        const displayStatus = inv.status || '—';
+        let statusClass = '';
+
+        switch (displayStatus.toLowerCase()) {
+            case 'payée':
+            case 'payee':
+                statusClass = 'bg-green-100 text-green-800';
+                break;
+
+            case 'impayée':
+            case 'impayee':
+                statusClass = 'bg-yellow-100 text-yellow-800';
+                break;
+
+            case 'contestée':
+            case 'conteste':
+                disputeCount++;
+                statusClass = 'bg-orange-100 text-orange-800';
+                break;
+
+            default:
+                statusClass = 'bg-gray-200 text-gray-700';
+        }
+
+        let actionButton = '-';
+
+        if (['impayée', 'impayee'].includes(displayStatus.toLowerCase())) {
+            actionButton = `
+                <a href="TeleverserCompagnie.html?facture=${encodeURIComponent(inv.numero_facture)}"
+                   class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 font-semibold transition hover:scale-105">
+                    Téléverser preuve
+                </a>`;
+        } 
+        else if (['payée', 'payee'].includes(displayStatus.toLowerCase())) {
+            actionButton = `<span class="text-green-600 dark:text-green-400 font-medium">Réglée</span>`;
+        } 
+        else if (['contestée', 'conteste'].includes(displayStatus.toLowerCase())) {
+            actionButton = `<span class="text-orange-600 dark:text-orange-400 font-medium">En revue</span>`;
+        }
 
         rowsHTML += `
-<tr>
-    <td>${inv.numero_facture || "-"}</td>
-    <td>${inv.date || "-"}</td>
-    <td>${formattedXAF}</td>
-    <td>${inv.status || "-"}</td>
-    <td>
-        <button onclick="openInvoicePage('${inv.numero_facture}', '${inv.status}')">
-            Voir
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+    <td class="px-6 py-4 text-sm font-medium">
+        ${inv.numero_facture || '-'}
+    </td>
+
+    <td class="px-6 py-4 text-sm">
+        ${inv.date || '-'}
+    </td>
+
+    <td class="px-6 py-4 text-sm">
+        ${formattedXAF}
+    </td>
+
+    <td class="px-6 py-4">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+            ${displayStatus}
+        </span>
+    </td>
+
+    <td class="px-6 py-4 text-center font-medium">
+        ${actionButton}
+    </td>
+
+    <!-- 👁 Voir facture -->
+    <td class="px-6 py-4 text-center">
+        <button
+            type="button"
+            onclick="openInvoicePage('${inv.numero_facture}', '${inv.status}')"
+            class="text-blue-600 hover:text-blue-900 dark:text-blue-400 font-medium"
+            title="Voir la facture"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke-width="1.5"
+                 stroke="currentColor"
+                 class="w-6 h-6 inline">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M2.25 12s3.75-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.75 7.5-9.75 7.5S2.25 12 2.25 12z" />
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
         </button>
     </td>
 </tr>`;
@@ -209,21 +340,110 @@ function renderInvoices(INVOICES = []) {
 
     tableBody.innerHTML = rowsHTML;
 
-    document.getElementById("kpi-dispute-count").textContent = disputeCount;
+    // ======================
+    // KPI
+    // ======================
+    const paidInvoices = INVOICES.filter(inv =>
+        inv.status && ['payée', 'payee'].includes(inv.status.toLowerCase())
+    ).length;
+
+    document.getElementById('kpi-total-unpaid').textContent = paidInvoices;
+    document.getElementById('kpi-overdue-count').textContent = totalInvoices;
+    document.getElementById('kpi-dispute-count').textContent = disputeCount;
 }
 
-// ====================================================================
-// 📌 INIT
-// ====================================================================
-document.addEventListener("DOMContentLoaded", () => {
-    setTheme(localStorage.getItem("theme") || "light");
 
-    document
-        .getElementById("search-input")
-        ?.addEventListener("input", applySearch);
+function formatNumber(num) {
+    if (num === null || num === undefined || num === "") return "0";
+    const value = Number(num);
+    if (isNaN(value)) return num;
+    return value.toLocaleString("fr-FR");
+}
+
+
+function openInvoicePage(numero, status) {
+    if (!numero) {
+        console.error("Numéro de facture manquant !");
+        return;
+    }
+
+    const s = (status || "").toLowerCase();
+    const encodedNumero = encodeURIComponent(numero);
+
+    if (s === "payée" || s === "payee") {
+        window.location.href = `FacturePreview_certifier.html?numero=${encodedNumero}`;
+    } else {
+        window.location.href = `FacturePreview.html?numero=${encodedNumero}`;
+    }
+}
+
+
+
+
+// ====================================================================
+// 📌 MODAL
+// ====================================================================
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function closeInvoicePreview() {
+    const modal = document.getElementById("invoice-preview-modal");
+    if (modal) modal.classList.add("hidden");
+}
+
+window.downloadRecapCSV = function () {
+    if (!Array.isArray(ALL_INVOICES) || ALL_INVOICES.length === 0) {
+        alert("Aucune facture à exporter");
+        return;
+    }
+
+    const headers = [
+        "Numéro facture",
+        "Montant (XAF)",
+        "Statut"
+    ];
+
+    // 🔑 BOM UTF-8 pour Excel
+    let csv = "\uFEFF" + headers.join(";") + "\n";
+
+    ALL_INVOICES.forEach(inv => {
+        csv += `"${inv.numero_facture}";"${inv.amount}";"${inv.status}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `recap_factures_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTheme(localStorage.getItem('theme') || 'light');
+
+    document.getElementById("search-input")?.addEventListener("input", applySearch);
 
     loadCompanyInfo();
     loadInvoices();
 
     window.toggleTheme = toggleTheme;
+    window.showModal = showModal;
+    window.closeModal = closeModal;
 });

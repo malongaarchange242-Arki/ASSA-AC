@@ -70,6 +70,17 @@ router.put(
   updateCompanyPassword
 );
 
+// =======================
+// Profil compagnie connecté
+// =======================
+router.get(
+  '/me',
+  verifyToken,
+  checkRole(['company']),
+  me
+);
+
+
 // Archivage
 router.delete(
   '/:id',
