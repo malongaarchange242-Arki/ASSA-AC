@@ -205,7 +205,7 @@ export const loginCompany = async (req, res) => {
     const payload = {
       id: company.id,
       email: company.email,
-      role: 'Company',
+      role: 'company',
       company_name: company.company_name,
       id_companie: company.id
     };
@@ -220,19 +220,19 @@ export const loginCompany = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    const isProd = process.env.NODE_ENV === 'production';
-
     res.cookie('token', token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
+      path: '/',
       maxAge: 12 * 60 * 60 * 1000
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -347,18 +347,18 @@ export const refreshTokenCompany = async (req, res) => {
     const payload = {
       id: company.id,
       email: company.email,
-      role: 'Company',
+      role: 'company',
       company_name: company.company_name,
       id_companie: company.id
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
 
-    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
+      path: '/',
       maxAge: 12 * 60 * 60 * 1000
     });
 
@@ -371,8 +371,6 @@ export const refreshTokenCompany = async (req, res) => {
 
 export const logoutCompany = async (req, res) => {
   try {
-    const isProd = process.env.NODE_ENV === 'production';
-
     await supabase
       .from('companies')
       .update({ status: 'Inactif' })
@@ -380,15 +378,15 @@ export const logoutCompany = async (req, res) => {
 
     res.clearCookie('token', {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
       path: '/'
     });
 
     res.clearCookie('refreshToken', {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
       path: '/'
     });
 

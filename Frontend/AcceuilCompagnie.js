@@ -74,9 +74,7 @@ function changePage(page) {
 // ====================================================================
 async function loadCompanyInfo() {
     try {
-        const response = await fetch(`${API_BASE}/api/companies/me`, {
-            credentials: 'include'
-        });
+        const response = await fetchAuth(`${API_BASE}/api/companies/me`, { method: 'GET' });
 
         if (!response.ok) {
             console.error("❌ Erreur /companies/me :", response.status);
@@ -145,9 +143,9 @@ async function loadInvoices() {
     if (!companyId) return;
 
     try {
-        const response = await fetch(
+        const response = await fetchAuth(
             `${API_BASE}/api/factures?compagnie_id=${companyId}`,
-            { credentials: 'include' }
+            { method: 'GET' }
         );
 
         if (!response.ok) {
@@ -447,3 +445,24 @@ document.addEventListener('DOMContentLoaded', () => {
     window.showModal = showModal;
     window.closeModal = closeModal;
 });
+async function fetchAuth(url, options = {}) {
+    let res = await fetch(url, { ...options, credentials: 'include' });
+    if (res.status === 401) {
+        try {
+            const refresh = await fetch(`${API_BASE}/api/companies/token/refresh`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (refresh.ok) {
+                res = await fetch(url, { ...options, credentials: 'include' });
+            } else {
+                window.location.href = 'Index.html';
+                throw new Error('Session expirée');
+            }
+        } catch {
+            window.location.href = 'Index.html';
+            throw new Error('Session expirée');
+        }
+    }
+    return res;
+}

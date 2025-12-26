@@ -39,14 +39,16 @@ export const logoutAdmin = (req, res) => {
   res.cookie('token', '', {
     httpOnly: true,
     expires: new Date(0),
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
+    secure: true,
+    sameSite: 'None',
+    path: '/'
   });
   res.cookie('refreshToken', '', {
     httpOnly: true,
     expires: new Date(0),
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
+    secure: true,
+    sameSite: 'None',
+    path: '/'
   });
 
   return res.status(200).json({ message: 'Déconnexion réussie' });
@@ -103,19 +105,19 @@ export const loginSuperviseur = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    const isProd = process.env.NODE_ENV === 'production';
-
     res.cookie('token', token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
+      path: '/',
       maxAge: 12 * 60 * 60 * 1000
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
+      secure: true,
+      sameSite: 'None',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 

@@ -95,6 +95,7 @@ export const loginSuperAdminBySecret = async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: 'None',
+      path: '/',
       maxAge: 12 * 60 * 60 * 1000
     });
 
@@ -102,6 +103,7 @@ export const loginSuperAdminBySecret = async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: 'None',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -238,8 +240,8 @@ export const logoutSuperAdmin = async (req, res) => {
   try {
     const adminId = req.user.id;
     await supabase.from('admins').update({ status: 'Inactif' }).eq('id', adminId);
-    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None' });
-    res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'None' });
+    res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'None', path: '/' });
+    res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'None', path: '/' });
     res.json({ message: 'Déconnexion réussie' });
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
