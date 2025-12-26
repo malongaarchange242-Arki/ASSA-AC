@@ -74,7 +74,9 @@ function changePage(page) {
 // ====================================================================
 async function loadCompanyInfo() {
     try {
-        const response = await fetchAuth(`${API_BASE}/api/companies/me`, { method: 'GET' });
+        const response = await fetch(`${API_BASE}/api/companies/me`, {
+            credentials: 'include'
+        });
 
         if (!response.ok) {
             console.error("❌ Erreur /companies/me :", response.status);
@@ -138,14 +140,13 @@ function toggleTheme() {
 // ====================================================================
 // 📌 CHARGER LES FACTURES (COOKIE)
 // ====================================================================
-async function loadInvoices() {
-    const companyId = getCompanyIdFromToken();
+async function loadInvoices(companyId) {
     if (!companyId) return;
 
     try {
-        const response = await fetchAuth(
+        const response = await fetch(
             `${API_BASE}/api/factures?compagnie_id=${companyId}`,
-            { method: 'GET' }
+            { credentials: 'include' }
         );
 
         if (!response.ok) {
@@ -161,6 +162,7 @@ async function loadInvoices() {
         console.error("❌ Erreur loadInvoices()", err);
     }
 }
+
 
 function applySearch() {
     const searchValue = document.getElementById("search-input").value.trim().toLowerCase();
@@ -433,36 +435,15 @@ window.downloadRecapCSV = function () {
 };
 
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     setTheme(localStorage.getItem('theme') || 'light');
 
     document.getElementById("search-input")?.addEventListener("input", applySearch);
 
-    loadCompanyInfo();
-    loadInvoices();
+    await loadCompanyInfo();   // 🔥 attendre
+    loadInvoices();            // 🔥 maintenant OK
 
     window.toggleTheme = toggleTheme;
     window.showModal = showModal;
     window.closeModal = closeModal;
 });
-async function fetchAuth(url, options = {}) {
-    let res = await fetch(url, { ...options, credentials: 'include' });
-    if (res.status === 401) {
-        try {
-            const refresh = await fetch(`${API_BASE}/api/companies/token/refresh`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-            if (refresh.ok) {
-                res = await fetch(url, { ...options, credentials: 'include' });
-            } else {
-                window.location.href = 'Index.html';
-                throw new Error('Session expirée');
-            }
-        } catch {
-            window.location.href = 'Index.html';
-            throw new Error('Session expirée');
-        }
-    }
-    return res;
-}

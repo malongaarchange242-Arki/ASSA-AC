@@ -179,6 +179,7 @@ export const validateOtpAndSetPassword = async (req, res) => {
 export const loginCompany = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
@@ -194,7 +195,9 @@ export const loginCompany = async (req, res) => {
     }
 
     if (!company.password_hash) {
-      return res.status(401).json({ message: 'Veuillez d\'abord définir votre mot de passe.' });
+      return res.status(401).json({
+        message: 'Veuillez d\'abord définir votre mot de passe.'
+      });
     }
 
     const passwordOk = await bcrypt.compare(password, company.password_hash);
@@ -202,6 +205,9 @@ export const loginCompany = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
+    // ======================
+    // PAYLOAD JWT
+    // ======================
     const payload = {
       id: company.id,
       email: company.email,
@@ -215,27 +221,35 @@ export const loginCompany = async (req, res) => {
     });
 
     const refreshToken = jwt.sign(
-      { id: company.id, role: 'Company' },
+      { id: company.id, role: 'company' },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: '7d' }
     );
 
+    // ======================
+    // COOKIE CONFIG (LOCAL + PROD)
+    // ======================
+    const isProd = process.env.NODE_ENV === 'production';
+
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,                   // ❗ false en local
+      sameSite: isProd ? 'None' : 'Lax', // ❗ Lax en local
       path: '/',
       maxAge: 12 * 60 * 60 * 1000
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    // ======================
+    // LOG & LAST LOGIN
+    // ======================
     await supabase
       .from('companies')
       .update({ last_login: new Date() })
@@ -252,8 +266,6 @@ export const loginCompany = async (req, res) => {
 
     return res.json({
       message: 'Connexion réussie',
-      token,
-      refreshToken,
       id_companie: company.id,
       company_name: company.company_name
     });
