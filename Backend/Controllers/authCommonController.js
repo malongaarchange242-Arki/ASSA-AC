@@ -98,10 +98,11 @@ export const checkUserRoleByEmail = async (req, res) => {
       return res.json({
         exists: true,
         role: 'company',
-        password_hash: company.password_hash,
+        has_password: !!company.password_hash,
         status: company.status ?? 'inactive'
       });
     }
+
 
     /* =========================
        ❌ AUCUN COMPTE

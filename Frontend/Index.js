@@ -31,7 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEmail = '';
     let currentRole = '';
     let isChecking = false;
+    let authMode = 'login'; // ✅ AJOUT
     let typingTimer;
+
     const doneTypingInterval = 300;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/;
 
@@ -64,29 +66,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ==========================
-    // 3. Gestion Visibilité Mot de Passe
+    // 3. Toggle mot de passe
     // ==========================
     function setupPasswordToggle(button, input) {
-        if (button && input) {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                const isPw = input.getAttribute('type') === 'password';
-                input.setAttribute('type', isPw ? 'text' : 'password');
-                
-                const icon = button.querySelector('i') || button;
-                if (icon) {
-                    icon.classList.toggle('fa-eye');
-                    icon.classList.toggle('fa-eye-slash');
-                }
-            });
-        }
+        if (!button || !input) return;
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
     }
 
     setupPasswordToggle(togglePasswordBtn, passwordInput);
     setupPasswordToggle(toggleOtpPasswordBtn, otpPasswordInput);
 
     // ==========================
-    // 4. Utilitaires UI & Sections
+    // 4. UI helpers
     // ==========================
     function showSection(sectionToShow) {
         allSections.forEach(section => section.classList.remove('visible'));
@@ -94,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetToInitialView() {
+        authMode = 'login'; // ✅ RESET
+
         passwordField.classList.remove('visible');
         otpPasswordGroup.style.display = 'none';
 
@@ -111,12 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showSection(emailSection);
         emailInput.focus();
-        
-        inputGroups.forEach(({input, group}) => checkFloatingState(input, group));
+
+        inputGroups.forEach(({ input, group }) =>
+            checkFloatingState(input, group)
+        );
     }
 
     // ==========================
-    // 5. Appels API avec Alertes
+    // 5. API
     // ==========================
     async function verifyEmailOnServer(email) {
         if (isChecking) return;
@@ -127,8 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE}/api/auth/check-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-                credentials: 'include'
+                body: JSON.stringify({ email })
             });
 
             const data = await res.json();
@@ -137,17 +134,19 @@ document.addEventListener('DOMContentLoaded', () => {
             currentRole = data.role;
             emailInput.readOnly = true;
 
-            // ALERTE : Succès de la vérification email
-            alert(`✅ Email validé : Compte ${currentRole} détecté.`);
+            alert(`✅ Email validé : ${currentRole}`);
 
             if (data.role === 'admin' || data.role === 'supervisor') {
                 passwordField.classList.add('visible');
                 actionButtonContainer.classList.add('visible');
                 passwordInput.focus();
-            } else if (data.role === 'company') {
+            }
+
+            if (data.role === 'company') {
                 if (!data.has_password) {
-                    // ALERTE : Première connexion compagnie
-                    alert("🔑 Première connexion détectée. Un code OTP va vous être envoyé.");
+                    authMode = 'otp'; // ✅ MODE OTP
+                    alert("🔑 Première connexion détectée. OTP envoyé.");
+
                     showSection(otpSection);
                     otpPasswordGroup.style.display = 'block';
                     await requestOtp();
@@ -158,8 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (err) {
-            // ALERTE : Erreur email
-            alert(`❌ Erreur : ${err.message}`);
+            alert(`❌ ${err.message}`);
             resetToInitialView();
         } finally {
             isChecking = false;
@@ -167,33 +165,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function requestOtp() {
-        try {
-            const res = await fetch(`${API_BASE}/api/companies/first-login-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentEmail }),
-                credentials: 'include'
-            });
-            if (res.ok) {
-                // ALERTE : Succès envoi OTP
-                alert(`📧 Code de sécurité envoyé à l'adresse : ${currentEmail}`);
-            }
-        } catch {
-            alert('❌ Erreur lors de l’envoi du code OTP.');
-        }
+        await fetch(`${API_BASE}/api/companies/first-login-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentEmail })
+        });
     }
 
     async function validateOtpAndCreatePassword() {
-    if (!otpCodeInput.value || !otpPasswordInput.value) {
-        alert("⚠️ Veuillez saisir le code OTP et le mot de passe.");
-        return;
-    }
+        if (!otpCodeInput.value || !otpPasswordInput.value) {
+            alert("⚠️ OTP et mot de passe requis");
+            return;
+        }
 
-    try {
-        const res = await fetch(`${API_BASE}/api/companies/first-login-verify`, {
+        const res = await fetch(`${API_BASE}/api/companies/validate-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
             body: JSON.stringify({
                 email: currentEmail,
                 otp: otpCodeInput.value,
@@ -202,56 +189,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'OTP invalide');
-
-        alert("🎉 Compte activé avec succès. Connexion en cours...");
-        window.location.href = 'AccueilCompagnie.html';
-
-    } catch (err) {
-        alert(`❌ ${err.message}`);
-    }
-}
-
-
-    async function loginStandard() {
-        if (!passwordInput.value) {
-            alert("⚠️ Veuillez saisir votre mot de passe.");
+        if (!res.ok) {
+            alert(data.message || 'OTP invalide');
             return;
         }
 
-        try {
-            const url = (currentRole === 'admin' || currentRole === 'supervisor')
+        alert("🎉 Compte activé !");
+        window.location.href = 'AccueilCompagnie.html';
+    }
+
+    async function loginStandard() {
+        if (!passwordInput.value) {
+            alert("⚠️ Mot de passe requis");
+            return;
+        }
+
+        const url =
+            currentRole === 'admin' || currentRole === 'supervisor'
                 ? `${API_BASE}/api/admins/login`
                 : `${API_BASE}/api/companies/login`;
 
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    email: currentEmail, 
-                    password: passwordInput.value 
-                }),
-                credentials: 'include'
-            });
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: currentEmail,
+                password: passwordInput.value
+            })
+        });
 
-            const data = await res.json();
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.message || 'Erreur de connexion');
+            return;
+        }
 
-            if (!res.ok) throw new Error(data.message || 'Email ou mot de passe incorrect');
-
-            // ALERTE : Succès connexion
-            alert("🎉 Connexion réussie ! Redirection en cours...");
-
-            window.location.href = (currentRole === 'company')
+        window.location.href =
+            currentRole === 'company'
                 ? 'AccueilCompagnie.html'
                 : 'AccueilAdmin.html';
-        } catch (err) {
-            // ALERTE : Erreur de connexion
-            alert(`🚫 Échec de connexion : ${err.message}`);
-        }
     }
 
     // ==========================
-    // 6. Écouteurs d'événements
+    // 6. Events
     // ==========================
     emailInput.addEventListener('input', () => {
         clearTimeout(typingTimer);
@@ -264,14 +244,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     mainButton.addEventListener('click', () => {
-        if (authMode === 'otp') {
-            validateOtpAndCreatePassword();
-        } else {
-            loginStandard();
-        }
+        authMode === 'otp'
+            ? validateOtpAndCreatePassword()
+            : loginStandard();
     });
 
-
-    // Initialisation
+    // Init
     resetToInitialView();
 });
