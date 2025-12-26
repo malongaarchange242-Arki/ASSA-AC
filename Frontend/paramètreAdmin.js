@@ -150,10 +150,11 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             try {
-                await fetchWithAdmin(`${API_BASE}/api/admins/update-password`, {
+               await fetchWithAdmin(`${API_BASE}/api/parametres/update-password`, {
                     method: 'POST',
                     body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
                 });
+
 
                 messageBox.textContent = 'Mot de passe mis à jour avec succès.';
                 messageBox.style.color = 'green';

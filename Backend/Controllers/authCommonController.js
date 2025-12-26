@@ -85,7 +85,7 @@ export const checkUserRoleByEmail = async (req, res) => {
     ========================= */
     const { data: company, error: compErr } = await supabase
       .from('companies')
-      .select('id, email, status, has_password')
+      .select('id, email, status, password_hash')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
@@ -98,7 +98,7 @@ export const checkUserRoleByEmail = async (req, res) => {
       return res.json({
         exists: true,
         role: 'company',
-        has_password: Boolean(company.has_password),
+        password_hash: company.password_hash,
         status: company.status ?? 'inactive'
       });
     }
