@@ -183,6 +183,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function validateOtpAndCreatePassword() {
+    if (!otpCodeInput.value || !otpPasswordInput.value) {
+        alert("⚠️ Veuillez saisir le code OTP et le mot de passe.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/companies/first-login-verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                email: currentEmail,
+                otp: otpCodeInput.value,
+                password: otpPasswordInput.value
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'OTP invalide');
+
+        alert("🎉 Compte activé avec succès. Connexion en cours...");
+        window.location.href = 'AccueilCompagnie.html';
+
+    } catch (err) {
+        alert(`❌ ${err.message}`);
+    }
+}
+
+
     async function loginStandard() {
         if (!passwordInput.value) {
             alert("⚠️ Veuillez saisir votre mot de passe.");
@@ -233,7 +263,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    mainButton.addEventListener('click', loginStandard);
+    mainButton.addEventListener('click', () => {
+        if (authMode === 'otp') {
+            validateOtpAndCreatePassword();
+        } else {
+            loginStandard();
+        }
+    });
+
 
     // Initialisation
     resetToInitialView();

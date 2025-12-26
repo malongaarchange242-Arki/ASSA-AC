@@ -70,17 +70,14 @@ export const requestFirstLoginOtp = async (req, res) => {
       return res.status(400).json({ message: "Email requis" });
     }
 
-    // Vérifier si la compagnie existe
-    const { data: companies, error: findError } = await supabase
+    const { data: companies, error } = await supabase
       .from("companies")
       .select("*")
-      .eq("email", email);
+      .eq("email", email)
+      .limit(1);
 
-    if (findError) {
-      return res.status(500).json({
-        message: "Erreur serveur (recherche compagnie)",
-        erreur: findError.message,
-      });
+    if (error) {
+      return res.status(500).json({ message: "Erreur serveur", erreur: error.message });
     }
 
     if (!companies?.length) {
@@ -89,156 +86,91 @@ export const requestFirstLoginOtp = async (req, res) => {
 
     const company = companies[0];
 
-    // Génération OTP et mot de passe temporaire
+    // Génération OTP
     const otp = generateOtp();
-    const tempPassword = generateTempPassword();
     const otp_hash = await bcrypt.hash(otp, 10);
-    const password_hash = await bcrypt.hash(tempPassword, 10);
-    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Mise à jour dans la base
-    const { data: updatedCompany, error: updateError } = await supabase
+    await supabase
       .from("companies")
       .update({
         otp: otp_hash,
         otp_expiry,
-        password_hash,
-        status: "Inactif",
+        status: "Inactif"
       })
-      .eq("id", company.id)
-      .select();
-
-    if (updateError) {
-      return res.status(500).json({
-        message: "Erreur serveur (mise à jour OTP)",
-        erreur: updateError.message,
-      });
-    }
-
-    // Envoi de l'email
-    let emailSent = false;
+      .eq("id", company.id);
 
     if (isSmtpConfigured()) {
-      try {
-        emailSent = await sendFirstLoginEmail(email, otp, tempPassword);
-      } catch (mailErr) {
-        console.error("❌ Erreur d'envoi email :", mailErr.message);
-      }
-    } else {
-      console.warn("⚠️ SMTP non configuré, email non envoyé.");
+      await sendFirstLoginEmail(email, otp);
     }
 
-    // Log activité
     await logActivite({
-      module: 'Système',
-      type_activite: 'system',
-      categorie: 'Sécurité',
-      description: `OTP de première connexion généré pour la compagnie ${company.company_name}`,
-      id_admin: req.user?.id || null,
-      id_companie: company.id,
-      utilisateur_nom: req.user?.nom_complet || 'Administrateur',
-      utilisateur_email: req.user?.email || null
+      module: "Système",
+      type_activite: "system",
+      categorie: "Sécurité",
+      description: `OTP de première connexion généré pour ${company.company_name}`,
+      id_companie: company.id
     });
-    
-    return res.json({
-      message: "OTP généré",
-      email_sent: emailSent,
-      company: updatedCompany[0],
-    });
+
+    return res.json({ message: "OTP envoyé avec succès" });
 
   } catch (err) {
-    console.error("❌ ERREUR requestFirstLoginOtp :", err.message);
-    return res.status(500).json({
-      message: "Erreur serveur",
-      erreur: err.message,
-    });
+    console.error("requestFirstLoginOtp:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
   }
 };
-
 
 // ----------------- Valider OTP et définir mot de passe -----------------
 export const validateOtpAndSetPassword = async (req, res) => {
   try {
     const { email, otp, password } = req.body;
-    if (!email || !otp || !password) return res.status(400).json({ message: 'Email, OTP et mot de passe requis' });
+    if (!email || !otp || !password) {
+      return res.status(400).json({ message: "Email, OTP et mot de passe requis" });
+    }
 
     const { data: companies, error } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('email', email);
+      .from("companies")
+      .select("*")
+      .eq("email", email)
+      .limit(1);
 
-    if (error) return res.status(500).json({ message: 'Erreur serveur', erreur: error.message });
-    if (!companies?.length) return res.status(404).json({ message: 'Compagnie introuvable' });
+    if (error || !companies?.length) {
+      return res.status(404).json({ message: "Compagnie introuvable" });
+    }
 
     const company = companies[0];
-    if (!company.otp) return res.status(400).json({ message: 'OTP non défini. Demandez un nouvel OTP.' });
-    if (!await bcrypt.compare(otp, company.otp)) return res.status(400).json({ message: 'OTP incorrect' });
-    if (!company.otp_expiry || new Date(company.otp_expiry) < new Date()) return res.status(400).json({ message: 'OTP expiré' });
+
+    if (!company.otp) {
+      return res.status(400).json({ message: "OTP non défini" });
+    }
+
+    if (new Date(company.otp_expiry) < new Date()) {
+      return res.status(400).json({ message: "OTP expiré" });
+    }
+
+    const otpOk = await bcrypt.compare(otp, company.otp);
+    if (!otpOk) {
+      return res.status(400).json({ message: "OTP incorrect" });
+    }
 
     const password_hash = await bcrypt.hash(password, 10);
 
-    const { data: updatedCompany, error: updateError } = await supabase
-      .from('companies')
-      .update({ password_hash, otp: null, otp_expiry: null, status: 'Actif', last_login: new Date() })
-      .eq('id', company.id)
-      .select();
+    await supabase
+      .from("companies")
+      .update({
+        password_hash,
+        otp: null,
+        otp_expiry: null,
+        status: "Actif",
+        last_login: new Date()
+      })
+      .eq("id", company.id);
 
-    if (updateError) return res.status(500).json({ message: 'Erreur serveur', erreur: updateError.message });
-
-    const payload = {
-      id: company.id,
-      email: company.email,
-      role: 'Company',
-      company_name: company.company_name,
-      id_companie: company.id
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: '12h'
-    });
-
-    const refreshToken = jwt.sign(
-      { id: company.id, role: 'Company' },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    const isProd = process.env.NODE_ENV === 'production';
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
-      maxAge: 12 * 60 * 60 * 1000
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'None' : 'Lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
-    await logActivite({
-      type_activite: 'security',
-      categorie: 'auth',
-      module: 'company-set-password',
-      description: 'Définition du mot de passe par la compagnie',
-      id_companie: company.id,
-      utilisateur_email: company.email
-    });
-
-    return res.json({
-      message: 'Mot de passe défini avec succès',
-      token,
-      refreshToken,
-      id_companie: company.id,
-      company_name: company.company_name
-    });
+    return res.json({ message: "Mot de passe défini avec succès" });
 
   } catch (err) {
-    console.error('Erreur validateOtpAndSetPassword :', err);
-    return res.status(500).json({ message: 'Erreur serveur' });
+    console.error("validateOtpAndSetPassword:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
