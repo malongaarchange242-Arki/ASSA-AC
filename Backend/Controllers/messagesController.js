@@ -35,10 +35,27 @@ async function findAdminForCompany(companyId) {
 export const getMessagesHistory = async (req, res) => {
   try {
     const user = req.user;
-    if (!user) return res.status(401).json({ message: 'Token invalide ou expiré' });
+    if (!user) {
+      return res.status(401).json({ message: 'Non authentifié' });
+    }
 
-    const companyId = req.query.id_companie || user.id_companie || user.company_id;
-    if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
+    const companyId = req.query.id_companie;
+    if (!companyId) {
+      return res.status(400).json({ message: 'id_companie requis' });
+    }
+
+    // 🟣 ADMIN / SUPERVISOR → accès global
+    if (['admin', 'supervisor', 'superadmin'].includes(user.role)) {
+      // OK
+    }
+    // 🟠 COMPANY → uniquement sa compagnie
+    else if (user.role === 'company') {
+      if (String(user.id_companie) !== String(companyId)) {
+        return res.status(403).json({ message: 'Accès interdit' });
+      }
+    } else {
+      return res.status(403).json({ message: 'Rôle non autorisé' });
+    }
 
     const { data: messages, error } = await supabase
       .from('messages')
@@ -50,11 +67,13 @@ export const getMessagesHistory = async (req, res) => {
 
     const messageIds = messages.map(m => m.id);
     let attachments = [];
+
     if (messageIds.length) {
       const { data: atts, error: attErr } = await supabase
         .from('attachments')
         .select('*')
         .in('message_id', messageIds);
+
       if (attErr) throw attErr;
       attachments = atts || [];
     }
@@ -65,7 +84,11 @@ export const getMessagesHistory = async (req, res) => {
       byMessage.get(att.message_id).push(att);
     });
 
-    const result = messages.map(m => ({ message: m, attachments: byMessage.get(m.id) || [] }));
+    const result = messages.map(m => ({
+      message: m,
+      attachments: byMessage.get(m.id) || []
+    }));
+
     res.json(result);
 
   } catch (err) {
@@ -73,6 +96,7 @@ export const getMessagesHistory = async (req, res) => {
     res.status(500).json({ message: 'Erreur historique', erreur: err.message });
   }
 };
+
 
 // ---------------------------
 // Marquer messages comme lus
@@ -90,10 +114,9 @@ export const markMessagesAsRead = async (req, res) => {
     }
 
     // ADMIN uniquement
-    if (!['Admin', 'admin'].includes(user.role)) {
+    if (!['admin', 'supervisor', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Accès refusé' });
     }
-
     const { error } = await supabase
       .from('messages')
       .update({ is_read: true })
@@ -124,7 +147,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
     }
 
     // Vérification rôle
-    const isCompany = ["Company", "Compagnie"].includes(user.role);
+    const isCompany = user.role === 'company';
 
     // ID compagnie
     const companyId = req.body.id_companie || user.id_companie;

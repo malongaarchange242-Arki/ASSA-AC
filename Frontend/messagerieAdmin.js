@@ -178,21 +178,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function fetchWithAuth(url, options = {}) {
-        const session = getSessionInfo();
-        if (!session) { showModal('Session expirée', 'Veuillez vous reconnecter'); return null; }
-        const opts = { ...options, headers: { ...(options.headers || {}), 'Authorization': `Bearer ${session.token}` } };
-        const res = await fetch(url, opts);
-        const newToken = res.headers.get('x-access-token');
-        if (newToken) {
-            localStorage.setItem(session.role === 'admin' ? 'jwtTokenAdmin' : 'jwtTokenCompany', newToken);
-            session.token = newToken;
-        }
+        const res = await fetch(url, {
+            ...options,
+            credentials: 'include' // 🔐 cookie envoyé automatiquement
+        });
+
         if (!res.ok) {
-            if (res.status === 401) showModal('Session expirée', 'Veuillez vous reconnecter.');
+            if (res.status === 401) {
+                showModal('Session expirée', 'Veuillez vous reconnecter.');
+                return null;
+            }
             throw new Error(`Erreur HTTP ${res.status}`);
         }
+
         return res.json();
     }
+
 
     function renderMessage(payload, { returnElement = false, temp = false, sending = false, failed = false } = {}) {
         const m = payload.message || payload;

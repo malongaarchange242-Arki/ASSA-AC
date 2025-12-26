@@ -1,53 +1,101 @@
 // Routes/messages.js
 import express from 'express';
 import multer from 'multer';
-import { getMessagesHistory, postMessage, uploadAndSendProof, markMessagesAsRead, countUnreadMessagesCompany, countUnreadMessagesAdmin } from '../Controllers/messagesController.js';
+import {
+  getMessagesHistory,
+  postMessage,
+  uploadAndSendProof,
+  markMessagesAsRead,
+  countUnreadMessagesCompany,
+  countUnreadMessagesAdmin
+} from '../Controllers/messagesController.js';
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
 
-// Multer memory storage (max 10MB par fichier, max 5 fichiers)
+// ---------------------------
+// Multer (memory storage)
+// ---------------------------
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 5 }
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB par fichier
+    files: 5
+  }
 });
 
 export default (broadcastToRoom) => {
-  // --- Historique messages (accessible aux Companies et Admins) ---
+
+  // ---------------------------
+  // Historique des messages
+  // admin + company
+  // GET /messages/history?id_companie=xxx
+  // ---------------------------
   router.get(
     '/history',
     verifyToken,
-    checkRole(['Company', 'Administrateur']), // Les rôles doivent correspondre à req.user.profile
+    checkRole(['admin', 'company']),
     getMessagesHistory
   );
 
-  // --- Envoi message avec pièces jointes ---
+  // ---------------------------
+  // Envoi message (texte + pièces jointes)
+  // admin + company
+  // POST /messages
+  // ---------------------------
   router.post(
     '/',
     verifyToken,
-    checkRole(['Company', 'Administrateur']),
+    checkRole(['admin', 'company']),
     upload.array('attachments'),
     (req, res) => postMessage(req, res, broadcastToRoom)
   );
 
-  // --- Upload preuve + envoi automatique message ---
+  // ---------------------------
+  // Upload preuve + message automatique
+  // company (admin autorisé si besoin)
+  // POST /messages/preuves
+  // ---------------------------
   router.post(
     '/preuves',
     verifyToken,
-    checkRole(['Company', 'Administrateur']),
-    upload.array('file'), // le champ 'file' du formulaire paiement
+    checkRole(['admin', 'company']),
+    upload.array('file'),
     (req, res) => uploadAndSendProof(req, res, broadcastToRoom)
   );
 
-  router.get('/messages/unread/admin', verifyToken, countUnreadMessagesAdmin);
-  router.get('/messages/unread/company', verifyToken, countUnreadMessagesCompany);
-
-  router.put(
-    '/messages/mark-read/:companyId',
+  // ---------------------------
+  // Compteur messages non lus (ADMIN)
+  // GET /messages/unread/admin
+  // ---------------------------
+  router.get(
+    '/unread/admin',
     verifyToken,
-    markMessagesAsRead
+    checkRole(['admin']),
+    countUnreadMessagesAdmin
   );
 
+  // ---------------------------
+  // Compteur messages non lus (COMPANY)
+  // GET /messages/unread/company
+  // ---------------------------
+  router.get(
+    '/unread/company',
+    verifyToken,
+    checkRole(['company']),
+    countUnreadMessagesCompany
+  );
+
+  // ---------------------------
+  // Marquer messages comme lus (ADMIN)
+  // PUT /messages/mark-read/:companyId
+  // ---------------------------
+  router.put(
+    '/mark-read/:companyId',
+    verifyToken,
+    checkRole(['admin']),
+    markMessagesAsRead
+  );
 
   return router;
 };
