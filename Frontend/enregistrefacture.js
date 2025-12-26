@@ -48,20 +48,6 @@ function showMessage(msg, type = 'info') {
     setTimeout(() => formMessage.classList.add('hidden'), 5000);
 }
 
-function getAdminToken() {
-    const token = localStorage.getItem('jwtTokenAdmin');
-    if (!token) return null;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const now = Date.now() / 1000;
-        if (payload.exp < now) throw new Error("Token expiré.");
-        return token;
-    } catch (err) {
-        if (token) console.error("Token invalide:", err.message);
-        return null;
-    }
-}
-
 function formatNumber(number) {
     if (isNaN(number) || number === null) return '0';
     return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
@@ -223,28 +209,24 @@ function removeItemRow(btn) {
 
 // ======================= CLIENTS =======================
 async function loadClients() {
-    const token = getAdminToken();
     clientSelect.innerHTML = '<option value="" disabled selected>Veuillez sélectionner une compagnie</option>';
 
-    if (!token) {
-        // Données de simulation si pas de token
-        ['Asky', 'Camerco', 'Air France', 'Ethiopian Airlines', 'Autre'].forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            clientSelect.appendChild(opt);
-
-            companiesData[name] = { id: Math.floor(Math.random() * 100), airport: name === 'Asky' ? 'Lomé' : '', city: "Pointe-Noire" };
-        });
-        return;
-    }
-
     try {
+        // NOTE: credentials: 'include' envoie les cookies automatiquement
         const response = await fetch(`${API_BASE}/api/companies/all`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            method: 'GET',
+            credentials: 'include', 
+            headers: { 
+                'Content-Type': 'application/json'
+            }
         });
 
-        if (!response.ok) throw new Error(`Erreur ${response.status} lors du chargement des compagnies.`);
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                 throw new Error("Session expirée ou non autorisée. Veuillez vous reconnecter.");
+            }
+            throw new Error(`Erreur ${response.status} lors du chargement des compagnies.`);
+        }
 
         const resData = await response.json();
         const companies = resData.companies || resData;
@@ -264,6 +246,18 @@ async function loadClients() {
     } catch (err) {
         console.error(err);
         showMessage('Erreur: impossible de charger les compagnies. ' + err.message, 'error');
+        
+        // Fallback optionnel: données de simulation en cas d'erreur
+        // Ceci peut être retiré si vous voulez bloquer l'interface
+        /*
+        ['Asky', 'Camerco', 'Air France', 'Ethiopian Airlines', 'Autre'].forEach(name => {
+             const opt = document.createElement('option');
+             opt.value = name;
+             opt.textContent = name;
+             clientSelect.appendChild(opt);
+             companiesData[name] = { id: 999, airport: name === 'Asky' ? 'Lomé' : '', city: "Pointe-Noire" };
+        });
+        */
     }
 }
 
@@ -279,20 +273,18 @@ clientSelect.addEventListener('change', e => {
 });
 
 async function fetchNextInvoiceId() {
-    let token = getAdminToken();
-    if (!token) {
-        invoiceIdInput.value = "REF-TEST-0001";
-        return;
-    }
-
     try {
+        // NOTE: credentials: 'include' envoie les cookies automatiquement
         const response = await fetch(`${API_BASE}/api/factures/generate-ref`, {
             method: "GET",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+            credentials: 'include',
+            headers: { 
+                "Content-Type": "application/json"
+            }
         });
 
         if (!response.ok) {
-            if (response.status === 401) throw new Error("Token expiré ou non autorisé (401).");
+            if (response.status === 401) throw new Error("Non autorisé (Session expirée).");
             throw new Error(`Impossible de générer la référence (Statut: ${response.status})`);
         }
 
@@ -302,6 +294,7 @@ async function fetchNextInvoiceId() {
     } catch (error) {
         console.error(error);
         showMessage("Erreur génération référence: " + error.message, 'error');
+        invoiceIdInput.value = "REF-ERR-0000"; // Valeur par défaut en cas d'erreur
     }
 }
 
@@ -359,7 +352,7 @@ function showPreview() {
         const totalText = grandTotalSpan.textContent;
         const formattedDate = new Date(issueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-        // 3. EN-TÊTE (CODE CORRIGÉ : Largeurs ajustées et Logo centré)
+        // 3. EN-TÊTE
         const headerHTML = `
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
                 <tr>
@@ -487,7 +480,7 @@ function showPreview() {
     }
 }
 
-// ======================= IMPRESSION ET GESTION VUE (inchangé) =======================
+// ======================= IMPRESSION ET GESTION VUE =======================
 function printPreview() {
     try {
         alert("ATTENTION : Pour obtenir une facture propre, veuillez DÉSACTIVER les options 'En-têtes et pieds de page' dans les paramètres de la boîte de dialogue d'impression de votre navigateur.");
@@ -555,13 +548,12 @@ function closePreview() {
 }
 
 
-// ======================= ENVOI (inchangé) =======================
 // ======================= ENVOI =======================
 // La fonction accepte maintenant 'buttonElement' comme argument
 async function sendInvoice(buttonElement) {
     if (!validateForm()) return;
 
-    // --- LOGIQUE ANTI-DOUBLE CLIC (Ajout) ---
+    // --- LOGIQUE ANTI-DOUBLE CLIC ---
     if (buttonElement) {
         buttonElement.disabled = true;
         buttonElement.textContent = 'Enregistrement...'; // Message de chargement
@@ -598,19 +590,13 @@ async function sendInvoice(buttonElement) {
     };
 
     try {
-        const token = getAdminToken();
-        if (!token) {
-            console.log("Facture à enregistrer (SIMULATION):", invoiceData);
-            showMessage('Simulation : Facture enregistrée sans API (Token Admin manquant).', 'success');
-            closePreview();
-            return;
-        }
-
+        // NOTE: credentials: 'include' envoie les cookies automatiquement
+        // Plus besoin de Authorization header manuelle
         const response = await fetch(`${API_BASE}/api/factures`, {
             method: 'POST',
+            credentials: 'include',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(invoiceData)
         });
@@ -628,19 +614,18 @@ async function sendInvoice(buttonElement) {
         showMessage('Erreur lors de l’envoi de la facture: ' + err.message, 'error');
 
     } finally {
-        // --- LOGIQUE ANTI-DOUBLE CLIC (Ajout - Réactivation) ---
+        // --- LOGIQUE ANTI-DOUBLE CLIC (Réactivation) ---
         if (buttonElement) {
             buttonElement.disabled = false;
             buttonElement.textContent = 'Envoyer & Enregistrer';
             buttonElement.classList.remove('bg-gray-400', 'cursor-not-allowed');
             buttonElement.classList.add('bg-blue-600', 'hover:bg-blue-700');
         }
-        // --------------------------------------------------------
     }
 }
 
 
-// ======================= INITIALISATION (inchangé) =======================
+// ======================= INITIALISATION =======================
 window.onload = () => {
     try {
         const today = new Date();
@@ -667,14 +652,13 @@ function getPreviousMonthPeriod() {
     const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
     return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
-// Appliquer la préférence au chargement
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-}
 
-// Bascule et sauvegarde
+// Bascule et sauvegarde thème (Suppression du localStorage tel que demandé pour le nettoyage complet)
 const toggle = document.getElementById('theme-toggle');
-toggle.addEventListener('click', () => {
-    const isDark = document.body.classList.toggle('dark-mode');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-});
+if (toggle) {
+    toggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        // Note : On ne sauvegarde plus la préférence dans localStorage
+        // pour respecter la consigne "retire tous les localstorage".
+    });
+}

@@ -78,8 +78,10 @@ router.post(
 router.get(
   '/:numero_facture',
   verifyToken,
+  checkRole(['admin', 'supervisor', 'company']),
   getFactureByNumero
 );
+
 
 // METTRE À JOUR FACTURE (admin / supervisor)
 router.put(

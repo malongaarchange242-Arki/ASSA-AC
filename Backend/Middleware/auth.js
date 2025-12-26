@@ -16,21 +16,28 @@ const normalizeRole = (role) => {
 };
 
 /* ---------------------------------------------------------
-   👤 Construction de req.user (ADMIN / SUPERVISOR / COMPANY)
+   👤 Construction de req.user (SOURCE UNIQUE DE VÉRITÉ)
+   Roles possibles :
+   - admin
+   - supervisor
+   - company
+   - superadmin
 ---------------------------------------------------------- */
 const buildUserObject = (decoded) => {
   const role = normalizeRole(decoded.role);
 
-  if (['supervisor', 'superviseur'].includes(role)) {
+  // 🟣 SUPER ADMIN (accès global)
+  if (['superadmin'].includes(role)) {
     return {
       id: decoded.id,
-      role: 'supervisor',
+      role: 'superadmin',
       email: decoded.email,
       permissions: decoded.permissions ?? []
     };
   }
 
-  if (['admin', 'administrateur', 'superadmin'].includes(role)) {
+  // 🔵 ADMIN
+  if (['admin', 'administrateur'].includes(role)) {
     return {
       id: decoded.id,
       role: 'admin',
@@ -40,6 +47,17 @@ const buildUserObject = (decoded) => {
     };
   }
 
+  // 🟢 SUPERVISOR
+  if (['supervisor', 'superviseur'].includes(role)) {
+    return {
+      id: decoded.id,
+      role: 'supervisor',
+      email: decoded.email,
+      permissions: decoded.permissions ?? []
+    };
+  }
+
+  // 🟠 COMPANY
   if (['company', 'compagnie', 'entreprise'].includes(role)) {
     return {
       id: decoded.id,
@@ -73,11 +91,16 @@ export const verifyToken = (req, res, next) => {
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Session expirée' });
     }
+
     return res.status(401).json({ message: 'Token invalide' });
   }
 };
 
-
+/* ---------------------------------------------------------
+   🔐 Middleware de contrôle des rôles
+   Utiliser UNIQUEMENT :
+   ['admin', 'supervisor', 'company', 'superadmin']
+---------------------------------------------------------- */
 export const checkRole = (allowedRoles = []) => (req, res, next) => {
   if (!req.user?.role) {
     return res.status(401).json({ message: 'Utilisateur non authentifié' });
