@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facture ASSA-AC - Modale</title>
+    <style>
+        /* 1. STYLES DE LA MODALE / POP-UP (Inchangé) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+
+        .modal-actions button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .close-btn { background-color: #f44336; color: white; }
+        .close-btn:hover { background-color: #d32f2f; }
+        .print-btn { background-color: #4CAF50; color: white; }
+        .print-btn:hover { background-color: #388e3c; }
+        .upload-btn {
+            background-color: #f59e0b;
+            color: white;
+        }
+        .upload-btn:hover { background-color: #d97706; }
+
+        .contest-btn {
+            background-color: #dc2626;
+            color: white;
+        }
+        .contest-btn:hover { background-color: #b91c1c; }
+
+
+        /* 2. STYLES DE LA FACTURE (Format A4) */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+            padding: 0; margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .invoice-container {
+            width: 210mm; max-width: 210mm;
+            height: auto; 
+            margin: 0; padding: 15mm; /* Marges ajustées */
+            background-color: white;
+            font-size: 10pt;
+            overflow-y: auto; 
+        }
+
+        /* --- NOUVEAUX STYLES DE L'EN-TÊTE (Style Image) --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* Centré verticalement */
+            margin-bottom: 10px;
+        }
+
+        .header-left {
+            width: 42%;
+            text-align: center; /* Tout le texte centré dans la colonne de gauche */
+            font-size: 8pt; /* Texte un peu plus petit pour tout faire tenir */
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header-left p {
+            margin: 1px 0;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+
+        /* Les pointillés */
+        .dashed-line {
+            margin: 2px 0;
+            font-weight: normal;
+            letter-spacing: -1px; /* Resserre les tirets */
+        }
+
+        /* Style "Manuscrit" pour La Direction Générale */
+        .script-font {
+            font-family: "Brush Script MT", "Lucida Handwriting", "Cursive", cursive;
+            font-size: 14pt;
+            text-transform: none !important; /* Pas de majuscules forcées ici */
+            margin: 5px 0 !important;
+        }
+
+        /* Logo */
+        .header-center {
+            width: 18%;
+            text-align: center;
+        }
+        .logo-image {
+            max-width: 90px;
+            height: auto;
+        }
+
+        /* Boite Vision CEMAC */
+        .header-right {
+            width: 38%;
+            text-align: right;
+        }
+        .vision-box {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center; /* Texte centré dans la boite */
+            font-size: 8pt;
+            line-height: 1.3;
+            font-style: italic;
+            border-radius: 0; /* Coins carrés comme sur l'image */
+        }
+
+        /* Titre Facture */
+        .invoice-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin: 20px 0 30px;
+            /* Pas de soulignement CSS, on le gère si besoin */
+        }
+
+        /* Reste des styles (Tableau, etc.) */
+        .client-info p { margin: 0 0 5px 0; padding-left: 20px; position: relative; }
+        .client-info p::before { content: ":"; position: absolute; left: 110px; font-weight: bold; }
+        
+        .items-table { margin: 20px 0; }
+        .items-table table { width: 100%; border-collapse: collapse; }
+        .items-table th, .items-table td { border: 1px solid black; padding: 6px; text-align: right; }
+        .items-table th { background-color: #f0f0f0; text-align: center; font-size: 9pt; }
+        .items-table .col-n { width: 5%; }
+        .items-table .col-designation { width: 45%; text-align: left; }
+        .items-table tfoot td { font-weight: bold; background-color: #f0f0f0; }
+        .items-table .total-label { border: none; border-right: 1px solid black; background: transparent !important;}
+        
+        .amount-in-words { margin-top: 20px; font-style: italic; }
+
+        .signature-section { display: flex; justify-content: flex-end; margin-top: 40px; }
+        .signature-content { text-align: right; }
+        .electronic-stamp-image { margin-top: 10px; width: 120px; opacity: 0.9; }
+
+        .separator { margin: 20px 0; border: 0; border-top: 1px solid #000; }
+        
+        .payment-conditions h3 { text-decoration: underline; margin-bottom: 5px; font-size: 10pt; }
+        .payment-conditions ul { list-style: none; padding: 0; font-size: 9pt;}
+        .payment-conditions li::before { content: "-"; margin-right: 10px; font-weight: bold; }
+
+        @media print {
+            .modal-overlay { position: static; background: none; }
+            .modal-content { box-shadow: none; max-height: none; width: 100%; }
+            .modal-actions { display: none; }
+            .invoice-container { width: 100%; padding: 0; border: none; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="modal-overlay" id="invoiceModal">
+        <div class="modal-content">
+
+            <div class="modal-actions">
+                <button class="close-btn"
+                    onclick="document.getElementById('invoiceModal').style.display = 'none';window.location.href = 'AccueilCompagnie.html';">
+                    Fermer
+                </button>
+            
+                <button class="print-btn" onclick="window.print()">
+                    Imprimer / Télécharger en PDF
+                </button>
+            
+                <!-- 🔥 NOUVEAUX BOUTONS -->
+                <button class="upload-btn" onclick="goToUploadProof()">
+                    📎 Téléverser une preuve
+                </button>
+            
+                <button class="contest-btn" onclick="goToContestInvoice()">
+                    ⚠️ Contester
+                </button>
+            </div>
+            
+            
+            <div class="invoice-container">
+                <header class="header">
+                    <div class="header-left">
+                        <p>COMMUNAUTÉ ÉCONOMIQUE ET MONÉTAIRE DE</p>
+                        <p>L'AFRIQUE CENTRALE</p>
+                        <div class="dashed-line">------------------------------------</div>
+                        <p>UNION ÉCONOMIQUE DE L'AFRIQUE CENTRALE</p>
+                        <div class="dashed-line">------------------------------------</div>
+                        <p>AGENCE DE SUPERVISION DE LA SÉCURITÉ</p>
+                        <p>AÉRIENNE EN AFRIQUE CENTRALE</p>
+                        <p>ASSA-AC</p>
+                        <div class="dashed-line">------------------------------------</div>
+                        <p class="script-font">La Direction Générale</p>
+                        <div class="dashed-line">------------------------------------</div>
+                    </div>
+                    
+                    <div class="header-center">
+                        <img src="logo.jpeg" alt="Logo CEMAC" class="logo-image">
+                    </div>
+                    
+                    <div class="header-right">
+                        <div class="vision-box">
+                            <p>Vision CEMAC 2025 : « Faire de la CEMAC en 2025 un espace économique intégré et émergent, où règnent la sécurité, la solidarité et la bonne gouvernance, au service du développement humain »</p>
+                        </div>
+                    </div>
+                </header>
+
+                <h1 class="invoice-title">FACTURE N°<span id="num_facture"></span></h1>
+
+                <section class="client-info">
+                    <p><strong>Client</strong> : <span id="client"></span></p>
+                    <p><strong>Pour</strong> : <span id="objet"></span></p>
+                    <p><strong>Période</strong> : <span id="periode"></span></p>
+                    <p><strong>Aéroport</strong> : <span id="aeroport"></span></p>
+                </section>
+
+                <section class="items-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-n">N°</th>
+                                <th class="col-designation">Désignation</th>
+                                <th class="col-nbre">Nbre de Passagers</th>
+                                <th class="col-unitaire">Cout Unitaire</th>
+                                <th class="col-total">Cout Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lignes_facture">
+                            </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="total-label">TOTAL</td>
+                                <td class="total-amount" id="total_facture">...</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </section>
+
+                <p class="amount-in-words" id="montant_lettres"></p>
+
+                <footer class="signature-section">
+                    <div class="signature-content">
+                        <p>Fait à <span id="lieu"></span>, le <strong id="date_emission"></strong></p>
+                        <img src="Cachet_+_Signature-removebg-preview.png" alt="Cachet" class="electronic-stamp-image">
+                    </div>
+                </footer>
+                
+                <hr class="separator">
+
+                <section class="payment-conditions">
+                    <h3>Conditions de paiement :</h3>
+                    <ul>
+                        <li>Par virement bancaire suivant RIB joint en annexe, à trente jours échus ;</li>
+                        <li>Au-delà des trente jours une pénalité de **5%** est facturée par tranche de **15 jours** de retard ;</li>
+                        <li>Chaque quinzaine entamée est due.</li>
+                    </ul>
+                </section>
+                
+            </div>
+        </div>
+    </div>
+
+   
+
+    <script>
+
+    let SELECTED_INVOICE_NUMBER = null;
+
+        // Le script reste identique, mais je le remets pour que le copier-coller fonctionne directement
+        async function loadFacture() {
+            const params = new URLSearchParams(window.location.search);
+            const numero = params.get("numero");
+            if (!numero) { alert("Numéro de facture manquant"); return; }
+        
+            try {
+                const encodedNumero = encodeURIComponent(numero);
+                const response = await fetch(`https://assa-ac-jyn4.onrender.com/api/factures/${encodedNumero}`, {
+                    headers: { "Authorization": "Bearer " + localStorage.getItem("jwtTokenCompany") }
+                });
+        
+                if (!response.ok) throw new Error("Facture introuvable");
+        
+                const res = await response.json();
+                const data = res.facture;
+                const lignes = res.lignes || [];
+        
+                document.getElementById("num_facture").textContent = data.numero_facture;
+                document.getElementById("client").textContent = data.nom_client;
+                document.getElementById("objet").textContent = data.objet;
+                document.getElementById("periode").textContent = data.periode;
+                document.getElementById("aeroport").textContent = data.aeroport;
+                document.getElementById("montant_lettres").textContent = data.montant_en_lettres;
+                document.getElementById("lieu").textContent = data.lieu_emission;
+                document.getElementById("date_emission").textContent = data.date_emission;
+        
+                const tbody = document.getElementById("lignes_facture");
+                tbody.innerHTML = "";
+                let totalGeneral = 0;
+        
+                lignes.forEach((ligne, index) => {
+                    const montant = Number(ligne.nombre_passagers) * Number(ligne.cout_unitaire);
+                    totalGeneral += montant;
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${ligne.designation}</td>
+                            <td>${ligne.nombre_passagers}</td>
+                            <td>${Number(ligne.cout_unitaire).toLocaleString()}</td>
+                            <td>${montant.toLocaleString()}</td>
+                        </tr>`;
+                });
+        
+                document.getElementById("total_facture").textContent = totalGeneral.toLocaleString();
+                SELECTED_INVOICE_NUMBER = data.numero_facture;
+        
+            } catch (e) { alert("Erreur : " + e.message); }
+        }
+        loadFacture();
+
+                function goToUploadProof() {
+            if (!SELECTED_INVOICE_NUMBER) {
+                alert("Facture non chargée");
+                return;
+            }
+
+            window.location.href =
+                `TeleverserCompagnie.html?numero=${encodeURIComponent(SELECTED_INVOICE_NUMBER)}`;
+        }
+
+        function goToContestInvoice() {
+            if (!SELECTED_INVOICE_NUMBER) {
+                alert("Facture non chargée");
+                return;
+            }
+
+            window.location.href =
+                `ContestationCompagnie.html?numero=${encodeURIComponent(SELECTED_INVOICE_NUMBER)}`;
+        }
+
+    </script>
+</body>
+</html>

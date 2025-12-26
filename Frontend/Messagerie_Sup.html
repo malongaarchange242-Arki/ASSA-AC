@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Messagerie — ASSA-AC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="Messagerie_Sup.css">
+</head>
+
+<body class="messenger-body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span>Tableau de
+                            Bord</span></a></li>
+                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span>Opérations
+                            Sensibles</span></a></li>
+                <li><a href="Messagerie_Sup.html"><i class="fa-solid fa-envelope"></i><span>Messagerie</span></a></li>
+                <li><a href="#"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i
+                    class="fa-solid fa-moon"></i><span>Mode</span></button>
+            <button class="btn-danger" type="button"><i
+                    class="fa-solid fa-right-from-bracket"></i><span>Déconnexion</span></button>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-wrapper">
+
+        <!-- TOPBAR -->
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <h2 class="page-title">Centre de Messagerie</h2>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span
+                            class="notif-badge">3</span></button>
+                </div>
+
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button"><span
+                            class="avatar">SA</span></button>
+                    <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-user"></i> Profil</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-gear"></i> Paramètres</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-right-from-bracket"></i>
+                            Déconnexion</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="content-area">
+            <div class="messaging-container">
+                <div class="msg-sidebar">
+                    <div class="msg-tabs">
+                        <button class="tab-btn active" data-tab="admins">Admins</button>
+                        <button class="tab-btn" data-tab="companies">Compagnies</button>
+                    </div>
+                    <div id="contactList" class="contact-list">
+                    </div>
+                </div>
+
+                <div class="chat-window">
+                    <div id="chatHeader" class="chat-header">
+                        <div class="active-user-info">
+                            <div class="status-dot"></div>
+                            <span id="activeContactName">Sélectionnez une discussion</span>
+                        </div>
+                    </div>
+
+                    <div id="chatBody" class="chat-body">
+                        <div class="welcome-msg">
+                            <i class="fa-solid fa-message"></i>
+                            <p>Sélectionnez un contact pour démarrer une conversation sécurisée.</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-footer">
+                        <input type="text" id="msgInput" placeholder="Écrivez votre message ici..." autocomplete="off">
+                        <button id="sendMsg"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="Messagerie_Sup.js"></script>
+</body>
+
+</html>
