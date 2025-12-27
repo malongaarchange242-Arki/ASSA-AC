@@ -74,8 +74,7 @@ function changePage(page) {
 async function loadCompanyInfo() {
     try {
         const response = await fetch(`${API_BASE}/api/companies/me`, {
-            method: "GET",
-            credentials: "include" // 🔑 envoie automatiquement le cookie
+            credentials: "include" // ✅ le cookie token est envoyé automatiquement
         });
 
         if (response.status === 401 || response.status === 403) {
@@ -110,7 +109,6 @@ async function loadCompanyInfo() {
             logoEl.src = company.logo_url?.trim()
                 ? company.logo_url
                 : "https://placehold.co/40x40/1e40af/ffffff?text=?";
-
             logoEl.alt = company.company_name || "Logo compagnie";
         }
 
@@ -118,8 +116,6 @@ async function loadCompanyInfo() {
         console.error("❌ Erreur réseau loadCompanyInfo() :", err);
     }
 }
-
-
 
 // ====================================================================
 // 📌 GESTION DU THÈME
@@ -161,32 +157,28 @@ function toggleTheme() {
 async function loadInvoices() {
     try {
         const response = await fetch(`${API_BASE}/api/factures`, {
-            method: "GET",
-            credentials: "include" // 🔑 envoie le cookie JWT
+            credentials: "include" // ✅ envoie le cookie JWT automatiquement
         });
 
         if (response.status === 401 || response.status === 403) {
-            console.error("🔒 Session expirée ou non autorisée");
+            console.error("🔒 Session expirée ou accès refusé");
             return;
         }
 
         if (!response.ok) {
-            console.error("❌ Erreur API /api/factures :", response.status);
+            console.error("❌ Erreur API :", response.status);
             return;
         }
 
         ALL_INVOICES = await response.json(); // ⬅️ toutes les factures de la compagnie connectée
 
-        CURRENT_PAGE = 1;
-        renderInvoices(getPaginatedInvoices());
-        renderPaginationControls();
-        applySearch(); // ⬅️ recherche + tri
+        renderInvoices(ALL_INVOICES);
+        applySearch();
 
     } catch (err) {
         console.error("❌ Erreur loadInvoices() :", err);
     }
 }
-
 
 function applySearch() {
     const searchValue = document.getElementById("search-input").value.trim().toLowerCase();

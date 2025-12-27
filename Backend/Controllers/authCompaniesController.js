@@ -179,7 +179,6 @@ export const validateOtpAndSetPassword = async (req, res) => {
 export const loginCompany = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
@@ -195,9 +194,7 @@ export const loginCompany = async (req, res) => {
     }
 
     if (!company.password_hash) {
-      return res.status(401).json({
-        message: 'Veuillez d\'abord définir votre mot de passe.'
-      });
+      return res.status(401).json({ message: 'Veuillez d\'abord définir votre mot de passe.' });
     }
 
     const passwordOk = await bcrypt.compare(password, company.password_hash);
@@ -205,9 +202,6 @@ export const loginCompany = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // ======================
-    // PAYLOAD JWT
-    // ======================
     const payload = {
       id: company.id,
       email: company.email,
@@ -221,21 +215,17 @@ export const loginCompany = async (req, res) => {
     });
 
     const refreshToken = jwt.sign(
-      { id: company.id, role: 'company' },
+      { id: company.id, role: 'Company' },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: '7d' }
     );
 
-    // ======================
-    // COOKIE CONFIG (LOCAL + PROD)
-    // ======================
     const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: isProd,                   // ❗ false en local
-      sameSite: isProd ? 'None' : 'Lax', // ❗ Lax en local
-      path: '/',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000
     });
 
@@ -243,13 +233,9 @@ export const loginCompany = async (req, res) => {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'None' : 'Lax',
-      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    // ======================
-    // LOG & LAST LOGIN
-    // ======================
     await supabase
       .from('companies')
       .update({ last_login: new Date() })
@@ -266,6 +252,8 @@ export const loginCompany = async (req, res) => {
 
     return res.json({
       message: 'Connexion réussie',
+      token,
+      refreshToken,
       id_companie: company.id,
       company_name: company.company_name
     });
@@ -277,25 +265,22 @@ export const loginCompany = async (req, res) => {
 };
 
 
-// ----------------- Profil de la compagnie -----------------
 export const me = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Non authentifié' });
     }
 
-    // ⛔ Refus si pas un compte compagnie
     if (req.user.role !== 'company') {
-      return res.status(403).json({
-        error: 'NOT_COMPANY_ACCOUNT',
-        message: 'Ce compte n’est pas un compte compagnie'
+      return res.json({
+        message: 'Profil utilisateur',
+        user: req.user
       });
     }
 
     if (!req.user.id_companie) {
-      return res.status(404).json({
-        error: 'COMPANY_NOT_LINKED',
-        message: 'Aucune compagnie liée à ce compte'
+      return res.status(401).json({
+        message: 'Token compagnie invalide'
       });
     }
 
@@ -318,22 +303,22 @@ export const me = async (req, res) => {
       .eq('id', req.user.id_companie)
       .single();
 
-    if (error || !data) {
-      return res.status(404).json({
-        error: 'COMPANY_NOT_FOUND'
-      });
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ message: 'Erreur serveur' });
     }
 
     return res.json({
+      message: 'Profil compagnie',
+      user: req.user,
       company: data
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('me controller error:', err);
     return res.status(500).json({ message: 'Erreur serveur' });
   }
 };
-
 
 // ----------------- REFRESH TOKEN COMPAGNIE -----------------
 export const refreshTokenCompany = async (req, res) => {
@@ -367,18 +352,18 @@ export const refreshTokenCompany = async (req, res) => {
     const payload = {
       id: company.id,
       email: company.email,
-      role: 'company',
+      role: 'Company',
       company_name: company.company_name,
       id_companie: company.id
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
 
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
-      path: '/',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000
     });
 
@@ -391,6 +376,8 @@ export const refreshTokenCompany = async (req, res) => {
 
 export const logoutCompany = async (req, res) => {
   try {
+    const isProd = process.env.NODE_ENV === 'production';
+
     await supabase
       .from('companies')
       .update({ status: 'Inactif' })
@@ -398,15 +385,15 @@ export const logoutCompany = async (req, res) => {
 
     res.clearCookie('token', {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       path: '/'
     });
 
     res.clearCookie('refreshToken', {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax',
       path: '/'
     });
 
