@@ -1,55 +1,55 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Référence au bouton de bascule
-       const themeToggle = document.getElementById('theme-toggle');
-       const body = document.body;
-   
-       // 2. Fonction pour appliquer le thème
-       function applyTheme(theme) {
-           if (theme === 'dark') {
-               body.classList.add('dark-mode');
-               localStorage.setItem('theme', 'dark');
-               if (themeToggle) {
-                   // Icône Soleil pour passer au mode clair
-                   themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                   themeToggle.title = "Passer au Mode Clair";
-               }
-           } else {
-               body.classList.remove('dark-mode');
-               localStorage.setItem('theme', 'light');
-               if (themeToggle) {
-                   // Icône Lune pour passer au mode sombre
-                   themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-                   themeToggle.title = "Passer au Mode Sombre";
-               }
-           }
-       }
-   
-       // 3. Détecter et appliquer le thème au chargement
-       const savedTheme = localStorage.getItem('theme');
-       if (savedTheme) {
-           applyTheme(savedTheme);
-       } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-           // Utiliser la préférence système si aucune n'est enregistrée
-           applyTheme('dark');
-       } else {
-           applyTheme('light'); // Par défaut au mode clair
-       }
-   
-       // 4. Écouteur d'événement pour le basculement
-       if (themeToggle) {
-           themeToggle.addEventListener('click', () => {
-               const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
-               const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-               applyTheme(newTheme);
-           });
-       }
-   });
-   
+    const themeToggle = document.getElementById('theme-toggle');
+    const body = document.body;
+
+    // 2. Fonction pour appliquer le thème
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+            if (themeToggle) {
+                // Icône Soleil pour passer au mode clair
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                themeToggle.title = "Passer au Mode Clair";
+            }
+        } else {
+            body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+            if (themeToggle) {
+                // Icône Lune pour passer au mode sombre
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                themeToggle.title = "Passer au Mode Sombre";
+            }
+        }
+    }
+
+    // 3. Détecter et appliquer le thème au chargement
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        // Utiliser la préférence système si aucune n'est enregistrée
+        applyTheme('dark');
+    } else {
+        applyTheme('light'); // Par défaut au mode clair
+    }
+
+    // 4. Écouteur d'événement pour le basculement
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+    }
+});
+
 
 document.addEventListener('DOMContentLoaded', async () => {
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'https://assa-ac-jyn4.onrender.com';
+        return origin.includes(':5002') ? origin : 'http://localhost:5002';
     })();
 
     const adminTokenKey = 'jwtTokenAdmin';
@@ -62,8 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let role = localStorage.getItem(adminTokenKey)
         ? 'admin'
         : localStorage.getItem(companyTokenKey)
-        ? 'company'
-        : null;
+            ? 'company'
+            : null;
 
     let userEmail =
         role === 'admin'
@@ -111,6 +111,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+
+
     // =========================
     // FETCH AUTH
     // =========================
@@ -142,3 +144,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         return data;
     }
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    const aside = document.getElementById('facture-aside');
+    const toggleAsideBtn = document.getElementById('toggleAside');
+
+    if (toggleAsideBtn && aside) {
+        toggleAsideBtn.addEventListener('click', async (e) => {
+            e.preventDefault(); // empêche d’ouvrir une autre page
+
+            try {
+                const res = await fetch('enregistrefacture.html'); // ton fichier formulaire
+                const html = await res.text();
+
+                aside.innerHTML = html + `
+          <div class="p-4 text-center">
+            <button id="closeAside" class="icon-btn bg-red-600 text-white px-4 py-2 rounded-lg">
+              <i class="fas fa-times"></i> Fermer
+            </button>
+          </div>
+        `;
+                aside.classList.add('open');
+
+                // bouton fermer
+                document.getElementById('closeAside').addEventListener('click', () => {
+                    aside.classList.remove('open');
+                });
+            } catch (err) {
+                aside.innerHTML = '<p class="p-4 text-red-600">Erreur de chargement du formulaire.</p>';
+                aside.classList.add('open');
+            }
+        });
+    }
+});
+

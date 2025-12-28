@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Administration — ASSA-AC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="Acceuil_Superviseur.css">
+</head>
+
+<body>
+
+    <aside class="sidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span>Tableau de
+                            Bord</span></a></li>
+                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span>Opérations
+                            Sensibles</span></a></li>
+                <li><a href="#"><i class="fa-solid fa-envelope"></i><span>Messagerie</span></a></li>
+                <li><a href="#"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i
+                    class="fa-solid fa-moon"></i><span>Mode</span></button>
+            <button class="btn-danger" type="button"><i
+                    class="fa-solid fa-right-from-bracket"></i><span>Déconnexion</span></button>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <h2 class="page-title">Statistiques Globales</h2>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span
+                            class="notif-badge">3</span></button>
+                </div>
+
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button"><span
+                            class="avatar">SA</span></button>
+                    <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-user"></i> Profil</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-gear"></i> Paramètres</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-right-from-bracket"></i>
+                            Déconnexion</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon admins"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Admis (Staff)</span>
+                        <span class="stat-value" data-target="12">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon companies"><i class="fa-solid fa-building-shield"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Compagnies</span>
+                        <span class="stat-value" data-target="48">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon disputes"><i class="fa-solid fa-file-circle-exclamation"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Contestations</span>
+                        <span class="stat-value" data-target="154">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon validated"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Validées</span>
+                        <span class="stat-value" data-target="1240">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="table-wrap">
+                <div class="page-header">
+                    <h3>Dernières Activités</h3>
+                </div>
+                <table class="ops-table">
+                    <thead>
+                        <tr>
+                            <th>Admis / Agent</th>
+                            <th>Action</th>
+                            <th>Cible</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Admin_Julie</td>
+                            <td>Validation</td>
+                            <td>OP-003</td>
+                            <td>Aujourd'hui</td>
+                        </tr>
+                        <tr>
+                            <td>Admin_Marc</td>
+                            <td>Suppression</td>
+                            <td>OP-009</td>
+                            <td>Hier</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <aside id="detailPanel" class="detail-panel">
+        <div class="detail-head">
+            <h3>Détails</h3>
+            <button id="closeDetail" class="btn-ghost" style="color: var(--muted); border:none;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="detail-body">
+            <dl>
+                <dt>Agent :</dt>
+                <dd id="det-agent">-</dd>
+                <dt>Action :</dt>
+                <dd id="det-action">-</dd>
+                <dt>ID Cible :</dt>
+                <dd id="det-id">-</dd>
+                <dt>Date :</dt>
+                <dd id="det-date">-</dd>
+            </dl>
+            <h4 style="margin-top:20px">Commentaire</h4>
+            <div class="motif">Action effectuée via le terminal d'administration standard.</div>
+        </div>
+        <div class="detail-actions">
+            <button class="table-btn validate" style="flex:1">Approuver</button>
+            <button class="btn-outline" style="flex:1">Fermer</button>
+        </div>
+    </aside>
+
+    <script src="Acceuil_Superviseur.js"></script>
+</body>
+
+</html>

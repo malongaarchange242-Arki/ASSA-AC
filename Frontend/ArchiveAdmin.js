@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
-    const API_BASE = 'https://assa-ac-jyn4.onrender.com;
+    const API_BASE = 'http://localhost:5002';
 
     /* =====================================================
        AUTH
@@ -345,24 +345,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentArchive = a;
         modalTitle.textContent = a.type;
         modalContent.innerHTML = renderArchiveDetails(a);
-        modal.classList.add('active');
+        
+        // CORRECTION : Utilisez 'open' pour correspondre au CSS du Side Panel
+        modal.classList.add('open'); 
     };
-
+    
+    // Écouteur sur le modal (Side Panel)
     modal.addEventListener('click', (e) => {
-
-        if (e.target.closest('.btn-pdf')) {
+        // 1. Détection du bouton PDF
+        // On utilise e.currentTarget si besoin, mais closest est très bien
+        const pdfBtn = e.target.closest('.btn-pdf') || e.target.closest('.pdf-btn');
+        
+        if (pdfBtn) {
+            // Empêche la fermeture du modal lors du clic sur le bouton
+            e.preventDefault();
+            e.stopPropagation(); 
+            
             if (!currentArchive) return alert('Aucune archive sélectionnée');
             generateArchivePDF(currentArchive);
+            return; 
         }
-
+    
+        // 2. Gestion de la fermeture
         if (
-            e.target.classList.contains('close-modal') ||
-            e.target.classList.contains('close-btn')
+            e.target.closest('.close-btn') || 
+            e.target === modal // Clic sur l'overlay (fond gris)
         ) {
-            modal.classList.remove('active');
+            modal.classList.remove('open');
         }
     });
-
     const renderArchiveDetails = (a) => `
         <div class="modal-section">
             <h4>Informations générales</h4>

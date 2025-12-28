@@ -1,11 +1,11 @@
 // ======================= CONSTANTES =======================
-const API_BASE = 'https://assa-ac-jyn4.onrender.com'; // Base URL pour tous les appels API
+const API_BASE = 'http://localhost:5002'; // Base URL pour tous les appels API
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;
 
 // === IMPORTANT : REMPLACEZ CECI PAR LE CHEMIN D'ACCÈS RÉEL DE VOTRE LOGO ===
-const LOGO_URL = 'logo.jpeg'; 
+const LOGO_URL = 'logo.jpeg';
 // =========================================================================
 
 const itemsContainer = document.getElementById('items-container');
@@ -25,11 +25,11 @@ let rowCounter = 0;
 let companiesData = {}; // mapping: company_name -> { id, airport, city }
 
 // ======================= UTILITAIRES =======================
-function showMessage(msg, type='info') {
+function showMessage(msg, type = 'info') {
     formMessage.textContent = msg;
     const baseClasses = 'text-center p-3 mb-6 rounded-xl font-medium border transition-opacity duration-300';
     let typeClasses = '';
-    
+
     switch (type) {
         case 'success':
             typeClasses = 'bg-green-100 border-green-400 text-green-700';
@@ -42,10 +42,10 @@ function showMessage(msg, type='info') {
             typeClasses = 'bg-blue-100 border-blue-400 text-blue-700';
             break;
     }
-    
+
     formMessage.className = `${baseClasses} ${typeClasses}`;
     formMessage.classList.remove('hidden');
-    setTimeout(() => formMessage.classList.add('hidden'), 5000); 
+    setTimeout(() => formMessage.classList.add('hidden'), 5000);
 }
 
 function getAdminToken() {
@@ -58,7 +58,7 @@ function getAdminToken() {
         return token;
     } catch (err) {
         if (token) console.error("Token invalide:", err.message);
-        return null; 
+        return null;
     }
 }
 
@@ -80,27 +80,27 @@ function numberToWords(n) {
         if (n < 10) return unites[n];
         if (n >= 10 && n <= 16) return exceptions[n - 10];
         if (n < 20) return dizaines[1] + (n % 10 !== 0 ? '-' + unites[n % 10] : '');
-        
+
         let d = Math.floor(n / 10);
         let u = n % 10;
-        
+
         if (d === 7 || d === 9) { // 70-79 et 90-99
             d--;
-            u += 10; 
+            u += 10;
             let mots = dizaines[d];
-            if (d === 8 && u === 0) mots = dizaines[8]; 
+            if (d === 8 && u === 0) mots = dizaines[8];
             else if (d === 8 && u > 0) mots = dizaines[8] + '-' + convertSmall(u);
             else mots += '-' + convertSmall(u);
-            return mots.replace('dix-dix', 'dix').replace('dix-un', 'onze'); 
+            return mots.replace('dix-dix', 'dix').replace('dix-un', 'onze');
         }
-        
+
         let mots = dizaines[d];
         if (u === 1 && d !== 8) mots += ' et un';
         else if (u > 0) mots += '-' + unites[u];
-        
+
         return mots;
     }
-    
+
     function convertHundreds(n) {
         if (n === 0) return '';
         if (n < 100) return convertSmall(n);
@@ -108,12 +108,12 @@ function numberToWords(n) {
         let c = Math.floor(n / 100);
         let r = n % 100;
         let mots = c === 1 ? 'cent' : unites[c] + ' cents';
-        
+
         if (r > 0) {
-            if (c > 1 && r === 0) mots = mots.slice(0, -1); 
+            if (c > 1 && r === 0) mots = mots.slice(0, -1);
             mots += ' ' + convertSmall(r);
         } else if (c > 1 && r === 0) {
-            mots = unites[c] + ' cents'; 
+            mots = unites[c] + ' cents';
         }
         return mots.replace('un cents', 'cent');
     }
@@ -124,17 +124,17 @@ function numberToWords(n) {
         let m = Math.floor(num / 1000);
         let r = num % 1000;
         let mots = convertHundreds(m).replace('cent ', 'cent').replace('cents ', 'cents') + ' mille';
-        
+
         if (r > 0) {
             mots += ' ' + convertHundreds(r);
         } else if (m === 1) {
             mots = 'mille';
         }
 
-        return mots.replace('un mille', 'mille'); 
+        return mots.replace('un mille', 'mille');
     }
-    
-    return formatNumber(num); 
+
+    return formatNumber(num);
 }
 
 
@@ -150,9 +150,9 @@ function calculateTotals() {
     itemsContainer.querySelectorAll('tr').forEach(row => {
         const qty = parseFloat(row.querySelector('input[name="qty"]')?.value) || 0;
         const zone = row.querySelector('select[name="zone"]')?.value;
-        
+
         const price = getPriceByZone(zone);
-        
+
         const priceValueInput = row.querySelector('input[name="price_value"]');
         if (priceValueInput) priceValueInput.value = price;
 
@@ -165,8 +165,8 @@ function calculateTotals() {
 
     grandTotalSpan.textContent = `${formatNumber(grandTotal)} ${CURRENCY}`;
     const totalNum = Math.round(grandTotal);
-    
-    const totalWords = numberToWords(totalNum).replace(/-/g, ' '); 
+
+    const totalWords = numberToWords(totalNum).replace(/-/g, ' ');
     totalInWords.textContent = `Arrêtée la présente facture à la somme de ${totalWords.toUpperCase()} (${formatNumber(totalNum)}) ${CURRENCY}.`;
 }
 
@@ -174,7 +174,7 @@ function addItemRow() {
     rowCounter++;
     const newRow = document.createElement('tr');
     newRow.className = "hover:bg-gray-50 transition duration-100";
-    
+
     newRow.innerHTML = `
         <td class="px-2 py-2 text-center text-sm font-medium border-r border-formal-border cell-numero">
             <span name="line-number">${itemsContainer.children.length + 1}</span>
@@ -238,9 +238,9 @@ async function loadClients() {
         });
         return;
     }
-    
+
     try {
-        const response = await fetch(`${API_BASE}/api/companies/all`, { 
+        const response = await fetch(`${API_BASE}/api/companies/all`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -271,10 +271,10 @@ clientSelect.addEventListener('change', e => {
     const selected = e.target.value;
     if (companiesData[selected]) {
         airportInput.value = companiesData[selected].airport;
-        issueLocationInput.value = companiesData[selected].city || ''; 
+        issueLocationInput.value = companiesData[selected].city || '';
     } else {
         airportInput.value = '';
-        issueLocationInput.value = ""; 
+        issueLocationInput.value = "";
     }
 });
 
@@ -348,7 +348,7 @@ function showPreview() {
                 <td class="text-right font-bold">${total.split(' ')[0]}</td>
             </tr>`;
         }).join('');
-        
+
         // 2. Variables
         const clientName = clientSelect.value || "Non spécifié";
         const airport = airportInput.value || "Non spécifié";
@@ -477,7 +477,7 @@ function showPreview() {
         `;
 
         previewContent.innerHTML = previewHTML;
-        document.getElementById('form-area').classList.add('hidden'); 
+        document.getElementById('form-area').classList.add('hidden');
         modalWrapper.classList.remove('hidden');
         modalWrapper.scrollTop = 0;
 
@@ -505,7 +505,7 @@ function printPreview() {
         document.body.appendChild(iframe);
 
         const doc = iframe.contentWindow.document;
-        
+
         // Les styles de print sont inclus dans le HTML
         doc.open();
         doc.write(`
@@ -536,7 +536,7 @@ function printPreview() {
         iframe.contentWindow.focus();
         setTimeout(() => {
             iframe.contentWindow.print();
-            
+
             setTimeout(() => {
                 document.body.removeChild(iframe);
             }, 2000);
@@ -582,19 +582,19 @@ async function sendInvoice(buttonElement) {
     const totalNumeric = items.reduce((sum, item) => sum + (Number(item.cout_total) || 0), 0);
 
     const compagnie = companiesData[clientSelect.value];
-    
+
     const invoiceData = {
         nom_client: clientSelect.value,
         objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
         periode: document.getElementById('period')?.value || '',
         aeroport: document.getElementById('airport')?.value || '',
         date_emission: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
-        lieu_emission: issueLocationInput.value || 'Pointe-Noire', 
+        lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
         montant_en_lettres: totalInWords.textContent || '',
         lignes: items,
-        id_companie: compagnie?.id || 1 
+        id_companie: compagnie?.id || 1
     };
 
     try {
@@ -622,11 +622,11 @@ async function sendInvoice(buttonElement) {
 
         showMessage('Facture envoyée avec succès !', 'success');
         closePreview();
-        
+
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
         showMessage('Erreur lors de l’envoi de la facture: ' + err.message, 'error');
-        
+
     } finally {
         // --- LOGIQUE ANTI-DOUBLE CLIC (Ajout - Réactivation) ---
         if (buttonElement) {
@@ -649,7 +649,7 @@ window.onload = () => {
 
         fetchNextInvoiceId();
         loadClients();
-        
+
         if (!itemsContainer.children.length) addItemRow();
         else calculateTotals();
 
@@ -664,6 +664,17 @@ function getPreviousMonthPeriod() {
     const date = new Date();
     date.setDate(1);
     date.setMonth(date.getMonth() - 1);
-    const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+    const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
     return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
+// Appliquer la préférence au chargement
+if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+}
+
+// Bascule et sauvegarde
+const toggle = document.getElementById('theme-toggle');
+toggle.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+});

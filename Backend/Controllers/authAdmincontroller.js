@@ -10,15 +10,15 @@ import {
   createArchive
 } from '../Services/archiveService.js';
 
-import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
+import { logActivite } from '../Services/journalService.js'; 
 
 
 /* ---------------------------------------------------------
    🔹 Profils spéciaux et permissions
 ----------------------------------------------------------*/
 const getProfileByPassword = (password) => {
-  if (password === 'ASSA2025A') return 'Administrateur';
-  if (password === 'ASSA2025S') return 'Super Admin';
+  if (password === 'ASSA2025A') return 'Superviseur';
+  if (password === 'ASSA2025SA') return 'Super Admin';
   return null;
 };
 
@@ -28,6 +28,78 @@ const getPermissions = (profile) => {
     case 'Superviseur': return ['view_companies','view_stats'];
     case 'Super Admin': return ['manage_admins','create_company','view_stats','all_access'];
     default: return [];
+  }
+};
+
+export const loginSuperviseur = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: 'Email et mot de passe requis'
+      });
+    }
+
+    const { data: user, error } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .eq('profile', 'Superviseur')
+      .eq('archived', false)
+      .single();
+
+    if (error || !user) {
+      return res.status(400).json({
+        message: 'Identifiants invalides'
+      });
+    }
+
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.status(400).json({
+        message: 'Identifiants invalides'
+      });
+    }
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: 'Superviseur',
+      nom_complet: user.nom_complet,
+      permissions: ['view_companies', 'view_stats']
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '12h'
+    });
+
+    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: '7d'
+    });
+
+    await logActivite({
+      type_activite: 'security',
+      categorie: 'auth',
+      module: 'superviseur-login',
+      description: 'Connexion Superviseur',
+      id_admin: user.id,
+      utilisateur_email: user.email
+    });
+
+    res.json({
+      message: 'Connexion Superviseur réussie',
+      jwtTokenAdmin: token,
+      refreshTokenAdmin: refreshToken,
+      role: payload.role,
+      permissions: payload.permissions
+    });
+
+  } catch (err) {
+    console.error('Erreur loginSuperviseur :', err);
+    res.status(500).json({
+      message: 'Erreur serveur',
+      erreur: err.message
+    });
   }
 };
 

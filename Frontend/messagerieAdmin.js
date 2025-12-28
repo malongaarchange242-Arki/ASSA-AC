@@ -2,9 +2,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // CONSTANTES
     // -----------------------
-    const API_BASE = 'https://assa-ac-jyn4.onrender.com';
+    const API_BASE = 'http://localhost:5002';
     const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
-                    API_BASE.replace(/^https?:\/\//,'').replace(/\/$/,'') + '/ws';
+        API_BASE.replace(/^https?:\/\//, '').replace(/\/$/, '') + '/ws';
 
     // -----------------------
     // ÉLÉMENTS DOM
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (chatInputArea.children.length >= 1) chatInputArea.insertBefore(previewContainer, chatInputArea.children[1]);
         else chatInputArea.appendChild(previewContainer);
     }
-    
+
     // Éléments du modal (nécessaires pour showModal/closeModal)
     const modal = document.getElementById('status-modal');
     const modalTitle = document.getElementById('modal-title');
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!modal) return console.warn('Modal non trouvé', title, message);
         if (modalTitle) modalTitle.textContent = title;
         if (modalMessage) modalMessage.innerHTML = message;
-        
+
         modal.classList.remove('invisible', 'opacity-0');
         modal.classList.add('visible', 'opacity-100');
     }
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         modal.classList.add('opacity-0');
         setTimeout(() => modal.classList.add('invisible'), 300);
     }
-    
+
     // Ajout de l'écouteur du bouton de fermeture du modal
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', closeModal);
@@ -102,55 +102,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // -----------------------
-        // NOTIFICATIONS
-        // -----------------------
-        function updateNotifBadge(count) {
-            if (!notifBadge) return;
+    // NOTIFICATIONS
+    // -----------------------
+    function updateNotifBadge(count) {
+        if (!notifBadge) return;
 
-            if (count > 0) {
-                notifBadge.hidden = false;
-                notifBadge.textContent = count > 99 ? '99+' : count;
-            } else {
-                notifBadge.hidden = true;
-                notifBadge.textContent = '0';
-            }
+        if (count > 0) {
+            notifBadge.hidden = false;
+            notifBadge.textContent = count > 99 ? '99+' : count;
+        } else {
+            notifBadge.hidden = true;
+            notifBadge.textContent = '0';
         }
+    }
 
-        function incrementNotif() {
-            if (!notifBadge) return;
-            const current = parseInt(notifBadge.textContent || '0', 10);
-            updateNotifBadge(current + 1);
+    function incrementNotif() {
+        if (!notifBadge) return;
+        const current = parseInt(notifBadge.textContent || '0', 10);
+        updateNotifBadge(current + 1);
+    }
+
+    async function fetchUnreadCount() {
+        try {
+            const session = getSessionInfo();
+            if (!session) return;
+
+            const url = session.role === 'admin'
+                ? `${API_BASE}/api/messages/unread/admin`
+                : `${API_BASE}/api/messages/unread/company`;
+
+            const res = await fetchWithAuth(url);
+            const count = res?.count ?? res ?? 0;
+            updateNotifBadge(count);
+        } catch (e) {
+            console.warn('Erreur récupération notifications', e);
         }
+    }
 
-        async function fetchUnreadCount() {
-            try {
-                const session = getSessionInfo();
-                if (!session) return;
-
-                const url = session.role === 'admin'
-                    ? `${API_BASE}/api/messages/unread/admin`
-                    : `${API_BASE}/api/messages/unread/company`;
-
-                const res = await fetchWithAuth(url);
-                const count = res?.count ?? res ?? 0;
-                updateNotifBadge(count);
-            } catch (e) {
-                console.warn('Erreur récupération notifications', e);
-            }
+    async function markConversationAsRead(companyId) {
+        try {
+            if (!companyId) return;
+            await fetchWithAuth(
+                `${API_BASE}/api/messages/mark-read/${companyId}`,
+                { method: 'PUT' }
+            );
+            fetchUnreadCount();
+        } catch (e) {
+            console.warn('Erreur mark as read', e);
         }
-
-        async function markConversationAsRead(companyId) {
-            try {
-                if (!companyId) return;
-                await fetchWithAuth(
-                    `${API_BASE}/api/messages/mark-read/${companyId}`,
-                    { method: 'PUT' }
-                );
-                fetchUnreadCount();
-            } catch (e) {
-                console.warn('Erreur mark as read', e);
-            }
-        }
+    }
 
 
 
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
             const rawRole = (payload.role || payload.profile || '').toLowerCase();
-            const isAdmin = ['administrateur','superviseur','super admin','admin'].includes(rawRole);
+            const isAdmin = ['administrateur', 'superviseur', 'super admin', 'admin'].includes(rawRole);
             return {
                 token,
                 adminId: payload.id || payload.admin_id || localStorage.getItem('adminId'),
@@ -199,23 +199,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!m.id) m.id = 'temp-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         if (displayedMessages.has(m.id) && !temp) return null;
         displayedMessages.add(m.id);
-    
+
         // -----------------------
         // SENT / RECEIVED
         // -----------------------
         const isSent = m.sender_role === 'admin';
-    
+
         // -----------------------
         // RENDER
         // -----------------------
         const wrapper = document.createElement('div');
         wrapper.className = `message ${isSent ? 'message-admin' : 'message-client'}`;
         wrapper.dataset.msgId = m.id;
-    
+
         if (temp) wrapper.classList.add('message-temp', 'message-sending');
         if (sending) wrapper.classList.add('message-sending');
         if (failed) wrapper.classList.add('message-failed');
-    
+
         // Content
         if (m.content) {
             const p = document.createElement('div');
@@ -223,22 +223,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             p.textContent = m.content;
             wrapper.appendChild(p);
         }
-    
+
         // Attachments
         const attachments = payload.attachments || [];
         attachments.forEach(att => {
             const a = document.createElement('a');
             a.href = att.file_url || att.url || (att instanceof File ? URL.createObjectURL(att) : '#');
             a.target = '_blank';
-    
+
             const attDiv = document.createElement('div');
             attDiv.className = 'attachment';
             attDiv.textContent = att.file_name || att.name || (att instanceof File ? att.name : 'Pièce jointe');
             a.appendChild(attDiv);
-    
+
             wrapper.appendChild(a);
         });
-    
+
         // Timestamp
         if (m.created_at) {
             const t = document.createElement('div');
@@ -246,14 +246,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             t.textContent = new Date(m.created_at).toLocaleString();
             wrapper.appendChild(t);
         }
-    
+
         chatMessagesContent.appendChild(wrapper);
         scrollChatBottom();
-    
+
         if (returnElement) return wrapper;
         return null;
     }
-    
+
     // -----------------------
     // WEBSOCKET
     // -----------------------
@@ -281,48 +281,48 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const payload = JSON.parse(evt.data);
                 if (payload.type !== 'message') return;
-        
+
                 const msg = payload.message || payload;
                 const msgCompanyId = msg?.id_companie || msg?.company_id || null;
                 if (!msgCompanyId || !msg.id) return;
-        
+
                 // 🟡 Message pour une autre compagnie → incrément badge
                 if (String(msgCompanyId) !== String(selectedIdCompanie)) {
                     incrementNotif();
                     return;
                 }
-        
+
                 // 🟢 Message pour la conversation ouverte
                 // Marquer comme lu uniquement si je suis le destinataire
                 if (msg.sender_role !== getSessionInfo()?.role?.toLowerCase()) {
                     markConversationAsRead(msgCompanyId);
                 }
-        
+
                 // 🔁 Remplacement message temporaire
                 const clientTempId = msg.client_temp_id || msg.temp_id;
                 if (clientTempId && tempMessageMap.has(clientTempId)) {
                     const tempEl = tempMessageMap.get(clientTempId);
                     const realEl = renderMessage(msg, { returnElement: true });
-        
+
                     if (realEl && tempEl && tempEl.parentNode) {
                         tempEl.parentNode.replaceChild(realEl, tempEl);
                     }
-        
+
                     tempMessageMap.delete(clientTempId);
                     displayedMessages.delete(clientTempId);
                     return;
                 }
-        
+
                 // ⛔ Éviter doublons
                 if (displayedMessages.has(msg.id)) return;
-        
+
                 renderMessage(msg);
-        
+
             } catch (e) {
                 console.warn('WS message non valide', e);
             }
         };
-        
+
         ws.onerror = err => console.error('Erreur WS:', err);
         ws.onclose = () => {
             ws = null;
@@ -383,15 +383,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             previewContainer.appendChild(div);
         });
-        
+
         // Afficher/Cacher la preview container si nécessaire
         previewContainer.style.display = selectedFiles.length > 0 ? 'flex' : 'none';
     }
 
     attachBtn.addEventListener('click', () => attachmentInput.click());
-    attachmentInput.addEventListener('change', (e) => { 
-        selectedFiles = Array.from(e.target.files || []); 
-        updatePreview(); 
+    attachmentInput.addEventListener('change', (e) => {
+        selectedFiles = Array.from(e.target.files || []);
+        updatePreview();
     });
 
     // -----------------------
@@ -514,11 +514,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value.trim(), selectedFiles));
-    messageInput.addEventListener('keydown', (e) => { 
-        if (e.key === 'Enter' && !e.shiftKey) { 
-            e.preventDefault(); 
-            sendBtn.click(); 
-        } 
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.click();
+        }
     });
 
     // -----------------------
@@ -595,8 +595,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // INIT & THEME MANAGEMENT
     // -----------------------
 
-    
-    
+
+
     // --- MODE SOMBRE LOGIC ---
     const themeToggle = document.getElementById('theme-toggle');
 
@@ -605,14 +605,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.classList.add('dark-mode');
             if (themeToggle) {
                 // Utilisation de Font Awesome pour les icônes
-                themeToggle.querySelector('i').className = 'fas fa-sun'; 
+                themeToggle.querySelector('i').className = 'fas fa-sun';
                 themeToggle.title = 'Mode Clair';
             }
             localStorage.setItem('theme', 'dark');
         } else {
             document.body.classList.remove('dark-mode');
             if (themeToggle) {
-                themeToggle.querySelector('i').className = 'fas fa-moon'; 
+                themeToggle.querySelector('i').className = 'fas fa-moon';
                 themeToggle.title = 'Mode Sombre';
             }
             localStorage.setItem('theme', 'light');
@@ -643,20 +643,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- INITIALISATION GENERALE ---
     (function init() {
-    updatePreview();
-    fetchCompaniesActive();
+        updatePreview();
+        fetchCompaniesActive();
 
-    // 🔔 Charger les notifications au démarrage
-    fetchUnreadCount();
+        // 🔔 Charger les notifications au démarrage
+        fetchUnreadCount();
 
-    const saved = localStorage.getItem('id_companie');
-    if (saved) {
-        setTimeout(() => {
-            const el = Array.from(document.querySelectorAll('.conversation-item'))
-                .find(c => c.dataset.idCompanie === saved);
-            if (el) el.click();
-        }, 600);
-    }
-})();
+        const saved = localStorage.getItem('id_companie');
+        if (saved) {
+            setTimeout(() => {
+                const el = Array.from(document.querySelectorAll('.conversation-item'))
+                    .find(c => c.dataset.idCompanie === saved);
+                if (el) el.click();
+            }, 600);
+        }
+    })();
 
 });

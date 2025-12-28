@@ -1,343 +1,430 @@
-/* ================= VARIABLES CSS ================= */
+/* ================== VARIABLES ================== */
 :root {
-    --primary-blue: #1A73E8;
-    --dark-blue: #0B3F7B;
-    --light-bg: #F5F7FA;
-    --text-color: #3C4043;
-    --border-color: #DADCE0;
-    --sidebar-width: 250px;
-    --alert-red: #D93025;
-    
-    /* Couleurs d'Actions (pour le journal) */
-    --action-create: #34A853;     /* Vert (Création) */
-    --action-update: #F9AB00;     /* Jaune (Modification) */
-    --action-delete: #D93025;     /* Rouge (Suppression/Archivage) */
-    --action-login: #1A73E8;      /* Bleu (Connexion/Système) */
-    
-    /* Couleur de la nav bar */
-    --nav-text-default: #E0E0E0;
+    --bg: #f6f8fb;
+    --panel: #ffffff;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+    --radius: 12px;
+    --sidebar: #0f1724;
+    --sidebar-width: 260px;
 
-    /* NOUVELLES VARIABLES DARK MODE */
-    --dark-bg-main: #121212;
-    --dark-surface: #1E1E1E; /* Pour les conteneurs (header, log-container, filtres) */
-    --dark-text-color: #E0E0E0;
-    --dark-secondary-text: #A0A0A0; /* Pour les metadata et textes secondaires */
-    --dark-border-color: #333333;
-    --dark-list-hover-bg: #2A2A2A;
-    --dark-list-active-bg: rgba(26,115,232,0.2);
-    --dark-primary-blue-adjusted: #5499F4; /* Bleu légèrement éclairci pour Dark Mode */
+    --border-color: rgba(15, 23, 36, 0.08);
+    --overlay-bg: rgba(0, 0, 0, 0.4);
+    --aside-width: 520px;
+
+    --notif-red: #ef4444;
+    --muted-2: #9aa3b2;
+
+    /* Variables ajoutées pour corriger les couleurs manquantes */
+    --dark-blue: #1e3a8a;
+    --text-color: #0f1724;
+    --primary-blue: #2563eb;
+    --light-bg: #e5e7eb;
+
+    --action-create: #10b981;
+    /* vert */
+    --action-update: #3b82f6;
+    /* bleu */
+    --action-delete: #ef4444;
+    /* rouge */
+    --action-login: #f59e0b;
+    /* orange */
 }
 
-/* ================= DARK MODE STYLES ================= */
+/* ================== DARK MODE ================== */
 body.dark-mode {
-    /* Mise à jour des variables de base */
-    background-color: var(--dark-bg-main);
-    color: var(--dark-text-color);
-    --text-color: var(--dark-text-color);
-    --border-color: var(--dark-border-color);
-    
-    /* Variables spécifiques */
-    --nav-text-default: var(--dark-secondary-text); 
+    background: linear-gradient(180deg, #071226 0%, #041022 100%);
+    color: #dbeafe;
 }
 
-/* ---------------- Sidebar (Dark Mode) ---------------- */
 body.dark-mode .sidebar {
-    background-color: var(--dark-surface);
-    color: var(--dark-text-color);
-    box-shadow: 2px 0 5px rgba(255,255,255,0.05);
+    background: linear-gradient(180deg, #041022, #02101a);
+    box-shadow: 4px 0 18px rgba(0, 0, 0, 0.6);
 }
 
-body.dark-mode .logo-text {
-    color: var(--dark-primary-blue-adjusted);
+body.dark-mode .nav-menu a {
+    color: rgba(255, 255, 255, 0.92);
 }
 
-body.dark-mode .nav-menu a, 
-body.dark-mode .sidebar-bottom a { 
-    color: var(--nav-text-default);
-}
-body.dark-mode .nav-menu a:hover, 
-body.dark-mode .sidebar-bottom a:hover { 
-    background-color: var(--dark-list-hover-bg); 
-    border-left-color: var(--dark-primary-blue-adjusted);
-}
-body.dark-mode .nav-menu a.active { 
-    background-color: var(--dark-list-active-bg); 
-    color: var(--dark-text-color);
-    border-left-color: var(--dark-text-color); 
+body.dark-mode .nav-menu a.active {
+    background: rgba(255, 255, 255, 0.04);
 }
 
-/* ---------------- Header & Search (Dark Mode) ---------------- */
 body.dark-mode .header {
-    background-color: var(--dark-surface);
-    box-shadow: 0 1px 4px rgba(255, 255, 255, 0.05);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    background: transparent;
 }
 
-body.dark-mode .search-bar input {
-    background-color: #2D2D2D;
-    color: var(--dark-text-color);
-    border-color: var(--dark-border-color);
-}
-body.dark-mode .search-bar input::placeholder {
-    color: var(--dark-secondary-text);
+body.dark-mode .card,
+body.dark-mode .company-card {
+    background: #071226;
+    color: #dbeafe;
 }
 
-body.dark-mode .icon-btn {
-    color: var(--dark-secondary-text);
-}
-body.dark-mode .icon-btn:hover {
-    color: var(--dark-primary-blue-adjusted);
-}
-
-body.dark-mode .user-info {
-    border-left-color: var(--dark-border-color);
+body.dark-mode .activity-table th {
+    background: linear-gradient(180deg, #071226, #08182a);
+    color: #9fb4d9;
+    border-bottom-color: rgba(255, 255, 255, 0.04);
 }
 
-/* ---------------- Journal (Dark Mode) ---------------- */
-body.dark-mode .page-header h1 {
-    color: var(--dark-primary-blue-adjusted);
+body.dark-mode .activity-table td {
+    color: #dbeafe;
+    border-bottom-color: rgba(255, 255, 255, 0.03);
 }
 
-body.dark-mode .filter-actions-bar {
-    background-color: var(--dark-surface);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-body.dark-mode .filter-actions-bar label {
-    color: var(--dark-text-color);
-}
-
-body.dark-mode .filter-actions-bar select {
-    background-color: #2D2D2D;
-    color: var(--dark-text-color);
-    border-color: var(--dark-border-color);
-}
-
-body.dark-mode .filter-actions-bar button {
-    background-color: var(--dark-primary-blue-adjusted);
-}
-body.dark-mode .filter-actions-bar button:hover {
-    background-color: var(--primary-blue);
+body.dark-mode .activity-table tr:hover {
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.06), transparent);
 }
 
 body.dark-mode .log-container {
-    background-color: var(--dark-surface);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    background: #02101a;
+    color: #dbeafe;
 }
 
 body.dark-mode .activity-item {
-    border-bottom-color: var(--dark-border-color);
-}
-
-body.dark-mode .log-icon {
-    background-color: var(--dark-bg-main); 
-    border: 3px solid var(--dark-surface); 
+    border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 body.dark-mode .log-details strong {
-    color: var(--dark-primary-blue-adjusted);
+    color: #9fb4d9;
 }
 
 body.dark-mode .log-metadata {
-    color: var(--dark-secondary-text);
+    color: #cbd5e1;
 }
 
 body.dark-mode .log-metadata .time {
-    color: var(--dark-secondary-text);
+    color: #e0e0e0;
 }
 
-/* --- Styles pour la lisibilité des messages d'activité (mode nuit) --- */
-.activity-message {
-    font-weight: 500;
+/* ----- Barre de recherche ----- */
+body.dark-mode .search-bar input {
+    background-color: #2D2D2D;
+    /* fond sombre */
+    color: #E0E0E0;
+    /* texte gris clair */
+    border: 1px solid #3A3A3A;
+    /* bordure cohérente */
 }
 
-.activity-message.error-message {
-    color: var(--alert-red) !important;
+/* ----- Selects dans la barre de filtres ----- */
+body.dark-mode .filter-actions-bar select {
+    background-color: #2D2D2D;
+    /* fond sombre */
+    color: #E0E0E0;
+    /* texte lisible */
+    border: 1px solid #3A3A3A;
 }
 
-body.dark-mode .activity-message.error-message {
-    color: #FF5555 !important; /* Rouge plus clair pour le mode sombre */
+/* ----- Labels de la barre de filtres ----- */
+/* Barre des filtres en mode nuit */
+body.dark-mode .filter-actions-bar {
+    background-color: #02101a;
+    /* fond sombre */
+    border: 1px solid #3A3A3A;
 }
 
-body.dark-mode .activity-message.info-message {
-    color: var(--dark-secondary-text) !important;
+/* Labels */
+body.dark-mode .filter-actions-bar label {
+    color: #dbeafe;
+    /* bleu clair lisible */
+    font-weight: 600;
+}
+
+/* Selects */
+body.dark-mode .filter-actions-bar select {
+    background-color: #2D2D2D;
+    /* fond sombre */
+    color: #f5f5f5;
+    /* texte blanc cassé lisible */
+    border: 1px solid #3A3A3A;
+}
+
+/* Options dans les selects */
+body.dark-mode .filter-actions-bar select option {
+    background-color: #2D2D2D;
+    color: #f5f5f5;
 }
 
 
-/* ================= Global Styles (General Layout) ================= */
+
+
+/* ================== GLOBAL ================== */
+* {
+    box-sizing: border-box;
+}
+
+html,
 body {
-    font-family: 'Arial', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: var(--light-bg);
-    display: flex;
-    min-height: 100vh;
-    color: var(--text-color);
-    transition: background-color 0.3s, color 0.3s; 
+    height: 100%;
 }
 
-/* ---------------- Sidebar (Barre Latérale) - FIXE ---------------- */
+body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg, #f3f6fb 0%, #eef3fb 100%);
+    color: var(--text-color);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+/* ================== SIDEBAR ================== */
 .sidebar {
     width: var(--sidebar-width);
-    background-color: var(--dark-blue);
-    color: white;
-    padding: 20px 0;
+    background: linear-gradient(180deg, var(--sidebar), #071024);
+    color: #fff;
+    padding: 22px;
     display: flex;
-    flex-direction: column; 
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    box-shadow: 4px 0 18px rgba(2, 6, 23, 0.12);
     position: fixed;
     top: 0;
     left: 0;
     height: 100vh;
     z-index: 1000;
-    box-sizing: border-box;
-    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
-}
-
-.nav-menu {
-    flex-grow: 1; 
 }
 
 .header-logo-container {
     display: flex;
     align-items: center;
-    padding: 0 20px;
-    margin-bottom: 25px; 
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+/* #assaac-logo est traité comme conteneur pour permettre un fond dégradé
+   et contenir une image si nécessaire */
+#assaac-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #06b6d4, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+/* Si vous utilisez une image à l'intérieur du conteneur */
+#assaac-logo img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    display: block;
+}
+
+/* Si vous utilisez directement une image avec l'id (fallback) */
+img#assaac-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #06b6d4, #7c3aed);
 }
 
 .logo-text {
-    font-size: 1.5rem;
     font-weight: 700;
-    color: #0dace0;
-    margin-left: 15px; 
-    letter-spacing: 1px;
-    transition: color 0.3s;
+    font-size: 1.2rem;
+    letter-spacing: 0.2px;
+    color: #e6f3ff;
 }
 
-#assaac-logo { height: 70px; width: auto; }
-
-.sidebar-bottom {
-    padding: 10px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0; 
+/* ================== NAV MENU ================== */
+.nav-menu {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 6px;
 }
 
-.nav-menu a, .sidebar-bottom a {
+.nav-menu a {
     display: flex;
     align-items: center;
-    padding: 15px 20px;
-    text-decoration: none;
-    color: var(--nav-text-default); 
-    transition: background-color 0.2s, color 0.2s, border-left 0.2s;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.92);
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.25s, transform 0.12s;
 }
 
-.nav-menu a:hover, .sidebar-bottom a:hover { 
-    background-color: rgba(255,255,255,0.1); 
-    color:white; 
-    border-left:4px solid var(--primary-blue); 
-    padding-left:16px; 
-}
-
-.nav-menu a i, .sidebar-bottom a i {
-    margin-right: 15px;
-    width: 20px;
+.nav-menu a i {
+    width: 18px;
     text-align: center;
 }
 
+.nav-menu a:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateX(2px);
+}
+
 .nav-menu a.active {
-    background-color: var(--primary-blue); 
-    color: white;
-    font-weight: bold;
-    border-left: 4px solid white; 
-    padding-left: 16px; 
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
-/* ---------------- Main Content ---------------- */
-.main-content {
-    flex-grow: 1;
-    margin-left: var(--sidebar-width);
-    overflow-y: auto; 
-    height: 100vh; 
-}
-
-/* ---------------- Header (En-tête) ---------------- */
-.header {
-    background-color: white;
-    padding: 15px 30px;
+.sidebar-bottom {
     display: flex;
-    justify-content: flex-end; 
-    align-items: center;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-    position: sticky;
-    top: 0;
-    z-index: 999; 
-    transition: background-color 0.3s, box-shadow 0.3s;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.sidebar-bottom a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* ================== MAIN CONTENT ================== */
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+/* ================== HEADER ================== */
+/* Structure principale du header : gauche (logo + recherche) / droite (icônes) */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 22px;
+    background: transparent;
+    border-bottom: 1px solid rgba(15, 23, 36, 0.04);
+    flex-shrink: 0;
+    z-index: 900;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--dark-blue);
+}
+
+
+/* Conteneur gauche : logo + barre de recherche */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1 1 auto;
+    /* occupe l'espace restant */
+}
+
+/* Conteneur droit (optionnel, utile pour ciblage) */
+.header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+}
+
+/* Si vous avez gardé .header-actions dans le HTML existant, support de compatibilité */
 .header-actions {
     display: flex;
     align-items: center;
-    width: 100%; 
+    gap: 18px;
 }
 
+/* Barre de recherche */
 .search-bar {
-    margin-right: auto; 
-    flex-grow: 1;
-    max-width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 1 420px;
+    /* peut rétrécir si l'espace manque */
+    min-width: 180px;
 }
 
 .search-bar input {
     padding: 10px 15px;
     border: 1px solid var(--border-color);
     border-radius: 20px;
-    width: 100%; 
+    width: 100%;
     outline: none;
-    background-color: white;
-    color: var(--text-color);
-    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    background-color: var(--panel);
+    color: inherit;
+    font-size: 14px;
+    transition: border-color 0.18s, box-shadow 0.18s;
 }
 
+.search-bar input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
+}
+
+/* Groupe d'interaction utilisateur (droite) */
 .user-interaction-group {
     display: flex;
     align-items: center;
+    gap: 12px;
 }
 
+/* Boutons icônes */
 .icon-btn {
-    background: none;
+    background: transparent;
     border: none;
-    color: var(--text-color-header);
-    margin-left: 15px;
-    cursor: pointer;
-    font-size: 1.1em;
-    padding: 5px;
-    transition: color 0.2s;
+    padding: 8px;
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 1.15em;
+    transition: color 0.18s, background 0.18s;
 }
 
 .icon-btn:hover {
-    color: var(--primary-blue);
+    color: var(--accent);
+    background: rgba(0, 0, 0, 0.02);
 }
 
+/* Info utilisateur */
 .user-info {
     display: flex;
     align-items: center;
-    margin-left: 25px; 
-    cursor: pointer;
-    border-left: 1px solid var(--border-color); 
-    padding-left: 25px;
-    transition: border-left 0.3s;
+    gap: 10px;
+    border-left: 1px solid var(--muted);
+    padding-left: 15px;
 }
 
 .user-avatar {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    background-color: #ccc;
-    margin-right: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
     object-fit: cover;
 }
 
-/* ---------------- Contenu Journal d'Activité ---------------- */
+/* ================== Contenu Journal d'Activité ================== */
 .history-management {
     padding: 30px;
+    overflow: auto;
 }
 
 .page-header {
@@ -355,7 +442,7 @@ body {
 }
 
 .filter-actions-bar {
-    background-color: white;
+    background-color: var(--panel);
     padding: 15px 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -377,7 +464,7 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 4px;
     min-width: 150px;
-    background-color: white;
+    background-color: var(--panel);
     color: var(--text-color);
     transition: background-color 0.3s, border-color 0.3s, color 0.3s;
 }
@@ -398,7 +485,7 @@ body {
 }
 
 .log-container {
-    background-color: white;
+    background-color: var(--panel);
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     padding: 20px;
@@ -435,15 +522,26 @@ body {
     flex-shrink: 0;
     margin-right: 20px;
     color: white;
-    border: 3px solid white; 
+    border: 3px solid white;
     transition: background-color 0.3s, border 0.3s;
 }
 
-/* Codes couleur pour les icônes (ne changent pas en mode sombre) */
-.log-icon.create { background-color: var(--action-create); }
-.log-icon.update { background-color: var(--action-update); }
-.log-icon.delete { background-color: var(--action-delete); }
-.log-icon.system { background-color: var(--action-login); }
+/* Codes couleur pour les icônes */
+.log-icon.create {
+    background-color: var(--action-create);
+}
+
+.log-icon.update {
+    background-color: var(--action-update);
+}
+
+.log-icon.delete {
+    background-color: var(--action-delete);
+}
+
+.log-icon.system {
+    background-color: var(--action-login);
+}
 
 .log-details {
     flex-grow: 1;
@@ -456,23 +554,21 @@ body {
 
 .log-metadata {
     font-size: 0.8em;
-    color: #70757A;
-    margin-top: 5px;
-    transition: color 0.3s;
+    color: var(--muted-2);
+    /* ✅ au lieu de #70757A */
 }
 
 .log-metadata .time {
     font-weight: bold;
-    color: #555;
-    margin-left: 10px;
-    transition: color 0.3s;
+    color: var(--muted);
+    /* ✅ au lieu de #555 */
 }
 
 .log-metadata .user-name {
     font-style: italic;
 }
 
-/* Styles de Badges (inchangés) */
+/* Styles de Badges */
 .badge {
     padding: 2px 6px;
     border-radius: 4px;
@@ -481,10 +577,22 @@ body {
     color: #fff;
     margin-left: 5px;
 }
-.badge.success { background-color: #28a745; }
-.badge.primary { background-color: #007bff; }
-.badge.danger  { background-color: #dc3545; }
-.badge.secondary { background-color: #6c757d; }
+
+.badge.success {
+    background-color: #28a745;
+}
+
+.badge.primary {
+    background-color: #007bff;
+}
+
+.badge.danger {
+    background-color: #dc3545;
+}
+
+.badge.secondary {
+    background-color: #6c757d;
+}
 
 .pagination {
     display: flex;
@@ -502,4 +610,70 @@ body {
     background: #007bff;
     color: #fff;
     font-weight: bold;
+}
+
+/* ================== UTILITAIRES ================== */
+.hidden {
+    display: none !important;
+}
+
+/* ================== RESPONSIVE ================== */
+@media (max-width: 1000px) {
+    .search-bar input {
+        width: 220px;
+    }
+
+    .header-left {
+        gap: 12px;
+    }
+}
+
+@media (max-width: 760px) {
+
+    /* Sidebar réduit / caché sur mobile (simple approche) */
+    .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 1100;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .search-bar input {
+        width: 160px;
+    }
+
+    /* Empile header : logo + recherche au dessus, icônes en dessous */
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .header-left {
+        justify-content: space-between;
+    }
+
+    .search-bar {
+        order: 2;
+        width: 100%;
+        flex: none;
+    }
+
+    .header-right {
+        order: 3;
+        justify-content: flex-end;
+    }
+
+    .user-interaction-group {
+        justify-content: flex-end;
+    }
+
+    .filter-actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
 }
