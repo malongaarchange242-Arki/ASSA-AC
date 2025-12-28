@@ -1,0 +1,485 @@
+:root {
+    --bg: #f6f8fb;
+    --panel: #ffffff;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --glass: rgba(255, 255, 255, 0.6);
+    --shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+    --radius: 12px;
+    --sidebar: #0f1724;
+}
+
+* {
+    box-sizing: border-box
+}
+
+html,
+body {
+    height: 100%
+}
+
+body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg, #f3f6fb 0%, #eef3fb 100%);
+    color: #0f1724;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body.dark-mode {
+    --bg: #071226;
+    --panel: #0b1e3b;
+    --muted: #9fb4d9;
+    --sidebar: #02101a;
+    background: linear-gradient(180deg, #071226 0%, #041022 100%);
+    color: #e2e8f0;
+}
+
+/* -------------------- */
+/* SIDEBAR */
+/* -------------------- */
+
+.sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, var(--sidebar), #071024);
+    color: #fff;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    box-shadow: 4px 0 18px rgba(2, 6, 23, 0.12);
+}
+
+.brand {
+    display: flex;
+    gap: 12px;
+    align-items: center
+}
+
+.logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #06b6d4, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column
+}
+
+.brand-title {
+    font-weight: 700;
+    letter-spacing: 0.2px
+}
+
+.brand-sub {
+    font-size: 12px;
+    opacity: 0.85
+}
+
+.nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px
+}
+
+.nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.92);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px
+}
+
+.nav a i {
+    width: 18px;
+    text-align: center
+}
+
+.nav li.active a {
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02)
+}
+
+.sidebar-footer {
+    display: flex;
+    gap: 10px;
+    align-items: center
+}
+
+.btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer
+}
+
+/* -------------------- */
+/* MAIN LAYOUT */
+/* -------------------- */
+
+#menuToggle {
+    display: none;
+}
+
+.main-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 22px;
+    background: transparent;
+    border-bottom: 1px solid rgba(15, 23, 36, 0.04);
+    flex-shrink: 0;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted)
+}
+
+.app-title {
+    margin: 0;
+    font-size: 18px;
+    color: var(--muted)
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px
+}
+
+/* notification */
+.notif .icon-btn {
+    position: relative
+}
+
+.notif-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 999px
+}
+
+/* avatar & dropdown */
+.avatar-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer
+}
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
+    color: #fff;
+    font-weight: 700
+}
+
+.dropdown {
+    position: absolute;
+    right: 22px;
+    top: 62px;
+    background: var(--panel);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    display: none;
+    flex-direction: column;
+    min-width: 180px;
+    overflow: hidden
+}
+
+.dropdown.show {
+    display: flex
+}
+
+.dropdown-item {
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font-weight: 600;
+    color: #0f1724
+}
+
+.dropdown-item:hover {
+    background: #f3f4f6
+}
+
+/* Messaging Container */
+/* Le wrapper doit occuper tout l'écran */
+.main-wrapper {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* La zone de contenu doit prendre le reste de la place sans dépasser */
+.content-area {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    padding: 20px;
+}
+
+.messaging-container {
+    flex: 1;
+    display: flex;
+    height: 100%;
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+/* Sidebar Contacts */
+.msg-sidebar {
+    width: 300px;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.msg-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: bold;
+}
+
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+}
+
+.contact-list {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.contact-item {
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+.contact-item:hover {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+/* ----------------------------------------------------------- */
+/* 5. LA FENÊTRE DE CHAT (L'endroit du problème)              */
+/* ----------------------------------------------------------- */
+.chat-window {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    /* Organise le Header, le Body et le Footer */
+    height: 100%;
+    background: rgba(0, 0, 0, 0.01);
+}
+
+/* HEADER FIXE */
+.chat-header {
+    height: 70px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    background: var(--panel);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+    /* INTERDIT au header de disparaître */
+}
+
+/* ZONE DE TEXTE DYNAMIQUE (Seul élément qui scrolle) */
+.chat-body {
+    flex: 1;
+    /* Occupe tout l'espace libre au milieu */
+    overflow-y: auto;
+    /* Autorise le scroll uniquement ici */
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* ZONE DE SAISIE FIXE */
+.chat-footer {
+    height: 75px;
+    /* Hauteur fixe */
+    min-height: 75px;
+    /* Sécurité supplémentaire */
+    flex-shrink: 0;
+    /* Interdiction de rétrécir */
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
+    /* Pour s'assurer qu'il reste au-dessus */
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.welcome-msg {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+}
+
+.welcome-msg i {
+    font-size: 40px;
+    margin-bottom: 10px;
+    opacity: 0.3;
+}
+
+.chat-body {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.bubble {
+    /* 1. Limiter la largeur à 75% du conteneur */
+    max-width: 75%;
+
+    /* 2. Forcer le retour à la ligne si le mot est trop long (ex: liens ou longs codes) */
+    inline-size: fit-content;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+
+    /* 3. Espacement interne */
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    position: relative;
+}
+
+/* Alignement à DROITE pour les messages envoyés */
+.bubble.sent {
+    align-self: flex-end;
+    /* Pousse la bulle à droite */
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    /* Petit effet de pointe */
+    text-align: left;
+    /* Le texte reste aligné à gauche à l'intérieur de la bulle */
+}
+
+.bubble.received {
+    align-self: flex-start;
+    background: #e5e7eb;
+    color: #1f2937;
+    border-bottom-left-radius: 4px;
+}
+
+body.dark-mode .bubble.received {
+    background: #1e293b;
+    color: #f1f5f9;
+}
+
+#msgInput {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--bg);
+    color: inherit;
+}
+
+#sendMsg {
+    width: 45px;
+    height: 45px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#sendMsg:hover {
+    transform: scale(1.05);
+}
