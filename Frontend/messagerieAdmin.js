@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // CONSTANTES
     // -----------------------
-    const API_BASE = 'http://localhost:5002';
+    const API_BASE = 'https://assa-ac-jyn4.onrender.com';
     const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
         API_BASE.replace(/^https?:\/\//, '').replace(/\/$/, '') + '/ws';
 

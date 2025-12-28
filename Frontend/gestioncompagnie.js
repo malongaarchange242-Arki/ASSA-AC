@@ -144,7 +144,7 @@ function attachCardEvents() {
 
             try {
                 const res = await fetch(
-                    `http://localhost:5002/api/companies/delete/${companyId}`,
+                    `https://assa-ac-jyn4.onrender.com/api/companies/delete/${companyId}`,
                     {
                         method: 'DELETE',
                         headers: {
@@ -187,7 +187,7 @@ async function fetchCompanies() {
     try {
         const token = getToken();
 
-        const res = await fetch('http://localhost:5002/api/companies/all', {
+        const res = await fetch('https://assa-ac-jyn4.onrender.com/api/companies/all', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 

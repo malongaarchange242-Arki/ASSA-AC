@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
        }
    });
    
-const API_URL = "http://localhost:5002/api/factures";
+const API_URL = "https://assa-ac-jyn4.onrender.com";
 const token = localStorage.getItem("jwtTokenAdmin");
 
 if (!token) {
@@ -325,7 +325,7 @@ async function voirFacture(numeroFacture) {
         console.log("📡 → Recherche des preuves de paiement…");
 
         const response = await fetch(
-            `http://localhost:5002/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
+            `https://assa-ac-jyn4.onrender.com/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
             { headers: { "Authorization": `Bearer ${token}` } }
         );
 

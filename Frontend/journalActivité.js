@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function chargerActivites() {
         try {
             const response = await fetch(
-                'http://localhost:5002/api/journal/recent?limit=50',
+                'https://assa-ac-jyn4.onrender.com/api/journal/recent?limit=50',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
