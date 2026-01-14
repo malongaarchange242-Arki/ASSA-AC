@@ -305,47 +305,113 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================
     async function loginStandard() {
         const password = passwordInput.value.trim();
-        if (!password) return alert('Veuillez entrer votre mot de passe.');
+        if (!password) {
+            alert('Veuillez entrer votre mot de passe.');
+            return;
+        }
     
         try {
-            let url;
+            let url = '';
             let isCompany = false;
-            if (currentRole === 'admin' || currentRole === 'supervisor') url = `${API_BASE}/api/admins/login`;
-            else if (currentRole === 'company') { url = `${API_BASE}/api/companies/login`; isCompany = true; }
-            else return alert('Role inconnu.');
     
+            // 🔐 Endpoint basé sur le rôle sélectionné (UI uniquement)
+            const uiRole = currentRole?.toLowerCase().trim();
+    
+            if (uiRole === 'admin' || uiRole === 'supervisor') {
+                url = `${API_BASE}/api/admins/login`;
+            } else if (uiRole === 'company') {
+                url = `${API_BASE}/api/companies/login`;
+                isCompany = true;
+            } else {
+                alert('Rôle inconnu.');
+                return;
+            }
+    
+            // 📡 Appel API
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentEmail, password })
+                body: JSON.stringify({
+                    email: currentEmail,
+                    password
+                })
             });
     
             const data = await res.json().catch(() => null);
-            if (!res.ok) throw new Error((data && data.message) ? data.message : 'Erreur serveur');
     
+            if (!res.ok) {
+                throw new Error(data?.message || 'Erreur serveur');
+            }
+    
+            // ====================================================
+            // 🏢 COMPAGNIE
+            // ====================================================
             if (isCompany) {
                 localStorage.setItem('jwtTokenCompany', data.token);
                 localStorage.setItem('userRoleCompany', 'company');
                 localStorage.setItem('userEmailCompany', currentEmail);
                 localStorage.setItem('id_companie', data.id_companie);
+    
+                alert('Connexion réussie ! Bienvenue compagnie.');
                 window.location.href = 'AccueilCompagnie.html';
+                return;
+            }
+    
+            // ====================================================
+            // 👮 ADMIN / SUPERVISOR
+            // ====================================================
+            const accessToken =
+                data.jwtTokenAdmin ||
+                data.token ||
+                data.accessToken ||
+                data.access_token;
+    
+            const refreshToken =
+                data.refreshTokenAdmin ||
+                data.refreshToken ||
+                data.refresh_token;
+    
+            if (!accessToken) {
+                throw new Error('Token manquant dans la réponse serveur.');
+            }
+    
+            // 🔥 RÔLE = BACKEND (JWT / réponse)
+            const rawRole =
+                data.role ||
+                data.profileType ||
+                data.userType ||
+                uiRole;
+    
+            // 🔥 NORMALISATION CRITIQUE
+            const role = rawRole
+                .toString()
+                .toLowerCase()
+                .trim()
+                .replace('é', 'e'); // Superviseur → supervisor
+    
+            // 🔐 Stockage
+            localStorage.setItem('jwtTokenAdmin', accessToken);
+            if (refreshToken) localStorage.setItem('refreshTokenAdmin', refreshToken);
+    
+            localStorage.setItem('userRoleAdmin', role);
+            localStorage.setItem('userEmailAdmin', currentEmail);
+            localStorage.setItem('adminId', data.adminId || data.id);
+    
+            // 🔥 REDIRECTION FINALE
+            if (role === 'supervisor') {
+                alert('Connexion réussie ! Bienvenue superviseur.');
+                window.location.href = 'Accueil_Superviseur.html';
             } else {
-                const adminToken = data.jwtTokenAdmin || data.token || data.accessToken || data.access_token;
-                const adminRefresh = data.refreshTokenAdmin || data.refreshToken || data.refresh_token;
-                if (adminToken) localStorage.setItem('jwtTokenAdmin', adminToken);
-                if (adminRefresh) localStorage.setItem('refreshTokenAdmin', adminRefresh);
-                localStorage.setItem('userRoleAdmin', currentRole);
-                localStorage.setItem('userEmailAdmin', currentEmail);
-                localStorage.setItem('adminId', data.adminId || data.id || data.adminId);
+                alert('Connexion réussie ! Bienvenue administrateur.');
                 window.location.href = 'AccueilAdmin.html';
             }
     
-            alert(`Connexion réussie ! Bienvenue ${currentRole}.`);
         } catch (err) {
-            console.error(err);
+            console.error('❌ Erreur login :', err);
             alert(err.message || 'Erreur lors de la connexion');
         }
     }
+    
     
     // ==========================
     // 9. Événements inputs et Logique de la Barre (Code original conservé)

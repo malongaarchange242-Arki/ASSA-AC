@@ -66,10 +66,14 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
 /* ============================================================
    1️⃣ CHARGER LES FACTURES
    ============================================================ */
-async function chargerFactures() {
-    try {   
-        const res = await fetch(API_URL, {
-            headers: { "Authorization": `Bearer ${token}` }
+   async function chargerFactures() {
+    try {
+        const res = await fetch(`${API_URL}/api/factures`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
         });
 
         const data = await res.json();
@@ -78,16 +82,18 @@ async function chargerFactures() {
             throw new Error(data.message || "Erreur chargement factures");
         }
 
-        FACTURES = Array.isArray(data) ? data : data.factures || [];
+        FACTURES = Array.isArray(data)
+            ? data
+            : data.factures || [];
 
-        console.log("FACTURES REÇUES :", FACTURES);
+        console.log("✅ FACTURES REÇUES :", FACTURES);
 
         extraireCompagnies();
         remplirListeCompagnies();
         paginateFactures(FACTURES, 8);
 
     } catch (err) {
-        console.error("ERREUR CHARGEMENT:", err);
+        console.error("❌ ERREUR CHARGEMENT:", err);
         alert("Impossible de charger les factures.");
     }
 }
