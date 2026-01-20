@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Opérations Sensibles — Superviseur</title>
+
+    <!-- Icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Style -->
+    <link rel="stylesheet" href="operations.css">
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span>Tableau de
+                            Bord</span></a></li>
+                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span>Opérations
+                            Sensibles</span></a></li>
+                <li><a href="#"><i class="fa-solid fa-envelope"></i><span>Messagerie</span></a></li>
+                <li><a href="#"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i
+                    class="fa-solid fa-moon"></i><span>Mode</span></button>
+            <button class="btn-danger" type="button"><i
+                    class="fa-solid fa-right-from-bracket"></i><span>Déconnexion</span></button>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-wrapper">
+
+        <!-- TOPBAR -->
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <h2 class="page-title">Opérations Sensibles</h2>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span
+                            class="notif-badge">3</span></button>
+                </div>
+
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button"><span
+                            class="avatar">SA</span></button>
+                    <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-user"></i> Profil</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-gear"></i> Paramètres</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-right-from-bracket"></i>
+                            Déconnexion</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT -->
+        <main class="dashboard" role="main">
+
+            <div class="page-header">
+                <div>
+                    <p class="page-sub">Liste, filtrage et gestion des opérations à risque</p>
+                </div>
+
+                <div class="header-actions">
+                    <input id="globalSearch" class="search" type="search"
+                        placeholder="Recherche ID, type, demandeur, motif…" aria-label="Recherche">
+                    <button id="exportBtn" class="btn-outline" type="button"><i class="fa-solid fa-file-export"></i>
+                        Exporter</button>
+                </div>
+            </div>
+
+            <section class="controls">
+                <div class="control-row">
+                    <label>
+                        <select id="filterType" aria-label="Filtrer par type">
+                            <option value="">Tous les types</option>
+                            <option value="Contestation">Contestation</option>
+                            <option value="Suppression">Suppression</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <select id="filterStatus" aria-label="Filtrer par statut">
+                            <option value="">Tous les statuts</option>
+                            <option value="En attente">En attente</option>
+                            <option value="Validée">Validée</option>
+                            <option value="Rejetée">Rejetée</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <input id="filterDate" type="date" aria-label="Filtrer par date">
+                    </label>
+
+                    <button id="resetFilters" class="btn-ghost" type="button"><i class="fa-solid fa-rotate-left"></i>
+                        Réinitialiser</button>
+
+                    <label class="pagesize">
+                        <span>Afficher</span>
+                        <select id="pageSize">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                        </select>
+                        <span> / page</span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="table-wrap" aria-live="polite">
+                <table class="ops-table" aria-describedby="tableDesc">
+                    <caption id="tableDesc" class="sr-only">Table des opérations sensibles</caption>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Demandeur</th>
+                            <th>Statut</th>
+                            <th class="actions-col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="operation-list"></tbody>
+                </table>
+
+                <div class="pagination" id="pagination"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- DETAIL PANEL -->
+    <aside id="detailPanel" class="detail-panel" aria-hidden="true">
+        <div class="detail-head">
+            <h3>Détails</h3>
+            <button id="closePanel" class="icon-btn" type="button"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="detail-body">
+            <dl>
+                <dt>ID</dt>
+                <dd id="detail-id"></dd>
+                <dt>Type</dt>
+                <dd id="detail-type"></dd>
+                <dt>Date</dt>
+                <dd id="detail-date"></dd>
+                <dt>Demandeur</dt>
+                <dd id="detail-demandeur"></dd>
+                <dt>Statut</dt>
+                <dd id="detail-status"></dd>
+                <dt>Motif</dt>
+                <dd id="detail-motif" class="motif"></dd>
+            </dl>
+
+            <div class="detail-actions">
+                <button id="detail-validate" class="btn-success" type="button">Valider</button>
+                <button id="detail-reject" class="btn-danger" type="button">Rejeter</button>
+            </div>
+        </div>
+    </aside>
+
+    <script src="operations.js"></script>
+</body>
+
+</html>

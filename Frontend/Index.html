@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC - Connexion Sécurisée</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="Index.css"> 
+</head>
+<body>
+
+    <video autoplay loop muted id="background-video">
+        <source src="Video flything.mp4" type="video/mp4">
+        Votre navigateur ne supporte pas la lecture vidéo.
+    </video>
+
+    <div class="overlay"></div>
+
+    <div class="page-container">
+
+        <div class="welcome-section">
+            
+            <div class="header-logo-container">
+                <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+                <div class="logo-text">ASSA-AC PORTAIL</div>
+            </div>
+
+            <div class="full-name">Agence de Supervision de la Sécurité Aérienne en Afrique Centrale</div>
+            <h1>Plateforme de gestion des redevances sur les billets aériens</h1>
+            <p class="tagline">Gérez, coordonnez et optimisez vos opérations avec précision et sécurité.</p>
+            
+            <div class="signature">
+                Développé par <span id="softuraText">Softura</span>
+            </div>
+        </div>
+
+        <div class="login-section">
+            <div class="login-box">
+                
+                <form id="loginForm" action="#" method="post">
+                    
+                    <div id="emailSection" class="field-group visible">
+                        <div class="login-header">
+                            <h1 id="mainTitle">Connexion</h1>
+                            <p id="subTitle">Utilisez votre email pour vous connecter</p>
+                        </div>
+                        
+                        <div class="input-group" id="emailInputGroup">
+                            <label for="emailInput">Adresse email</label>
+                            <input type="email" id="emailInput" name="email" required>
+                        </div>
+                        
+                        <div id="passwordField">
+                            <div class="input-group" id="passwordInputGroup">
+                                <label for="passwordInput">Mot de passe</label>
+                                <input type="password" id="passwordInput">
+
+                                <i class="fa-solid fa-eye toggle-password" id="togglePasswordBtn"></i>
+                            </div>
+
+                            <div class="forgot-password-container">
+                                <a href="#" id="forgotPasswordLink">Mot de passe oublié ?</a>
+                            </div>
+                        </div>
+
+                        <div class="button-container" id="actionButtonContainer">
+                            <button type="button" class="btn-primary" id="mainButton">Se Connecter</button>
+                        </div>
+                    </div>
+                    
+                    <div id="otpSection" class="field-group">
+                        <div class="login-header">
+                            <h2>Vérification de sécurité</h2> 
+                            <p>Un code d'accès unique vous a été envoyé par email.</p>
+                        </div>
+                    
+                        <div class="input-group" id="otpInputGroup">
+                            <label for="otpCode">Code d'accès (OTP)</label>
+                            <input type="text" id="otpCode">
+                        </div>
+                    
+                        <div class="input-group" id="otpPasswordInputGroup"> 
+                            <label for="otpPasswordInput"></label>
+                            <input type="password" id="otpPasswordInput">
+                        </div>
+                    
+                        <div class="button-container" style="flex-direction: column; gap: 10px; margin-top: 15px;">
+                            <button type="button" id="validateOtpButton" class="btn-primary">Valider</button>
+                        </div>
+                    
+                        <a href="#" id="resendOtpLink">Renvoyer le code</a>
+                        <a class="back-link" id="backToEmail2" href="#">Retour</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="Index.js"></script> 
+        
+
+</body>
+</html>
