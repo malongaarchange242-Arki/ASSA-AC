@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ASSA-AC DAF - Validation des factures</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="factureAdmin.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="AccueilDAF.html"><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="validationFactures.html" class="active"><i class="fas fa-file-invoice-dollar"></i> Validation</a>
+            <a href="factureDetailDAF.html"><i class="fas fa-file-invoice"></i> Détails facture</a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header"></div>
+        <div class="company-management">
+            <div class="page-header">
+                <div>
+                    <h2 style="margin:0; font-size:1.1rem; font-weight:700; color:var(--accent);">Validation des factures</h2>
+                    <div style="color:var(--muted); font-size:0.9rem; margin-top:6px;">Validez, rejetez ou signez les factures</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <table class="activity-table facture-table" id="validationTable">
+                    <thead>
+                        <tr><th>N° Facture</th><th>Compagnie</th><th>Date</th><th>Montant</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="validation-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const role = localStorage.getItem('userRole') || localStorage.getItem('role');
+        if (role && !['Superviseur','DAF'].includes(role)) {
+            alert('Accès réservé au DAF');
+            window.location.href = 'Index.html';
+        }
+    </script>
+    <script src="validationFactures.js"></script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+/* --- LAYOUT DES PARAMÈTRES --- */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+}
+
+.settings-card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 25px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding-bottom: 15px;
+}
+
+body.dark-mode .settings-header {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.icon-accent { color: var(--accent); }
+.icon-danger { color: var(--danger); }
+
+/* --- PHOTO DE PROFIL --- */
+.profile-upload-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.profile-preview-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
+
+#profileDisplay {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--accent);
+}
+
+.upload-badge {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: var(--accent);
+    color: white;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 3px solid var(--panel);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.upload-badge:hover { transform: scale(1.15); }
+
+.profile-info { text-align: center; }
+.profile-info h4 { margin: 0; font-size: 18px; }
+.profile-info p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+
+/* --- FORMULAIRES --- */
+.form-group { margin-bottom: 18px; }
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--muted);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--bg);
+    color: inherit;
+    font-size: 14px;
+}
+
+body.dark-mode .form-control { border-color: rgba(255, 255, 255, 0.1); }
+
+/* --- SYSTÈME D'ONGLETS (SÉCURITÉ) --- */
+.security-selector {
+    display: flex;
+    background: var(--bg);
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    background: var(--panel);
+    color: var(--accent);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.security-content { display: none; }
+.security-content.active { display: block; }
+
+/* --- VISIBILITÉ MOT DE PASSE --- */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.toggle-pass {
+    position: absolute;
+    right: 15px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.toggle-pass:hover { color: var(--accent); }
+
+/* --- ZONE 2FA / QR CODE --- */
+.setup-box {
+    margin-top: 15px;
+    padding: 20px;
+    border: 2px dashed var(--accent);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.qr-container {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.qr-info { font-size: 12px; color: var(--muted); margin-bottom: 15px; }
+
+.status-badge { font-size: 10px; padding: 4px 8px; border-radius: 20px; font-weight: 800; }
+.status-off { background: #fee2e2; color: #dc2626; }
+.status-on { background: #dcfce7; color: #16a34a; }
+
+/* --- UTILITAIRES --- */
+.w-full { width: 100%; }
+.text-center { text-align: center; }

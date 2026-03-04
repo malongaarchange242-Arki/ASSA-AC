@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard (Archive - Finalisé)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+/* ================= Variables CSS ================= */
+/* ================= Variables CSS ================= */
+:root {
+    --primary-blue: #1A73E8;
+    --dark-blue: #0B3F7B;
+    --light-bg: #F5F7FA;
+    --text-color: #3C4043;
+    --border-color: #DADCE0;
+    --sidebar-width: 250px;
+    --alert-red: #D93025;
+    --neon-blue: rgba(26, 115, 232, 0.7);
+    
+    /* Couleurs de Statut */
+    --status-completed: #34A853;
+    --status-cancelled: #A0A0A0;
+    --status-inactive: #A0A0A0;
+
+    /* Couleur nav-menu */
+    --nav-text-default: #E0E0E0;
+
+    /* Table header pour light mode */
+    --table-header-bg: #F5F7FA;
+    --table-header-color: #0B3F7B;
+    --table-row-hover: #F0F0F0;
+
+    /* Surface / Cartes */
+    --surface-color: white;
+}
+
+/* ================= Variables CSS (Standard) ================= */
+:root {
+    --primary-blue: #1A73E8;
+    --dark-blue: #0B3F7B;
+    --light-bg: #F5F7FA;
+    --text-color: #3C4043;
+    --border-color: #DADCE0;
+    --surface-color: white; /* Surface / Cartes */
+    --table-header-bg: #F5F7FA;
+    --table-header-color: #0B3F7B;
+    --table-row-hover: #F0F0F0;
+
+    /* NOUVELLES VARIABLES DARK MODE (pour centraliser la gestion) */
+    --dark-bg-main: #121212;
+    --dark-surface: #1E1E1E;
+    --dark-text: #E0E0E0;
+    --dark-border: #333333;
+    --dark-table-header-bg: #1B1B1B;
+    --dark-table-row-hover: #2A2A2A;
+    --dark-input-bg: #2D2D2D;
+}
+
+/* ========================================================= */
+/* 🌙 DARK MODE STYLES (CORRIGÉS) */
+/* ========================================================= */
+
+body.dark-mode {
+    /* Mise à jour des variables de couleurs pour le Dark Mode */
+    background-color: var(--dark-bg-main); 
+    color: var(--dark-text); 
+    --text-color: var(--dark-text);
+    --border-color: var(--dark-border);
+    --surface-color: var(--dark-surface);
+    --table-header-bg: var(--dark-table-header-bg);
+    --table-header-color: var(--dark-text); /* Le texte de l'en-tête est clair */
+    --table-row-hover: var(--dark-table-row-hover);
+}
+
+/* Conteneurs principaux (header, card-table-container, select group) */
+body.dark-mode .header,
+body.dark-mode .print-selector-group,
+body.dark-mode .card-table-container {
+    background-color: var(--dark-surface);
+    box-shadow: 0 2px 5px rgba(255, 255, 255, 0.05);
+    border-color: var(--dark-border);
+}
+
+/* Sidebar */
+body.dark-mode .sidebar {
+    background-color: #000000; 
+}
+
+/* Correction des Titres et Labels pour assurer le contraste */
+body.dark-mode .page-header h1,
+body.dark-mode .card-table-container h3,
+body.dark-mode .print-selector-group label {
+    color: var(--dark-text); 
+}
+
+/* Tableau */
+body.dark-mode .archive-table th {
+    background-color: var(--dark-table-header-bg);
+    color: var(--dark-text);
+    border-bottom: 1px solid var(--dark-border);
+}
+
+body.dark-mode .archive-table td {
+    border-bottom: 1px solid var(--dark-border);
+    color: var(--dark-text); /* Assurer que le texte du corps est clair */
+}
+
+/* Input et Select */
+body.dark-mode .search-bar input,
+body.dark-mode .print-selector-group select {
+    background-color: var(--dark-input-bg);
+    color: var(--dark-text); /* Le texte dans l'input est clair */
+    border: 1px solid var(--dark-border);
+}
+
+body.dark-mode .search-bar input::placeholder {
+    color: #888; /* Placeholder plus visible */
+}
+
+
+/* ================= Body ================= */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--light-bg);
+    display: flex;
+    min-height: 100vh;
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* ================= Sidebar ================= */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--dark-blue);
+    color: white;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    box-sizing: border-box;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    transition: width 0.3s ease, transform 0.3s ease;
+}
+
+.sidebar-header {
+    text-align: center;
+    padding: 0 20px 30px;
+    font-size: 1.8em;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.nav-menu {
+    flex-grow: 1; 
+}
+
+.sidebar-bottom {
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.nav-menu a, .sidebar-bottom a {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px; /* espace entre texte et bordure fixe */
+    text-decoration: none;
+    color: var(--nav-text-default);
+    border-left: 4px solid transparent; /* bordure toujours présente */
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.nav-menu a i, .sidebar-bottom a i {
+    margin-right: 15px; /* espace entre icône et texte */
+    width: 20px;
+    text-align: center;
+}
+
+.nav-menu a:hover, .sidebar-bottom a:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+    border-left-color: var(--primary-blue); /* juste couleur change */
+}
+
+.nav-menu a.active {
+    background-color: var(--primary-blue);
+    color: white;
+    font-weight: bold;
+    border-left-color: white; /* juste couleur change */
+}
+
+
+
+/* ================= Main Content ================= */
+.main-content {
+    flex-grow: 1;
+    margin-left: var(--sidebar-width);
+    overflow-y: auto;
+    min-height: 100vh;  /* mieux que height */
+    transition: none;    /* supprime le tremblement */
+}
+
+
+/* ================= Header ================= */
+.header {
+    background-color: var(--surface-color);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+
+/* Conteneur pour le logo et le texte (ASSA-AC PORTAL) */
+        .header-logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px; 
+        }
+        
+        /* Style du texte "ASSA-AC PORTAL" */
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0dace0;
+            margin-left: 15px; 
+            letter-spacing: 1px;
+        }
+
+        /* STYLE LOGO ASSA-AC (40px) */
+        #assaac-logo { height: 70px; width: auto; }
+        
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: flex-end;
+}
+
+
+.user-interaction-group {
+    display: flex;
+    align-items: center;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    margin-right: 15px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 5px;
+    transition: color 0.3s;
+}
+
+.icon-btn:hover {
+    color: var(--primary-blue);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    margin-left: 25px;
+    cursor: pointer;
+    border-left: 1px solid var(--border-color);
+    padding-left: 25px;
+    transition: border-color 0.3s;
+}
+
+.user-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background-color: #ccc;
+    margin-right: 10px;
+    object-fit: cover;
+}
+
+/* ================= Archive Content ================= */
+.archive-management {
+    padding: 30px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: var(--dark-blue);
+    transition: color 0.3s;
+}
+
+.action-buttons button {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s, transform 0.1s;
+    margin-left: 10px;
+}
+
+.action-buttons button:hover {
+    background-color: var(--dark-blue);
+    transform: translateY(-1px);
+}
+
+/* Sélecteur d'impression */
+.print-selector-group {
+    display: flex;
+    align-items: center;
+    background-color: var(--surface-color);
+    padding: 10px 15px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.print-selector-group label {
+    margin-right: 10px;
+    font-weight: 600;
+}
+
+.print-selector-group select {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-right: 15px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.print-selector-group .print-btn {
+    background-color: var(--status-completed);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.print-selector-group .print-btn:hover {
+    background-color: #2e8b57;
+}
+
+/* Tableau d'archive */
+.card-table-container {
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.card-table-container h3 {
+    color: var(--dark-blue);
+    margin-bottom: 15px;
+    transition: color 0.3s;
+}
+
+.archive-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.archive-table th, .archive-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    transition: border-color 0.3s;
+}
+
+.archive-table th:last-child,
+.archive-table td:last-child {
+    text-align: center;
+    width: 120px;
+}
+
+.archive-table th {
+    background-color: var(--table-header-bg);
+    font-weight: bold;
+    color: var(--table-header-color);
+}
+
+.archive-table tbody tr:hover {
+    background-color: var(--table-row-hover);
+}
+
+/* Boutons d'action Vue/PDF */
+.table-actions button {
+    background: none;
+    border: none;
+    color: var(--primary-blue);
+    cursor: pointer;
+    margin: 0 5px;
+    font-size: 1em;
+    transition: color 0.2s;
+}
+
+.table-actions button:hover {
+    color: var(--alert-red);
+}
+
+/* Badges de statut */
+.status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: white;
+    min-width: 80px;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.status-badge.completed {
+    background-color: var(--status-completed);
+}
+.status-badge.cancelled {
+    background-color: var(--status-cancelled);
+}
+.status-badge.inactive {
+    background-color: var(--status-inactive);
+}
+
+/* ================= MODAL OVERLAY ================= */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.65); /* gris foncé élégant */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+/* ================= MODAL ================= */
+.modal {
+    background: #ffffff;
+    width: 540px;
+    max-width: 95%;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    animation: modalFade .25s ease;
+    overflow: hidden;
+    font-family: "Inter", sans-serif;
+}
+
+/* ================= HEADER ================= */
+.modal-header {
+    padding: 16px 20px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.close-btn:hover {
+    color: #111827;
+}
+
+/* ================= BODY ================= */
+.modal-body {
+    padding: 20px;
+}
+
+.modal-section {
+    margin-bottom: 15px;
+}
+
+.modal-section h4 {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.modal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e5e7eb;
+}
+
+.modal-row:last-child {
+    border-bottom: none;
+}
+
+.modal-label {
+    font-size: 14px;
+    color: #374151;
+}
+
+.modal-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: #111827;
+}
+
+/* ================= FOOTER ================= */
+.modal-footer {
+    padding: 15px 20px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-footer button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-close {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.btn-close:hover {
+    background: #d1d5db;
+}
+
+.btn-pdf {
+    background: #2563eb;
+    color: #fff;
+}
+
+.btn-pdf:hover {
+    background: #1e40af;
+}
+
+/* ================= ANIMATION ================= */
+@keyframes modalFade {
+    from {
+        transform: translateY(10px) scale(.97);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+
+/* ================= Responsive (Sidebar) ================= */
+@media (max-width: 1024px) {
+    :root { --sidebar-width: 60px; }
+
+    .sidebar-header, .sidebar-bottom { justify-content: center; padding: 20px 0; }
+    .sidebar-header span, .nav-menu a span, .sidebar-bottom a span { display: none; }
+    .nav-menu a, .sidebar-bottom a { justify-content: center; padding: 15px 0; }
+    .nav-menu a i, .sidebar-bottom a i { margin-right: 0; width: auto; }
+    .nav-menu a:hover, .sidebar-bottom a:hover, .nav-menu a.active { border-left: none; border-right: 4px solid var(--primary-blue); padding-left: 0; }
+    .nav-menu a.active { border-right: 4px solid white; }
+}
+
+@media (max-width: 768px) {
+    #sidebar-toggle-btn { display: inline-block; }
+    .sidebar { transform: translateX(-250px); }
+    .sidebar.open { transform: translateX(0); box-shadow: 4px 0 10px rgba(0,0,0,0.2); }
+    .main-content { margin-left: 0; }
+    .card-table-container { overflow-x: auto; }
+    .archive-table { min-width: 600px; }
+}
+
+.pagination {
+    margin-top: 15px;
+    display: flex;
+    gap: 6px;
+}
+
+.pagination button {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.pagination button.active {
+    background: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+/* ===============================
+   BOUTON TELECHARGEMENT CSV
+================================ */
+#csv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 18px;
+    font-size: 0.875rem; /* 14px */
+    font-weight: 600;
+
+    color: #ffffff;
+    background: linear-gradient(135deg, #1E8E3E, #34A853);
+
+    border: none;
+    border-radius: 10px;
+
+    cursor: pointer;
+    transition: all 0.25s ease;
+
+    box-shadow:
+        0 6px 18px rgba(30, 142, 62, 0.35);
+}
+
+/* Hover élégant */
+#csv-btn:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #166B2E, #1E8E3E);
+    box-shadow:
+        0 10px 24px rgba(30, 142, 62, 0.45);
+}
+
+/* Effet clic */
+#csv-btn:active {
+    transform: translateY(0);
+    box-shadow:
+        0 4px 10px rgba(30, 142, 62, 0.3);
+}
+
+/* Accessibilité (clavier) */
+#csv-btn:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 3px rgba(52, 168, 83, 0.45),
+        0 8px 20px rgba(30, 142, 62, 0.4);
+}
+
+/* Désactivé */
+#csv-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+
+
+</style>
+
+</head>
+<body>
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html" ><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="gestioncompagnie.html"><i class="fas fa-building"></i> Gestion des Compagnies</a>
+            <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
+            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i> Messagerie</a>
+            <a href="ArchiveAdmin.html" class="active"><i class="fas fa-receipt"></i> Registre des opérations</a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="header-actions">
+                
+                <div class="user-interaction-group">
+                    <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i class="fas fa-moon"></i></button>
+                    <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
+                    
+                    <div class="user-info">
+                        <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="archive-management">
+            <div class="page-header">
+                <h1>Régistre des opérations</h1>
+                <!-- <div class="action-buttons">
+                    <button><i class="fas fa-filter"></i> Filtrer (Type/Année)</button>
+                    <button><i class="fas fa-undo"></i> Restaurer Élément</button>
+                </div> -->
+            </div>
+            
+            <div class="print-selector-group">
+                <label for="select-month"><i class="fas fa-print"></i> Rapport d'Archive :</label>
+                <select id="select-month">
+                    <option value="current">Mois en cours</option>
+                    <option value="last">Mois dernier</option>
+                </select>
+                
+                <button id="csv-btn">
+                    <i class="fas fa-file-csv"></i>
+                    Télécharger le Récapitulatif (.CSV)
+                </button>
+                               
+                
+            </div>
+
+
+            <div class="card-table-container">
+                <h3>Factures et Documents Clôturés</h3>
+                <table class="archive-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>N° Réf.</th>
+                            <th>Compagnie</th>
+                            <th>Montant (XAF)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archive-body">
+                        <!-- lignes injectées ici -->
+                    </tbody>
+                </table>
+                
+                <div id="pagination" class="pagination"></div>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ARCHIVE -->
+    <div class="modal-overlay" id="archiveModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Détails de l’archive</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+    
+            <div class="modal-body" id="modalContent">
+                <!-- contenu dynamique -->
+            </div>
+    
+            
+        </div>
+    </div>
+
+   
+    <script src="ArchiveAdmin.js"></script>
+
+</body>
+</html>

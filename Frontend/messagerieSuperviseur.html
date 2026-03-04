@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard (Messagerie)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="messageriSuperviseur.css">
+</head>
+
+<body>
+
+    <aside class="sidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span data-i18n="dashboard">Tableau de Bord</span></a></li>
+                <li><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span data-i18n="sensitive_ops">Opérations Sensibles</span></a></li>
+                <li class="active"><a href="messagerieSuperviseur.html"><i class="fa-solid fa-envelope"></i><span data-i18n="messaging">Messagerie</span></a></li>
+                <li><a href="parametres_Superviseur.html"><i class="fa-solid fa-gear"></i><span data-i18n="settings">Paramètres</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i class="fa-solid fa-moon"></i><span data-i18n="mode">Mode</span></button>
+            <button class="btn-danger" type="button"><i class="fa-solid fa-right-from-bracket"></i><span data-i18n="logout">Déconnexion</span></button>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <div class="search-bar">
+                    <input id="searchInput" type="text" placeholder="Rechercher la compagnie..." data-i18n-placeholder="search_company">
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span class="notif-badge" id="notifCount">0</span></button>
+                </div>
+
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fa-solid fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button"><span class="avatar">SA</span></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="content-area">
+            <div class="messaging-container">
+                <div class="conversations-list">
+                    <div class="list-header">
+                        <span data-i18n="companies">Compagnies</span>
+                    </div>
+                    <div id="companyContainer" class="list-body"></div>
+                </div>
+
+                <div class="chat-area">
+                    <div class="chat-header">
+                        <img id="chat-company-avatar" src="assa-ac_LOGO.png" alt="Logo">
+                        <div class="chat-header-details">
+                            <h2 id="chat-company-name" data-i18n="select_company">Sélectionnez une compagnie</h2>
+                            <p data-i18n="recent_messages">Messages récents</p>
+                        </div>
+                    </div>
+                    <div class="chat-messages" id="chat-messages-content">
+                        <p class="chat-placeholder" data-i18n="select_company_view">Sélectionnez une compagnie pour voir les messages ici.</p>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea id="messageInput" rows="2" placeholder="Écrire un message..."></textarea>
+                        <div class="input-actions">
+                            <button class="attach-btn" id="attachBtn"><i class="fas fa-paperclip"></i></button>
+                            <input type="file" id="attachmentInput" multiple style="display:none" />
+                            <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="langSwitch.js"></script>
+    <script src="messagerieSuperviseur.js"></script>
+
+</body>
+
+</html>

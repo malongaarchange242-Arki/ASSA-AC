@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="AccueilAdmin.css">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo">
+                <img src="assa-ac_LOGO.png" alt="Logo" id="assaac-logo"
+                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA-AC</span>
+                <span class="brand-sub">Administration</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li class="active">
+                    <a href="AccueilAdmin.html">
+                        <i class="fas fa-th-large"></i>
+                        <span>Tableau de Bord</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="gestioncompagnie.html">
+                        <i class="fas fa-building"></i>
+                        <span>Compagnies</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="factureAdmin.html">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Facturation</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="messagerieAdmin.html">
+                        <i class="fas fa-comments"></i>
+                        <span>Messagerie</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="ArchiveAdmin.html">
+                        <i class="fas fa-receipt"></i>
+                        <span>Registre Ops</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="journalActivité.html">
+                        <i class="fas fa-history"></i>
+                        <span>Activité</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="paramètreAdmin.html">
+                        <i class="fas fa-cog"></i>
+                        <span>Paramètres</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="btn-ghost" id="theme-toggle" onclick="toggleDarkMode()" title="Mode Sombre/Clair">
+                <i class="fas fa-moon"></i>
+            </button>
+            <a href="#" class="btn-danger"
+                style="text-decoration: none; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-wrapper">
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button id="menuToggle" class="icon-btn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h1 class="app-title">Tableau de Bord</h1>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif">
+                    <button class="icon-btn notification-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notifCount">0</span>
+                    </button>
+                </div>
+
+                <div style="position: relative;">
+                    <button class="avatar-btn" onclick="toggleDropdown()">
+                        <img src="Icône profile.png" alt="Avatar" class="avatar" style="object-fit: cover;">
+                    </button>
+                    <div id="userDropdown" class="dropdown">
+                        <div class="dropdown-item">Mon Profil</div>
+                        <div class="dropdown-item">Paramètres</div>
+                        <div class="dropdown-item" style="color: var(--danger);">Déconnexion</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard">
+
+            <div class="page-header">
+                <div>
+                    <h2 class="page-title">Vue d'ensemble</h2>
+                    <p class="page-sub">Bienvenue sur l'espace d'administration ASSA-AC.</p>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <div class="stat-icon companies">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <span class="stat-value" id="companies-value">0</span>
+                        <span class="page-sub">Compagnies Actives</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon validated">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <span class="stat-value">0</span>
+                        <span class="page-sub">Total Factures</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon disputes">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <span class="stat-value" id="facturesContesteesValue">0</span>
+                        <span class="page-sub" style="color: var(--danger);">Contestées</span>
+                    </div>
+                </div>
+
+                <a href="enregistrefacture.html" style="text-decoration: none; color: inherit;">
+                    <div class="stat-card" style="border: 1px dashed var(--accent);">
+                        <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--accent);">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div>
+                            <span class="stat-value" style="font-size: 18px;">Créer</span>
+                            <span class="page-sub">Nouvelle Facture</span>
+                        </div>
+                    </div>
+                </a>
+
+            </div>
+
+            <h3 class="page-title" style="margin-top: 30px; margin-bottom: 15px; font-size: 18px;">Journal d'Activité
+                Récent</h3>
+
+            <div class="table-wrap">
+                <table id="table-activites" class="ops-table">
+                    <thead>
+                        <tr>
+                            <th>Type d'Activité</th>
+                            <th>Description</th>
+                            <th>Utilisateur</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span style="color: var(--accent); font-weight:600;">Connexion</span></td>
+                            <td>Admin s'est connecté au portail</td>
+                            <td>SuperAdmin</td>
+                            <td>A l'instant</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+    <script src="hscript.js"></script>
+    <script src="hAccueilAdmin.js"></script>
+    <script src="hjournalActivite.js"></script>
+
+</body>
+
+</html>

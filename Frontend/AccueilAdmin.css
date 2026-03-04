@@ -1,0 +1,321 @@
+/* ================== VARIABLES ================== */
+:root {
+    --bg: #f6f8fb;
+    --panel: #ffffff;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+    --radius: 12px;
+    --sidebar: #0f1724;
+    --sidebar-width: 260px;
+}
+
+/* ================== DARK MODE ================== */
+body.dark-mode {
+    background: linear-gradient(180deg, #071226 0%, #041022 100%);
+    color: #dbeafe;
+}
+
+body.dark-mode .sidebar {
+    background: linear-gradient(180deg, #041022, #02101a);
+    box-shadow: 4px 0 18px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-mode .nav-menu a {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+body.dark-mode .nav-menu a.active {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+body.dark-mode .header {
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    background: transparent;
+}
+
+body.dark-mode .card {
+    background: #071226;
+    color: #dbeafe;
+}
+
+body.dark-mode .activity-table th {
+    background: linear-gradient(180deg, #071226, #08182a);
+    color: #9fb4d9;
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+body.dark-mode .activity-table td {
+    color: #dbeafe;
+    border-bottom-color: rgba(255, 255, 255, 0.03);
+}
+
+body.dark-mode .activity-table tr:hover {
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.06), transparent);
+}
+
+/* ================== GLOBAL ================== */
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg, #f3f6fb 0%, #eef3fb 100%);
+    color: #0f1724;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+/* ================== SIDEBAR ================== */
+.sidebar {
+    width: var(--sidebar-width);
+    background: linear-gradient(180deg, var(--sidebar), #071024);
+    color: #fff;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    box-shadow: 4px 0 18px rgba(2, 6, 23, 0.12);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+}
+
+.header-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+#assaac-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #06b6d4, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-text {
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 0.2px;
+}
+
+.nav-menu {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.nav-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.92);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.3s;
+}
+
+.nav-menu a i {
+    width: 18px;
+    text-align: center;
+}
+
+.nav-menu a.active {
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-bottom a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* ================== MAIN CONTENT ================== */
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+/* ================== HEADER ================== */
+.header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 14px 22px;
+    background: transparent;
+    border-bottom: 1px solid rgba(15, 23, 36, 0.04);
+    flex-shrink: 0;
+}
+
+.user-interaction-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.2em;
+}
+
+.icon-btn:hover {
+    color: var(--accent);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 1px solid var(--muted);
+    padding-left: 15px;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
+    color: #fff;
+    font-weight: 700;
+    object-fit: cover;
+}
+
+/* ================== DASHBOARD GRID ================== */
+.dashboard-grid {
+    padding: 22px;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+    word-wrap: break-word;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.5em;
+    background: var(--accent);
+}
+
+.stat-card .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.stat-card .stat-title {
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+    word-wrap: break-word;
+}
+
+.stat-card .stat-extra {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* ================== TABLE ================== */
+.recent-activity-card {
+    grid-column: 1 / -1;
+}
+
+.activity-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.activity-table th {
+    background: rgba(0, 0, 0, 0.02);
+    padding: 15px;
+    text-align: left;
+    color: var(--muted);
+}
+
+.activity-table td {
+    padding: 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    word-wrap: break-word;
+}
+
+.activity-table tr:hover {
+    background: rgba(37, 99, 235, 0.05);
+}

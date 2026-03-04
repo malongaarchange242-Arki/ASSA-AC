@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Paramètres — ASSA-AC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="Acceuil_Superviseur.css">
+    <link rel="stylesheet" href="parametres_Superviseur.css">
+</head>
+
+<body>
+
+    <aside class="sidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span data-i18n="dashboard">Tableau de
+                            Bord</span></a></li>
+                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span data-i18n="sensitive_ops">Opérations
+                            Sensibles</span></a></li>
+                <li><a href="messagerieSuperviseur.html"><i class="fa-solid fa-envelope"></i><span data-i18n="messaging">Messagerie</span></a></li>
+                <li><a href="parametres_Superviseur.html"><i class="fa-solid fa-gear"></i><span data-i18n="settings">Paramètres</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i class="fa-solid fa-moon"></i><span data-i18n="mode">Mode</span></button>
+            <button class="btn-danger" type="button"><i class="fa-solid fa-right-from-bracket"></i><span data-i18n="logout">Déconnexion</span></button>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <h2 class="page-title" data-i18n="account_settings">Configuration du Compte</h2>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif" title="Notifications">
+                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span class="notif-badge">3</span></button>
+                </div>
+
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fa-solid fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+
+                <div class="avatar-wrapper" id="userMenu">
+                    <button class="avatar-btn" type="button"><span class="avatar" id="topbarAvatarInitials">SA</span></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <div class="settings-grid">
+                
+                <section class="settings-card">
+                    <div class="settings-header">
+                        <i class="fa-solid fa-circle-user icon-accent"></i>
+                        <h3>Informations Personnelles</h3>
+                    </div>
+                    
+                    <div class="profile-upload-section">
+                        <div class="profile-preview-container">
+                            <img src="https://www.flaticon.com/free-icons/user-account" id="profileDisplay" alt="Photo de profil">
+                        </div>
+                        <div class="profile-info">
+                            <h4>Super Administrateur</h4>
+                            <p>Dernière connexion : Aujourd'hui à 14:30</p>
+                        </div>
+                    </div>
+
+                    <form>
+                        <div class="form-group">
+                            <label>Nom complet</label>
+                            <input id="fullName" type="text" class="form-control" value="Super Admin">
+                        </div>
+                        <div class="form-group">
+                            <label>Numéro de téléphone</label>
+                            <input id="phone" type="text" class="form-control" value="+242067906900">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Adresse Email</label>
+                            <input id="email" type="email" class="form-control" value="admin@assa-ac.com">
+                        </div>
+                        <button id="updateProfileBtn" type="button" class="table-btn validate w-full">Mettre à jour le profil</button>
+                    </form>
+                </section>
+
+                <section class="settings-card">
+                    <div class="settings-header">
+                        <i class="fa-solid fa-shield-halved icon-danger"></i>
+                        <h3>Sécurité de l'accès</h3>
+                    </div>
+
+                    <div class="security-selector">
+                        <button type="button" class="tab-btn active" id="tab-pass">Mot de passe</button>
+                    </div>
+
+                    <div id="content-pass" class="security-content active">
+                        <div class="form-group">
+                            <label>Ancien mot de passe</label>
+                            <div class="input-wrapper">
+                                <input type="password" class="form-control" id="oldPass" placeholder="••••••••">
+                                <i class="fa-solid fa-eye toggle-pass" data-target="oldPass"></i>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Nouveau mot de passe</label>
+                            <div class="input-wrapper">
+                                <input type="password" class="form-control" id="newPass" placeholder="••••••••">
+                                <i class="fa-solid fa-eye toggle-pass" data-target="newPass"></i>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Confirmation du nouveau mot de passe</label>
+                            <div class="input-wrapper">
+                                <input type="password" class="form-control" id="confirmPass" placeholder="••••••••">
+                                <i class="fa-solid fa-eye toggle-pass" data-target="confirmPass"></i>
+                            </div>
+                        </div>
+                        <button type="button" id="changePasswordBtn" class="btn-danger w-full">Changer le mot de passe</button>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="langSwitch.js"></script>
+    <script src="parametres_Superviseur.js"></script>
+</body>
+
+</html>

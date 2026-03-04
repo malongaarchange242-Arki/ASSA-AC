@@ -1,0 +1,40 @@
+/* --- Styles spécifiques pour la page de profil ASSA-AC --- */
+
+/* Applique la transition pour la Modale */
+.modal {
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+}
+
+/* Styles pour le Header ABSOLUMENT FIXE (surmonte le contenu principal) */
+#main-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Ajustement de la position du Header pour les grands écrans (lg: 1024px) */
+@media (min-width: 1024px) { /* lg breakpoint */
+    #main-header {
+        left: 16rem; /* 16rem = w-64 (largeur de la sidebar) */
+    }
+}
+
+/* Ajustement pour le défilement du contenu sous l'en-tête (Espace nécessaire) */
+#main-content-scroll {
+    margin-top: 6rem; /* Espace pour le header sur mobile/petit écran */
+}
+
+@media (min-width: 768px) { /* md breakpoint */
+    #main-content-scroll {
+        margin-top: 5.5rem; /* Réduction de l'espace sur les écrans plus larges si le header est moins haut */
+    }
+}
+
+/* Effet de brillance/glow simulé sur les éléments interactifs (facultatif mais esthétique) */
+.hover-neon-glow:hover {
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.6); 
+    transform: translateY(-2px);
+}

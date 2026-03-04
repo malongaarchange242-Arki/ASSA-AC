@@ -1,0 +1,36 @@
+{
+  "en": {
+    "notifications": "Notifications",
+    "dashboard": "Dashboard",
+    "payments": "Payments",
+    "logout": "Logout",
+    "incoming_requests": "Incoming Requests",
+    "pending_payments": "Pending Payments",
+    "feri_ad_queue": "FERI / AD Queue",
+    "close": "Close",
+    "submit": "Submit",
+    "new_request": "New Request",
+    "your_ref_optional": "Your Ref Number (optional)",
+    "requirements": "Requirements",
+    "validation_note": "Validation is required before the vessel arrives.",
+    "country_demo": "Democratic Republic of Congo",
+    "feri_number_label": "FERI Number"
+  },
+  "fr": {
+    "notifications": "Notifications",
+    "dashboard": "Tableau de bord",
+    "payments": "Paiements",
+    "logout": "Déconnexion",
+    "incoming_requests": "Demandes entrantes",
+    "pending_payments": "Paiements en attente",
+    "feri_ad_queue": "File FERI / AD",
+    "close": "Fermer",
+    "submit": "Soumettre",
+    "new_request": "Nouvelle demande",
+    "your_ref_optional": "Votre numéro de référence (optionnel)",
+    "requirements": "Exigences",
+    "validation_note": "Validation requise avant l'arrivée du navire.",
+    "country_demo": "République démocratique du Congo",
+    "feri_number_label": "Numéro FERI"
+  }
+}

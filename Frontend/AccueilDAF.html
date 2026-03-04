@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC DAF - Accueil</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="AccueilAdmin.css"> <!-- réutilise le même style -->
+</head>
+<body>
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="AccueilDAF.html"><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="validationFactures.html"><i class="fas fa-file-invoice-dollar"></i> Validation</a>
+            <a href="factureDetailDAF.html"><i class="fas fa-file-invoice"></i> Détails facture</a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header"></div>
+        <div class="dashboard-grid">
+            <div class="card stat-card">
+                <div class="stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                <div class="stat-title">Factures à valider</div>
+                <div class="stat-value" id="to-validate-count">0</div>
+            </div>
+            <div class="card recent-activity-card">
+                <h3>Dernières validations</h3>
+                <table class="activity-table"><tbody id="last-validations"></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const role = localStorage.getItem('userRole') || localStorage.getItem('role');
+        if (role && !['Superviseur','DAF'].includes(role)) {
+            alert('Accès réservé au DAF');
+            window.location.href = 'Index.html';
+        }
+    </script>
+</body>
+</html>

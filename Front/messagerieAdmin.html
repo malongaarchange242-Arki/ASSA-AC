@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard (Messagerie)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="messagerieAdmin.css">
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html"><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="gestioncompagnie.html"><i class="fas fa-building"></i> Gestion des Compagnies</a>
+            <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
+            <a href="messagerieAdmin.html" class="active"><i class="fas fa-comments"></i> Messagerie</a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i> Registre des opérations</a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i> Journal d'Activité</a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i> Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="header-actions">
+                <div class="search-bar"><input id="searchInput" type="text"
+                        placeholder="Rechercher des discussions ou des tickets..."></div>
+                <div class="user-interaction-group">
+
+                    <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i
+                            class="fas fa-moon"></i></button>
+
+                    <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
+                    <div class="user-info">
+                        <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="messaging-container">
+            <div class="conversations-list">
+                <div class="list-header">
+                    <span>Compagnies</span>
+                </div>
+                <div id="companyContainer" class="list-body"></div>
+            </div>
+            <div class="chat-area">
+                <div class="chat-header">
+                    <img id="chat-company-avatar" src="assa-ac_LOGO.png" alt="Logo">
+                    <div class="chat-header-details">
+                        <h2 id="chat-company-name">Sélectionnez une compagnie</h2>
+                        <p>Messages récents</p>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chat-messages-content">
+                    <p class="chat-placeholder">Sélectionnez une compagnie pour voir les messages ici.</p>
+                </div>
+                <div class="chat-input-area">
+                    <textarea id="messageInput" rows="2" placeholder="Écrire un message..."></textarea>
+                    <div class="input-actions">
+                        <button class="attach-btn" id="attachBtn"><i class="fas fa-paperclip"></i></button>
+                        <input type="file" id="attachmentInput" multiple style="display:none" />
+                        <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="theme.js"></script>
+    <script src="messagerieAdmin.js"></script>
+
+</body>
+
+</html>

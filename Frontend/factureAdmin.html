@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ASSA-AC Admin - Facturation</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- CSS global unifié (AccueilAdmin + GestionCompagnie) -->
+    <link rel="stylesheet" href="factureAdmin.css">
+</head>
+
+<body>
+    <!-- Sidebar (identique aux autres pages) -->
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC PORTAIL</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html"><i class="fas fa-th-large"></i><span data-i18n="dashboard"> Tableau de Bord</span></a>
+            <a href="gestioncompagnie.html"><i class="fas fa-building"></i><span data-i18n="manage_companies"> Gestion des Compagnies</span></a>
+            <a href="factureAdmin.html" class="active"><i class="fas fa-file-invoice-dollar"></i><span data-i18n="invoicing"> Facturation</span></a>
+            <a href="enregistrefacture.html" class="toggleAside"><i class="fas fa-file-circle-plus"></i><span data-i18n="create_invoice"> Créer une facture</span></a>
+            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i><span data-i18n="messaging"> Messagerie</span></a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i><span data-i18n="registry_operations"> Registre des opérations</span></a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i><span data-i18n="recent_activity"> Journal d'Activité</span></a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i><span data-i18n="settings"> Paramètres</span></a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout"> Déconnexion</span></a>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div class="header-title">
+                    <h1 style="margin:0; font-size:1.25rem;">Facturation</h1>
+                </div>
+
+                <!-- Search (réutilise le style global) -->
+                <div class="search-bar" style="margin-left:12px;">
+                    <input id="searchInput" type="text" placeholder="Rechercher par Compagnie, Date ou N° Facture..."
+                        onkeyup="appliquerRecherche()">
+                </div>
+            </div>
+
+            <div class="user-interaction-group">
+                <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i
+                        class="fas fa-moon"></i></button>
+                <button class="icon-btn notification-btn" title="Notifications"><i class="fas fa-bell"></i>
+                    <span class="notif-badge" id="notifCount" hidden>0</span>
+                </button>
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fas fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+                <div class="user-info">
+                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                </div>
+            </div>
+        </div>
+
+        <!-- Page content -->
+        <div class="company-management">
+
+            <!-- Page header / actions -->
+            <div class="page-header">
+                <div>
+                    <h2 style="margin:0; font-size:1.1rem; font-weight:700; color:var(--accent);" data-i18n="invoice_management">Gestion des factures
+                    </h2>
+                    <div style="color:var(--muted); font-size:0.9rem; margin-top:6px;" data-i18n="consult_filter_export">Consultez, filtrez et exportez vos factures</div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-add"><a href="enregistrefacture.html"><i class="fas fa-file-invoice"></i><span data-i18n="create_invoice"> Créer Facture</span></a></button>
+                    <button class="btn-add" onclick="exporterFactures()" style="background:#16a34a;"><i
+                            class="fas fa-file-csv"></i><span data-i18n="export"> Exporter</span></button>
+                </div>
+            </div>
+
+            <!-- Filters / controls -->
+            <div class="card"
+                style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px;">
+                <div class="filter-controls-group" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                    <div style="font-weight:700; color:var(--muted); display:flex; align-items:center; gap:8px;" data-i18n="filter">
+                        <i class="fas fa-filter"></i> Filtrer :
+                    </div>
+
+                    <select class="report-select" title="Filtrer par mois"
+                        style="padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);" data-i18n-title="by_month">
+                        <option value="" data-i18n="by_month">Par mois</option>
+                        <option value="12" data-i18n="dec_2025">Décembre 2025</option>
+                        <option value="11" data-i18n="nov_2025">Novembre 2025</option>
+                        <option value="10" data-i18n="oct_2025">Octobre 2025</option>
+                    </select>
+
+                    <select class="report-select" title="Filtrer par compagnie"
+                        style="padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
+                        <option value="" data-i18n="all_companies">Toutes compagnies</option>
+                        <option>AfriTech Solutions</option>
+                        <option>Global Energies</option>
+                        <option>Kigali Innovations</option>
+                        <option>Atlas Commerce</option>
+                    </select>
+
+                    <select class="report-select" id="filter-statut"
+                        style="padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
+                        <option value="" data-i18n="by_status">Par statut</option>
+                        <option value="payée" data-i18n="paid">Payée</option>
+                        <option value="impayée" data-i18n="unpaid">Impayée</option>
+                        <option value="contestée" data-i18n="disputed">Contestée</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Table container -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:800; font-size:1rem; color:var(--muted);" data-i18n="invoices_list">Liste des Factures</div>
+                </div>
+
+                <div style="overflow:auto;">
+                    <!-- Utilise la classe activity-table du style global -->
+                    <table class="activity-table facture-table" id="factureTable" style="min-width:900px;">
+                        <thead>
+                            <tr>
+                                <th data-i18n="invoice_number">N° Facture</th>
+                                <th data-i18n="companies">Compagnie</th>
+                                <th data-i18n="emission_date">Date d'Émission</th>
+                                <th data-i18n="amount">Montant</th>
+                                <th data-i18n="status">Statut</th>
+                                <th style="text-align:center;" data-i18n="view">Voir</th>
+                            </tr>
+                        </thead>
+                        <tbody id="factureTableBody">
+                            <!-- Lignes insérées dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="facture-pagination" class="pagination"
+                    style="margin-top:12px; display:flex; justify-content:flex-end;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="langSwitch.js"></script>
+    <script src="script.js"></script>
+    <script src="factureAdmin.js"></script>
+
+</body>
+
+
+</html>

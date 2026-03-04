@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Opérations Sensibles — Superviseur</title>
+
+    <!-- Icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Style -->
+    <link rel="stylesheet" href="operations.css">
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+         <nav class="nav">
+            <ul>
+                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span data-i18n="dashboard">Tableau de
+                            Bord</span></a></li>
+                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span data-i18n="sensitive_ops">Opérations
+                            Sensibles</span></a></li>
+                <li><a href="messagerieSuperviseur.html"><i class="fa-solid fa-envelope"></i><span data-i18n="messaging">Messagerie</span></a></li>
+                <li><a href="parametres_Superviseur.html"><i class="fa-solid fa-gear"></i><span data-i18n="settings">Paramètres</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i
+                    class="fa-solid fa-moon"></i><span data-i18n="mode">Mode</span></button>
+            <button class="btn-danger" type="button"><i
+                    class="fa-solid fa-right-from-bracket"></i><span data-i18n="logout">Déconnexion</span></button>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-wrapper">
+
+        <!-- TOPBAR -->
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <h2 class="page-title" data-i18n="sensitive_ops">Opérations Sensibles</h2>
+            </div>
+
+            <div class="topbar-right">
+                <div class="notif" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span
+                            class="notif-badge">3</span></button>
+                </div>
+
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fa-solid fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button"><span
+                            class="avatar">SA</span></button>
+                    <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-user"></i> Profil</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-gear"></i> Paramètres</button>
+                        <button class="dropdown-item" type="button"><i class="fa-solid fa-right-from-bracket"></i>
+                            Déconnexion</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT -->
+        <main class="dashboard" role="main">
+
+            <div class="page-header">
+                <div>
+                    <p class="page-sub" data-i18n="ops_sub">Liste, filtrage et gestion des opérations à risque</p>
+                </div>
+
+                <div class="header-actions">
+                    <input id="globalSearch" class="search" type="search"
+                        placeholder="Recherche ID, type, demandeur, motif…" aria-label="Recherche">
+                    <button id="exportBtn" class="btn-outline" type="button"><i class="fa-solid fa-file-export"></i>
+                        Exporter</button>
+                </div>
+            </div>
+
+            <section class="controls">
+                <div class="control-row">
+                    <label>
+                        <select id="filterType" aria-label="Filtrer par type">
+                            <option value="">Tous les types</option>
+                            <option value="Contestation">Contestation</option>
+                            <option value="Suppression">Suppression</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <select id="filterStatus" aria-label="Filtrer par statut">
+                            <option value="">Tous les statuts</option>
+                            <option value="En attente">En attente</option>
+                            <option value="Payée">Payée</option>
+                            <option value="Impayée">Impayée</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <input id="filterDate" type="date" aria-label="Filtrer par date">
+                    </label>
+
+                    <button id="resetFilters" class="btn-ghost" type="button"><i class="fa-solid fa-rotate-left"></i>
+                        Réinitialiser</button>
+
+                    <label class="pagesize">
+                        <span>Afficher</span>
+                        <select id="pageSize">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                        </select>
+                        <span> / page</span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="table-wrap" aria-live="polite">
+                <table class="ops-table" aria-describedby="tableDesc">
+                    <caption id="tableDesc" class="sr-only" data-i18n="table_ops_caption">Table des opérations sensibles</caption>
+                    <thead>
+                        <tr>
+                            <th>ref</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th>Statut</th>
+                            <th class="actions-col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="operation-list"></tbody>
+                </table>
+
+                <div class="pagination" id="pagination"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- DETAIL PANEL -->
+    <aside id="detailPanel" class="detail-panel" aria-hidden="true">
+        <div class="detail-head">
+            <h3>Détails</h3>
+            <button id="closePanel" class="icon-btn" type="button"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="detail-body">
+            <dl>
+                <dt>Ref</dt>
+                <dd id="detail-id"></dd>
+                <dt>Type</dt>
+                <dd id="detail-type"></dd>
+                <dt>Date</dt>
+                <dd id="detail-date"></dd>
+                <dt>Demandeur</dt>
+                <dd id="detail-demandeur"></dd>
+                <dt>Statut</dt>
+                <dd id="detail-status"></dd>
+                <dt>Motif</dt>
+                <dd id="detail-motif" class="motif"></dd>
+            </dl>
+
+            <div class="detail-actions">
+                <button id="detail-validate" class="btn-success" type="button">Valider</button>
+                <button id="detail-reject" class="btn-danger" type="button">Rejeter</button>
+            </div>
+
+            <!-- Zone affichage preuves de paiement -->
+            <div id="detail-proofs" class="detail-proofs" aria-live="polite" style="margin-top:16px;">
+                <!-- Les preuves (liens / vignettes) apparaîtront ici -->
+            </div>
+        </div>
+    </aside>
+
+    <script id="facturesData" type="application/json">[{"idx":0,"id":"02c9c331-b4d4-4b78-a546-7abb0e1edfb9","numero_facture":"NDJ-003/02/2026/ASSA-AC/DAF","nom_client":"AIR Ethiopian Airlines","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"NDJ","date_emission":"2026-02-19","lieu_emission":"Brazzaville","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"081222a4-9e81-4ad3-8c79-66e4bd40920b","statut":"en attente","created_at":"2026-02-19 17:08:23.495413+00","updated_at":"2026-02-19 17:08:23.495413+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":1,"id":"0529d431-8ff2-4b04-9f05-c28fb6710eff","numero_facture":"BZV-001/02/2026/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"BZV","date_emission":"2026-02-19","lieu_emission":"Pointe-Noire","montant_total":"162500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de CENTSOIXANTE DEUX MILLE CINQ CENTS (162 500) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"en attente","created_at":"2026-02-19 17:19:51.295735+00","updated_at":"2026-02-19 17:19:51.295735+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":2,"id":"0fe8d90c-57e2-4235-88d6-cb0405f8ddc2","numero_facture":"019/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-15","lieu_emission":"pointe noire(congo)","montant_total":"1500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE CINQ CENTS (1 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-15 14:39:53.070122+00","updated_at":"2025-12-22 21:40:20.965593+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":3,"id":"152baf04-7b55-45f8-9096-d892a2224a58","numero_facture":"001/12/25/ASSA-AC/DAF","nom_client":"asky","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"NSI","date_emission":"2025-12-12","lieu_emission":"dounl","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-12 16:27:42.938239+00","updated_at":"2025-12-12 16:29:39.995615+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":4,"id":"17fbb688-e81f-4d7a-8343-dd3867255659","numero_facture":"018/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-15","lieu_emission":"pointe noire(congo)","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-15 14:21:29.329576+00","updated_at":"2025-12-22 21:40:27.682175+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":5,"id":"185e0ca9-98bd-41b3-99f0-11e169a84fc8","numero_facture":"020/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-16","lieu_emission":"pointe noire(congo)","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-15 17:12:55.138215+00","updated_at":"2025-12-15 17:28:24.995071+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":6,"id":"1c0c858d-2160-40ac-8a8a-2b351bf02618","numero_facture":"008/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-13","lieu_emission":"pointe noire(congo)","montant_total":"1500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE CINQ CENTS (1 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-13 12:33:34.84178+00","updated_at":"2025-12-13 14:57:37.575118+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":7,"id":"2e742e45-3a2f-4aae-9091-7370a9f7ebac","numero_facture":"005/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-12","lieu_emission":"Pointe-Noire","montant_total":"18000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de DIX HUIT MILLE (18 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-12 18:11:03.78313+00","updated_at":"2025-12-13 11:08:37.54196+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":8,"id":"45228936-3cd1-43d0-ad40-8dc26d7f8d4d","numero_facture":"PNR-003/02/2026/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"PNR","date_emission":"2026-02-19","lieu_emission":"pointe noire(congo)","montant_total":"22500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de VINGT DEUX MILLE CINQ CENTS (22 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"en attente","created_at":"2026-02-19 17:36:57.599093+00","updated_at":"2026-02-19 17:36:57.599093+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":9,"id":"4e0a9ebb-541a-43dc-a565-ca053aea0273","numero_facture":"022/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-16","lieu_emission":"pointe noire(congo)","montant_total":"9500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de NEUF MILLE CINQ CENTS (9 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Contestée","created_at":"2025-12-15 17:14:42.366652+00","updated_at":"2025-12-15 17:23:53.865498+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":10,"id":"656e9e0d-9811-43e1-9382-07288c9b63d7","numero_facture":"BZV-003/02/2026/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"BZV","date_emission":"2026-02-19","lieu_emission":"Pointe-Noire","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"en attente","created_at":"2026-02-19 17:25:17.786257+00","updated_at":"2026-02-19 17:25:17.786257+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":11,"id":"695c304e-5b51-48a0-9200-6d2c52ee7e1e","numero_facture":"013/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-14","lieu_emission":"pointe noire(congo)","montant_total":"3000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de TROIS MILLE (3 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Contestée","created_at":"2025-12-14 11:50:00.77418+00","updated_at":"2025-12-14 11:50:46.45456+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":12,"id":"6ea2967f-9585-4cb7-a088-92a1d5dcfb83","numero_facture":"010/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-14","lieu_emission":"Pointe-Noire","montant_total":"219000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de DEUX CENTSDIX NEUF MILLE (219 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Impayée","created_at":"2025-12-14 07:40:59.644192+00","updated_at":"2025-12-14 07:40:59.644192+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":13,"id":"84679aaf-a7dc-4634-99d9-a632c43fda5e","numero_facture":"014/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-14","lieu_emission":"pointe noire(congo)","montant_total":"168500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de CENTSOIXANTE HUIT MILLE CINQ CENTS (168 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Contestée","created_at":"2025-12-14 11:02:15.19489+00","updated_at":"2025-12-14 11:03:16.035552+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":14,"id":"8f3f869b-6b8a-4c48-93c5-a71b9fcca053","numero_facture":"BZV-002/02/2026/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"BZV","date_emission":"2026-02-19","lieu_emission":"Pointe-Noire","montant_total":"162500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de CENTSOIXANTE DEUX MILLE CINQ CENTS (162 500) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"en attente","created_at":"2026-02-19 17:20:10.844535+00","updated_at":"2026-02-19 17:20:10.844535+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":15,"id":"8fc4e286-e5be-4f33-9ede-a9781bcf7158","numero_facture":"006/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-13","lieu_emission":"Pointe-Noire","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-12 19:27:10.635476+00","updated_at":"2025-12-13 15:02:46.600914+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":16,"id":"9e0fca84-7c05-43e4-8ee3-9ee67ecd75d2","numero_facture":"017/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-15","lieu_emission":"pointe noire(congo)","montant_total":"64500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de SOIXANTE QUATRE MILLE CINQ CENTS (64 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-15 14:20:26.694743+00","updated_at":"2025-12-22 21:39:46.736667+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":17,"id":"9f4c6c1e-a6c8-4f35-bd02-7265cc7525dd","numero_facture":"011/01/26/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Décembre 2025","aeroport":"PNR","date_emission":"2026-01-14","lieu_emission":"Pointe-Noire","montant_total":"42000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de QUARANTE DEUX MILLE (42 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"En Attente","created_at":"2026-01-14 15:13:41.404683+00","updated_at":"2026-01-14 15:16:25.773398+00","id_admin":"9a090de6-3e2d-41e2-90dc-a3f4c2a2cdef","archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":18,"id":"b289940b-f3be-4242-a638-f024105ae232","numero_facture":"016/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-15","lieu_emission":"pointe noire(congo)","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Contestée","created_at":"2025-12-15 11:32:37.662697+00","updated_at":"2025-12-15 11:47:51.052179+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":19,"id":"d11a0047-1fb7-427c-9d9d-e6a74c251551","numero_facture":"026/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-15","lieu_emission":"pointe noire(congo)","montant_total":"11500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de ONZE MILLE CINQ CENTS (11 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Impayée","created_at":"2025-12-15 17:40:35.83377+00","updated_at":"2025-12-15 17:40:35.83377+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":20,"id":"d2419d5a-b32f-44da-abea-3c151211ee7b","numero_facture":"003/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-12","lieu_emission":"Pointe-Noire","montant_total":"110000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de CENTDIX MILLE (110 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-12 18:09:14.270289+00","updated_at":"2025-12-13 11:10:47.281746+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":21,"id":"d269014b-bbcc-478f-a858-15da9ca818cc","numero_facture":"012/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-14","lieu_emission":"pointe noire(congo)","montant_total":"47000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de QUARANTE SEPT MILLE (47 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-14 10:39:02.823816+00","updated_at":"2025-12-14 10:40:36.231044+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":22,"id":"d377d828-a07d-4fa1-9e05-3722ad78880c","numero_facture":"PNR-001/02/2026/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"PNR","date_emission":"2026-02-19","lieu_emission":"pointe noire(congo)","montant_total":"1500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE CINQ CENTS (1 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"en attente","created_at":"2026-02-19 17:35:32.20346+00","updated_at":"2026-02-19 17:35:32.20346+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":23,"id":"d85fd58f-a533-466e-a45f-aa0ab95aa784","numero_facture":"NDJ-004/02/2026/ASSA-AC/DAF","nom_client":"AIR Ethiopian Airlines","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"NDJ","date_emission":"2026-02-19","lieu_emission":"Brazzaville","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"081222a4-9e81-4ad3-8c79-66e4bd40920b","statut":"en attente","created_at":"2026-02-19 17:08:43.525164+00","updated_at":"2026-02-19 17:08:43.525164+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":24,"id":"dc58e95a-7ed0-4ef4-a55a-8607a082c3d5","numero_facture":"021/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-16","lieu_emission":"pointe noire(congo)","montant_total":"2500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de DEUX MILLE CINQ CENTS (2 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Payée","created_at":"2025-12-15 17:14:19.449662+00","updated_at":"2025-12-15 17:28:17.401858+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":25,"id":"e2a25096-000f-4e35-97bd-5de2bc164790","numero_facture":"007/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-13","lieu_emission":"Pointe-Noire","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-13 10:56:39.708784+00","updated_at":"2025-12-13 14:55:40.674916+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":26,"id":"e38b7df8-8fb1-4974-b6e1-4f6fa972c787","numero_facture":"PNR-002/02/2026/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"PNR","date_emission":"2026-02-19","lieu_emission":"pointe noire(congo)","montant_total":"1500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE CINQ CENTS (1 500) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"en attente","created_at":"2026-02-19 17:36:03.626904+00","updated_at":"2026-02-19 17:36:03.626904+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":27,"id":"e4f6467e-f72d-4120-8d0a-2a15e8b9b916","numero_facture":"011/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-14","lieu_emission":"Pointe-Noire","montant_total":"231000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de DEUX CENTSTRENTE ET MILLE (231 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-14 09:09:59.720164+00","updated_at":"2025-12-16 14:07:25.852936+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":28,"id":"e5986c59-8077-422c-b3a4-80f12bd8e9ad","numero_facture":"002/12/25/ASSA-AC/DAF","nom_client":"asky","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"NSI","date_emission":"2025-12-12","lieu_emission":"dounl","montant_total":"1500.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE CINQ CENTS (1 500) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":"2025-12-12 16:47:23.545359+00","updated_at":"2025-12-12 16:53:06.702834+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":29,"id":"eac33f91-289b-427f-80ab-6796b6e8acfd","numero_facture":"PNR-004/02/2026/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Janvier 2026","aeroport":"PNR","date_emission":"2026-02-19","lieu_emission":"pointe noire(congo)","montant_total":"1000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de MILLE (1 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"en attente","created_at":"2026-02-19 17:48:53.45593+00","updated_at":"2026-02-19 17:48:53.45593+00","id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":30,"id":"f92bcb17-850a-4933-8006-ab65546514d8","numero_facture":"015/12/25/ASSA-AC/DAF","nom_client":"RwandAir","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"PNR","date_emission":"2025-12-14","lieu_emission":"pointe noire(congo)","montant_total":"6000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de SIX MILLE (6 000) Frs CFA.","admin_id":null,"id_companie":"e518e1bb-c7e5-422e-b28c-92b0a336fcf1","statut":"Contestée","created_at":null,"updated_at":null,"id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":31,"id":"f9764caf-561a-4856-9c38-c7ba5d7fc460","numero_facture":"009/12/25/ASSA-AC/DAF","nom_client":"ASKY","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Novembre 2025","aeroport":"BZV","date_emission":"2025-12-13","lieu_emission":"Pointe-Noire","montant_total":"5000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de CINQ MILLE (5 000) Frs CFA.","admin_id":null,"id_companie":"7ec130e7-fc8a-4cd4-9e07-38345c50c471","statut":"Payée","created_at":null,"updated_at":null,"id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null},{"idx":32,"id":"fff689ea-4a91-43fe-9bca-6c41ea93c53c","numero_facture":"010/01/26/ASSA-AC/DAF","nom_client":"TTA","objet":"Redevance de Sécurité Aérienne Régionale (RSAR)","periode":"Mois de Décembre 2025","aeroport":"FIH","date_emission":"2026-01-14","lieu_emission":"Brazzaville","montant_total":"23000.00","devise":"Frs CFA","montant_en_lettres":"Arrêtée la présente facture à la somme de VINGT TROIS MILLE (23 000) Frs CFA.","admin_id":null,"id_companie":"230acba3-7dd9-410c-bc73-bdf373219a24","statut":"Payée","created_at":null,"updated_at":null,"id_admin":null,"archived":false,"created_by":null,"validated_by":null,"validated_at":null,"signed_at":null}]</script>
+    <script src="langSwitch.js"></script>
+    <script src="operations.js"></script>
+    <script src="langSwitch.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+/* Importation de la police Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Transitions pour la Modal */
+.modal {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* --- HEADER ABSOLUMENT FIXE --- */
+#main-header {
+    /* Fixe l'en-tête en haut de la fenêtre (viewport) */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20; 
+    /* Ajout d'une ombre pour le détacher du contenu défilant */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Sur les écrans larges, le header doit commencer après la sidebar de 16rem (w-64) */
+@media (min-width: 1024px) { /* lg breakpoint */
+    #main-header {
+        left: 16rem; 
+    }
+}
+
+
+/* Ajustement pour le défilement du contenu sous l'en-tête */
+#main-content-scroll {
+    /* Ajout d'une marge supérieure pour que le contenu ne soit pas caché par le header fixe */
+    margin-top: 6rem; 
+}
+ 
+/* Ajustement de la marge supérieure pour les breakpoints qui utilisent p-6 sur le header */
+@media (min-width: 768px) { /* md breakpoint */
+    #main-content-scroll {
+        margin-top: 5.5rem; 
+    }
+}
+
+/* Ajustement des couleurs pour l'effet "neon" (shadow glow) */
+.hover-neon-glow:hover {
+    /* Utilise une couleur semi-transparente pour simuler le glow de l'indigo (primary) */
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.6); 
+    transform: translateY(-2px);
+}
+
+/* Style pour le champ de fichier personnalisé quand un fichier est sélectionné */
+#file-upload-display-contestation.file-selected {
+    color: #10b981; /* secondary (Emerald) */
+    font-weight: 600;
+}

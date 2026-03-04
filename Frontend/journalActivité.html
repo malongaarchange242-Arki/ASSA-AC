@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard (Journal d'Activité)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="journalActivité.css">
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html"><i class="fas fa-th-large"></i><span data-i18n="dashboard"> Tableau de Bord</span></a>
+            <a href="gestioncompagnie.html"><i class="fas fa-building"></i><span data-i18n="manage_companies"> Gestion des Compagnies</span></a>
+            <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i><span data-i18n="invoicing"> Facturation</span></a>
+            <a href="enregistrefacture.html" class="toggleAside"><i class="fas fa-file-circle-plus"></i><span data-i18n="create_invoice"> Créer une facture</span></a>
+            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i><span data-i18n="messaging"> Messagerie</span></a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i><span data-i18n="registry_operations"> Registre des opérations</span></a>
+            <a href="journalActivité.html" class="active"><i class="fas fa-history"></i><span data-i18n="recent_activity"> Journal d'Activité</span></a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i><span data-i18n="settings"> Paramètres</span></a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout"> Déconnexion</span></a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="header-left">
+                <h1 class="page-title" data-i18n="operation_log">Journal d'Activité</h1>
+                <div class="search-bar">
+                    <input id="searchInput" type="text" placeholder="Rechercher une action ou un utilisateur..." data-i18n-placeholder="search_action_user">
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="user-interaction-group">
+                    <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle">
+                        <i class="fas fa-moon"></i></button>
+                    <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
+                    <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fas fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+                    <div class="user-info">
+                        <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="history-management">
+
+            <div class="filter-actions-bar">
+                <label for="filter-user" data-i18n="filter_user">Utilisateur </label>
+                <select id="filter-user">
+                    <option value="" data-i18n="all">Tous</option>
+                </select>
+
+
+                <label for="filter-action" data-i18n="filter_action">Type d'Action :</label>
+                <select id="filter-action">
+                    <option value="" data-i18n="all_types">Tous les types</option>
+                    <option value="create" data-i18n="create_action">Création (Facture/Devis)</option>
+                    <option value="update" data-i18n="update_action">Modification (Compagnie/Statut)</option>
+                    <option value="delete" data-i18n="delete_action">Archivage/Suppression</option>
+                    <option value="system" data-i18n="system_action">Connexion/Système</option>
+                </select>
+
+                <label for="filter-date" data-i18n="filter_date">Date :</label>
+                <select id="filter-date">
+                    <option value="" data-i18n="current_month">Aujourd'hui</option>
+                    <option value="yesterday">Hier</option>
+                    <option value="last7">7 Derniers jours</option>
+                </select>
+
+                <button data-i18n="refresh_button"><i class="fas fa-redo"></i> Actualiser</button>
+            </div>
+
+
+            <div class="log-container">
+                <ul class="activity-list">
+
+                </ul>
+            </div>
+
+            <div id="activity-pagination" class="pagination"></div>
+
+
+        </div>
+    </div>
+
+
+    <script src="langSwitch.js"></script>
+    <script src="journalActivité.js"></script>
+
+
+</body>
+
+</html>

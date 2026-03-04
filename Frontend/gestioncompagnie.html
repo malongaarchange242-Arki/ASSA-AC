@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSA-AC Admin Dashboard (Gestion des Compagnies - Dynamique)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="gestioncompagnie.css">
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="header-logo-container">
+            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
+            <div class="logo-text">ASSA-AC</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="AccueilAdmin.html"><i class="fas fa-th-large"></i><span data-i18n="dashboard"> Tableau de Bord</span></a>
+            <a href="gestioncompagnie.html" class="active"><i class="fas fa-building"></i><span data-i18n="manage_companies"> Gestion des Compagnies</span></a>
+            <a href="factureAdmin.html"><i class="fas fa-file-invoice-dollar"></i><span data-i18n="invoicing"> Facturation</span></a>
+            <a href="enregistrefacture.html" class="toggleAside"><i class="fas fa-file-circle-plus"></i><span data-i18n="create_invoice"> Créer une facture</span></a>
+            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i><span data-i18n="messaging"> Messagerie</span></a>
+            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i><span data-i18n="registry_operations"> Registre des opérations</span></a>
+            <a href="journalActivité.html"><i class="fas fa-history"></i><span data-i18n="recent_activity"> Journal d'Activité</span></a>
+            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i><span data-i18n="settings"> Paramètres</span></a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="Index.html"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout"> Déconnexion</span></a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="search-bar">
+                <input id="searchInput" type="text" placeholder="Rechercher une compagnie, un ID..." data-i18n-placeholder="search_company_id">
+            </div>
+            <div class="user-interaction-group">
+                <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i
+                        class="fas fa-moon"></i></button>
+
+                <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
+
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fas fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+
+                <div class="user-info">
+                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                </div>
+            </div>
+        </div>
+
+        <div class="company-management">
+            <div class="page-header">
+            <h1 data-i18n="manage_companies">Gestion des Compagnies</h1>
+                <div class="action-buttons">
+                    <button onclick="fetchCompanies()" data-i18n="refresh"><i class="fas fa-sync-alt"></i> Actualiser</button>
+                    <a href="enregistrecompagnie.html" class="btn-add"><i class="fas fa-plus-circle"></i> <span data-i18n="add_company">Ajouter Compagnie</span></a>
+                        Compagnie</a>
+                </div>
+            </div>
+
+            <div class="company-card-grid">
+            </div>
+        </div>
+    </div>
+
+    <script src="langSwitch.js"></script>
+    <script src="gestioncompagnie.js"></script>
+</body>
+
+</html>
