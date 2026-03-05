@@ -326,8 +326,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const uiRole = currentRole?.toLowerCase().trim();
 
         // --- Détermination de l'URL ---
-        if (uiRole === 'admin' || uiRole === 'supervisor' || uiRole === 'superviseur') {
+        if (uiRole === 'admin') {
             url = `${API_BASE}/api/admins/login`;
+        } else if (uiRole === 'supervisor' || uiRole === 'superviseur') {
+            url = `${API_BASE}/api/superviseurs/login`;
         } else if (uiRole === 'company') {
             url = `${API_BASE}/api/companies/login`;
             isCompany = true;
@@ -403,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Redirection finale ---
         if (role === 'supervisor' || role === 'superviseur') {
             alert('Connexion réussie ! Bienvenue superviseur.');
-            window.location.href = 'Accueil_Superviseur.html';
+            window.location.href = 'Acceuil_Superviseur.html';
         } else if (role === 'operateur' || role === 'operator') {
             alert('Connexion réussie ! Bienvenue opérateur.');
             window.location.href = 'AccueilOperateur.html';
