@@ -48,7 +48,8 @@ const allowedOrigins = [
   'https://assa-ac.onrender.com',
   'https://assa-ac.netlify.app',
   'https://assa-ac-test.netlify.app',
-  'https://assa-ac-cemac.netlify.app'
+  'https://assa-ac-cemac.netlify.app',
+  'https://assa-ac-frontend.onrender.com'
 ];
 
 const corsOptions = {
