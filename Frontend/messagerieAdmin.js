@@ -2,9 +2,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // CONSTANTES
     // -----------------------
-    const API_BASE = 'https://assa-ac-duzn.onrender.com';
+    const API_BASE = 'http://localhost:5002';
     const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
         API_BASE.replace(/^https?:\/\//, '').replace(/\/$/, '') + '/ws';
+
+    function buildCompanyLogoUrl(rawLogoUrl) {
+        if (!rawLogoUrl) return '';
+        if (rawLogoUrl.startsWith('http')) return rawLogoUrl;
+        const filename = rawLogoUrl.startsWith('logos/') ? rawLogoUrl.slice(6) : rawLogoUrl.replace(/^\/+/, '');
+        return `https://ulmwuzpjfbkxkkvdzaoi.supabase.co/storage/v1/object/public/company-logos/${encodeURIComponent(filename)}`;
+    }
 
     // -----------------------
     // ÉLÉMENTS DOM
@@ -84,8 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (u.includes('via.placeholder.com') || u.includes('dummyimage.com')) return makeLetterAvatar(company.company_name);
             return raw;
         }
-        const filename = raw.startsWith('logos/') ? raw.slice(6) : raw.replace(/^\/+/, '');
-        return `https://iswllanzauyloulabutf.supabase.co/storage/v1/object/public/company-logos/${filename}`;
+        return buildCompanyLogoUrl(raw);
     }
 
     function scrollChatBottom() {
@@ -525,13 +531,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // FETCH COMPANIES (Actives)
     // -----------------------
     async function fetchCompaniesActive() {
+        companyContainer.setAttribute('aria-busy', 'true');
+        companyContainer.innerHTML = Array.from({ length: 3 }, () =>
+            '<div class="admin-skeleton admin-skeleton-block"></div>'
+        ).join('');
         try {
             const session = getSessionInfo();
-            if (!session) { companyContainer.innerHTML = '<p style="color:red;">Session expirée.</p>'; return; }
+            if (!session) {
+                companyContainer.setAttribute('aria-busy', 'false');
+                companyContainer.innerHTML = '<p style="color:red;">Session expirée.</p>';
+                return;
+            }
 
             const data = await fetchWithAuth(`${API_BASE}/api/companies/all`);
             const companies = Array.isArray(data) ? data : data.companies || [];
             const activeCompanies = companies.filter(c => c.status === 'Actif');
+            companyContainer.setAttribute('aria-busy', 'false');
             companyContainer.innerHTML = '';
 
             if (!activeCompanies.length) { companyContainer.innerHTML = '<p>Aucune compagnie active trouvée.</p>'; return; }
@@ -572,7 +587,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         } catch (err) {
             console.error('Erreur API compagnies:', err);
-            companyContainer.innerHTML = '<p style="color:red;">Erreur serveur.</p>';
+            companyContainer.setAttribute('aria-busy', 'false');
+            companyContainer.innerHTML = '<p style="color:red;">Erreur serveur. </p>';
+            const retryButton = document.createElement('button');
+            retryButton.type = 'button';
+            retryButton.textContent = 'Réessayer';
+            retryButton.addEventListener('click', fetchCompaniesActive);
+            companyContainer.appendChild(retryButton);
         }
     }
 

@@ -36,7 +36,7 @@ export const uploadPreuvesPaiement = async (req, res) => {
         // ==========================
         const { data: facture, error: factureErr } = await supabase
             .from("factures")
-            .select("id, id_companie, id_admin, admin_id, statut")
+            .select("id, id_companie, id_admin, statut")
             .eq("numero_facture", numero_facture)
             .single();
 
@@ -132,7 +132,7 @@ export const uploadPreuvesPaiement = async (req, res) => {
     // ==========================
     // 6️⃣ EMAIL ADMIN
     // ==========================
-    const adminId = facture.id_admin || facture.admin_id;
+    const adminId = facture.id_admin;
 
     console.log("👤 ADMIN ID =", adminId);
 
@@ -274,4 +274,3 @@ export const getPreuveById = async (req, res) => {
         return res.status(500).json({ message: "Erreur serveur", erreur: err.message });
     }
 };
-

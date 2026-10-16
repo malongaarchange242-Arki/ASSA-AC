@@ -6,26 +6,47 @@ import supabase from '../Config/db.js';
 ----------------------------------------------------------*/
 export const checkUserRole = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = req.body || {};
     if (!email) {
       return res.status(400).json({ message: 'Email requis' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = String(email).trim().toLowerCase();
 
-    // -----------------------------
-    // Vérifier si l'utilisateur est un admin
-    // -----------------------------
-    if (process.env.DEBUG_AUTH === 'true') console.log('checkUserRole: looking for', normalizedEmail);
-    const { data: admin, error: adminErr } = await supabase
-      .from('admins')
-      .select('id, email, profile, password')
-      .ilike('email', normalizedEmail)
-      .maybeSingle();
+    const safeLookup = async (table, select, label) => {
+      try {
+        const { data, error } = await supabase
+          .from(table)
+          .select(select)
+          .ilike('email', normalizedEmail)
+          .maybeSingle();
 
-    if (adminErr) {
-      console.error('Supabase error checking admin:', adminErr);
-      return res.status(500).json({ message: 'Erreur serveur', erreur: adminErr.message });
+        if (error) {
+          if (error.code === 'PGRST116' || error.code === '42703') {
+            return null;
+          }
+          throw error;
+        }
+
+        return data;
+      } catch (error) {
+        console.error(`Supabase error checking ${label}:`, error);
+        throw error;
+      }
+    };
+
+    let admin = null;
+    let company = null;
+    let operateur = null;
+    let superviseur = null;
+
+    try {
+      admin = await safeLookup('admins', 'id, email, profile, password', 'admin');
+    } catch (err) {
+      return res.status(503).json({
+        role: 'unknown',
+        message: 'Service de données indisponible. Vérifiez la base de données Supabase.'
+      });
     }
 
     if (admin) {
@@ -36,18 +57,13 @@ export const checkUserRole = async (req, res) => {
       });
     }
 
-    // -----------------------------
-    // Vérifier si l'utilisateur est une company
-    // -----------------------------
-    const { data: company, error: compErr } = await supabase
-      .from('companies')
-      .select('id, company_name, email, password_hash, status')
-      .ilike('email', normalizedEmail)
-      .maybeSingle();
-
-    if (compErr) {
-      console.error('Supabase error checking company:', compErr);
-      return res.status(500).json({ message: 'Erreur serveur', erreur: compErr.message });
+    try {
+      company = await safeLookup('companies', 'id, company_name, email, password_hash, status', 'company');
+    } catch (err) {
+      return res.status(503).json({
+        role: 'unknown',
+        message: 'Service de données indisponible. Vérifiez la base de données Supabase.'
+      });
     }
 
     if (company) {
@@ -60,20 +76,13 @@ export const checkUserRole = async (req, res) => {
       });
     }
 
-    // -----------------------------
-    // Vérifier si l'utilisateur est un opérateur
-    // -----------------------------
-    const { data: operateur, error: operateurErr } = await supabase
-      .from('operateurs')
-      .select('id, email, password_hash')
-      .ilike('email', normalizedEmail)
-      .maybeSingle();
-
-    if (process.env.DEBUG_AUTH === 'true') console.log('operateur lookup:', { operateur, operateurErr });
-
-    if (operateurErr) {
-      console.error('Supabase error checking operateur:', operateurErr);
-      return res.status(500).json({ message: 'Erreur serveur', erreur: operateurErr.message });
+    try {
+      operateur = await safeLookup('operateurs', 'id, email, password_hash', 'operateur');
+    } catch (err) {
+      return res.status(503).json({
+        role: 'unknown',
+        message: 'Service de données indisponible. Vérifiez la base de données Supabase.'
+      });
     }
 
     if (operateur) {
@@ -84,41 +93,34 @@ export const checkUserRole = async (req, res) => {
       });
     }
 
-    // -----------------------------
-    // Vérifier si l'utilisateur est un superviseur (DAF)
-    // -----------------------------
-    const { data: sup, error: supErr } = await supabase
-      .from('superviseurs')
-      .select('id, email, password_hash, profile')
-      .ilike('email', normalizedEmail)
-      .maybeSingle();
-
-    if (process.env.DEBUG_AUTH === 'true') console.log('superviseur lookup:', { sup, supErr });
-
-    if (supErr) {
-      console.error('Supabase error checking superviseur:', supErr);
-      return res.status(500).json({ message: 'Erreur serveur', erreur: supErr.message });
-    }
-
-    if (sup) {
-      return res.json({
-        role: 'superviseur',
-        has_password: !!sup.password_hash,
-        profile: sup.profile,
-        id: sup.id
+    try {
+      superviseur = await safeLookup('superviseurs', 'id, email, password_hash, profile', 'superviseur');
+    } catch (err) {
+      return res.status(503).json({
+        role: 'unknown',
+        message: 'Service de données indisponible. Vérifiez la base de données Supabase.'
       });
     }
 
-    // -----------------------------
-    // Aucun compte trouvé
-    // -----------------------------
+    if (superviseur) {
+      return res.json({
+        role: 'superviseur',
+        has_password: !!superviseur.password_hash,
+        profile: superviseur.profile,
+        id: superviseur.id
+      });
+    }
+
     return res.status(404).json({
       role: 'unknown',
       message: 'Aucun compte associé à cet email'
     });
-    
+
   } catch (err) {
     console.error('checkUserRole error:', err);
-    return res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
+    return res.status(503).json({
+      role: 'unknown',
+      message: 'Service de données indisponible. Vérifiez la base de données Supabase.'
+    });
   }
 };

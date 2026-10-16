@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
        }
    });
    
-const API_URL = "https://assa-ac-duzn.onrender.com";
+const API_URL = "http://localhost:5002";
 const token = localStorage.getItem("jwtTokenAdmin");
 
 if (!token) {
@@ -67,6 +67,13 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
    1️⃣ CHARGER LES FACTURES
    ============================================================ */
    async function chargerFactures() {
+    const tbody = document.getElementById("factureTableBody");
+    tbody.setAttribute('aria-busy', 'true');
+    tbody.innerHTML = Array.from({ length: 3 }, () => `
+        <tr class="admin-skeleton-row">
+            ${Array.from({ length: 6 }, () => '<td><span class="admin-skeleton admin-skeleton-block"></span></td>').join('')}
+        </tr>
+    `).join('');
     try {
         const res = await fetch(`${API_URL}/api/factures`, {
             method: "GET",
@@ -91,9 +98,22 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
         extraireCompagnies();
         remplirListeCompagnies();
         paginateFactures(FACTURES, 8);
+        tbody.setAttribute('aria-busy', 'false');
 
     } catch (err) {
         console.error("❌ ERREUR CHARGEMENT:", err);
+        tbody.setAttribute('aria-busy', 'false');
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.textContent = `${window.t('unable_load_invoices')} `;
+        const retryButton = document.createElement('button');
+        retryButton.type = 'button';
+        retryButton.textContent = 'Réessayer';
+        retryButton.addEventListener('click', chargerFactures);
+        cell.appendChild(retryButton);
+        row.appendChild(cell);
+        tbody.replaceChildren(row);
         alert(window.t('unable_load_invoices'));
     }
 }
@@ -102,8 +122,7 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
    2️⃣ EXTRAIRE LA LISTE DES COMPAGNIES
    ============================================================ */
 function extraireCompagnies() {
-    COMPAGNIES = [...new Set(FACTURES.map(f => f.client).filter(Boolean))];
-    console.log("COMPAGNIES :", COMPAGNIES);
+    COMPAGNIES = [...new Set(FACTURES.map(f => f.client).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
 }
 
 /* ============================================================
@@ -112,81 +131,207 @@ function extraireCompagnies() {
 function remplirListeCompagnies() {
     const select = document.querySelectorAll(".report-select")[1]; // 2e select = compagnie
 
-    select.innerHTML = `<option value="">Par compagnies</option>`;
+    select.replaceChildren(new Option("Par compagnies", ""));
 
     COMPAGNIES.forEach(comp => {
-        select.innerHTML += `<option value="${comp}">${comp}</option>`;
+        select.add(new Option(comp, comp));
     });
 
-    select.addEventListener("change", filtrerFactures);
+    select.onchange = filtrerFactures;
 }
 
 /* ============================================================
    4️⃣ REMPLIR LE TABLEAU
 ============================================================ */
 function remplirTableau(factures) {
-    // 🔥 1. Charger les factures supprimées stockées dans localStorage
     const hidden = JSON.parse(localStorage.getItem("factures_supprimees") || "[]");
-
-    // 🔥 2. Filtrer AVANT d'afficher
     factures = factures.filter(f => !hidden.includes(f.numero_facture));
 
     const tbody = document.getElementById("factureTableBody");
     tbody.innerHTML = "";
 
+    if (!factures.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="table-message">Aucune facture disponible.</td></tr>`;
+        return;
+    }
+
     factures.forEach(fact => {
-        const numeroFacture = fact.numero_facture;
-        const compagnie = fact.client;
-        const dateEmission = fact.date;
-        const montant = fact.amount;
-        const statut = fact.status;
-        const fichierUrl = fact.fichier_url || "";
+        const numeroFacture = String(fact.numero_facture || "");
+        const compagnie = String(fact.client || "—");
+        const dateEmission = formatInvoiceDate(fact.date);
+        const montant = Number(fact.amount) || 0;
+        const statut = String(fact.status || "Impayée");
+        const encodedNumero = encodeURIComponent(numeroFacture);
 
         const statutClass =
-            statut === "Payée" ? "payee" :
-            statut === "Contestée" ? "contester" :
+            statut.toLowerCase() === "payée" ? "payee" :
+            statut.toLowerCase() === "contestée" ? "contester" :
             "en-attente";
 
-        const action =
-            statut === "Payée"
-                ? `<span class="action-btn-confirmed">Confirmée</span>`
-                : statut === "Contestée"
-                    ? `
-                        <button class="action-btn-delete" onclick="refaireFacture('${numeroFacture}')">
-                            Refaire
-                        </button>
-                        <button class="action-btn-remove" onclick="supprimerFacture('${numeroFacture}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    `
-                    : `
-                        <button class="action-btn-confirm" onclick="confirmerFacture('${numeroFacture}')">
-                            Confirmer
-                        </button>
-                    `;
-
         tbody.innerHTML += `
-            <tr data-facture-id="${numeroFacture}" data-statut="${statut.toLowerCase()}">
-
-                <td>${numeroFacture}</td>
-                <td>${compagnie}</td>
-                <td>${dateEmission}</td>
+            <tr data-facture-id="${escapeHtml(encodedNumero)}" data-statut="${escapeHtml(statut.toLowerCase())}">
+                <td>${escapeHtml(numeroFacture)}</td>
+                <td>${escapeHtml(compagnie)}</td>
+                <td>${escapeHtml(dateEmission)}</td>
                 <td>${Number(montant).toLocaleString()} XAF</td>
-
                 <td>
-                    <span class="status-badge ${statutClass}" id="statut-${numeroFacture}">
-                        ${statut}
+                    <span class="status-badge ${statutClass}">
+                        ${escapeHtml(statut)}
                     </span>
                 </td>
-
                 <td style="text-align:center;">
-                    <button class="action-btn-view" onclick="voirFacture('${numeroFacture}', '${fichierUrl}')">
-                        <i class="fas fa-eye"></i>
+                    <button class="action-btn-view" type="button" data-view-invoice="${escapeHtml(encodedNumero)}" aria-label="Consulter la facture ${escapeHtml(numeroFacture)}" title="Consulter la facture">
+                        <i class="fas fa-eye" aria-hidden="true"></i>
+                    </button>
+                    <button class="action-btn-view action-btn-proof" type="button" data-view-proof="${escapeHtml(encodedNumero)}" aria-label="Consulter le justificatif de ${escapeHtml(numeroFacture)}" title="Justificatif de paiement">
+                        <i class="fas fa-paperclip" aria-hidden="true"></i>
                     </button>
                 </td>
             </tr>
         `;
     });
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+function formatInvoiceAmount(value) {
+    return (Number(value) || 0).toLocaleString("fr-FR");
+}
+
+function formatInvoiceDate(value) {
+    if (!value) return "—";
+    const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
+    return Number.isNaN(date.getTime()) ? escapeHtml(value) : date.toLocaleDateString("fr-FR");
+}
+
+function renderInvoiceDetails(facture, lignes) {
+    const content = document.getElementById("invoice-view-content");
+    const reference = String(facture.numero_facture || "");
+    document.getElementById("invoice-view-reference").textContent = reference;
+
+    const linesHtml = lignes.length
+        ? lignes.map((ligne, index) => {
+            const qty = Number(ligne.nombre_passagers) || 0;
+            const unit = Number(ligne.cout_unitaire) || 0;
+            const lineTotal = Number(ligne.cout_total) || qty * unit;
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(ligne.designation || "—")}</td>
+                    <td>${escapeHtml(ligne.destination || "—")}</td>
+                    <td>${formatInvoiceAmount(qty)}</td>
+                    <td>${formatInvoiceAmount(unit)}</td>
+                    <td>${formatInvoiceAmount(lineTotal)}</td>
+                </tr>`;
+        }).join("")
+        : '<tr><td colspan="6" class="invoice-empty-lines">Aucune ligne de détail enregistrée.</td></tr>';
+
+    content.innerHTML = `
+        <article class="invoice-detail-sheet">
+            <header class="invoice-detail-heading">
+                <div class="invoice-institution">
+                    <strong>COMMUNAUTÉ ÉCONOMIQUE ET MONÉTAIRE DE L’AFRIQUE CENTRALE</strong>
+                    <span>UNION ÉCONOMIQUE DE L’AFRIQUE CENTRALE</span>
+                    <strong>AGENCE DE SUPERVISION DE LA SÉCURITÉ AÉRIENNE EN AFRIQUE CENTRALE</strong>
+                    <span>ASSA-AC · La Direction Générale</span>
+                </div>
+                <img src="logo.jpeg" alt="Logo CEMAC ASSA-AC">
+                <div class="invoice-vision">Vision CEMAC 2025 : « Faire de la CEMAC en 2025 un espace économique intégré et émergent, où règnent la sécurité, la solidarité et la bonne gouvernance, au service du développement humain ».</div>
+            </header>
+            <h3 class="invoice-detail-title">FACTURE ${escapeHtml(reference)}</h3>
+            <dl class="invoice-detail-meta">
+                <div><dt>Client</dt><dd>${escapeHtml(facture.nom_client || "—")}</dd></div>
+                <div><dt>Objet</dt><dd>${escapeHtml(facture.objet || "—")}</dd></div>
+                <div><dt>Période</dt><dd>${escapeHtml(facture.periode || "—")}</dd></div>
+                <div><dt>Aéroport</dt><dd>${escapeHtml(facture.aeroport || "—")}</dd></div>
+                <div><dt>Date d’émission</dt><dd>${formatInvoiceDate(facture.date_emission)}</dd></div>
+            </dl>
+            <div class="invoice-detail-table-wrap">
+                <table class="invoice-detail-table">
+                    <thead><tr><th>N°</th><th>Désignation</th><th>Zone</th><th>Passagers</th><th>Coût unitaire</th><th>Coût total</th></tr></thead>
+                    <tbody>${linesHtml}</tbody>
+                    <tfoot><tr><td colspan="5">TOTAL (${escapeHtml(facture.devise || "Frs CFA")})</td><td>${formatInvoiceAmount(facture.montant_total)}</td></tr></tfoot>
+                </table>
+            </div>
+            <p class="invoice-detail-words">${escapeHtml(facture.montant_en_lettres || "")}</p>
+            <div class="invoice-detail-signature">Fait à ${escapeHtml(facture.lieu_emission || "—")}, le ${formatInvoiceDate(facture.date_emission)}<br><strong>La Direction Générale</strong></div>
+            <section class="invoice-detail-payment">
+                <strong><u>Conditions de paiement :</u></strong>
+                <ul>
+                    <li>Par virement bancaire suivant RIB joint en annexe, à trente jours échus ;</li>
+                    <li>Au-delà des trente jours une pénalité de 5% est facturée par tranche de 15 jours de retard ;</li>
+                    <li>Chaque quinzaine entamée est due.</li>
+                </ul>
+            </section>
+            <div class="invoice-detail-status">Statut : ${escapeHtml(facture.statut || "Impayée")}</div>
+        </article>`;
+}
+
+async function ouvrirApercuFacture(numeroFacture) {
+    const modal = document.getElementById("invoice-view-modal");
+    const content = document.getElementById("invoice-view-content");
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("invoice-view-open");
+    content.innerHTML = '<p class="invoice-view-loading" role="status">Chargement de la facture…</p>';
+
+    try {
+        const response = await fetch(`${API_URL}/api/factures/${encodeURIComponent(numeroFacture)}`, {
+            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Impossible de charger cette facture.");
+        if (!result.facture || !Array.isArray(result.lignes)) throw new Error("La réponse de la facture est incomplète.");
+        renderInvoiceDetails(result.facture, result.lignes);
+    } catch (error) {
+        console.error("Erreur ouverture facture :", error);
+        content.innerHTML = `<p class="invoice-view-error" role="alert">${escapeHtml(error.message)}</p>`;
+    }
+}
+
+function fermerApercuFacture() {
+    const modal = document.getElementById("invoice-view-modal");
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("invoice-view-open");
+}
+
+async function voirPreuveFacture(numeroFacture) {
+    try {
+        const response = await fetch(
+            `${API_URL}/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
+            { headers: { "Authorization": `Bearer ${token}` } }
+        );
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Impossible de charger le justificatif.");
+
+        const preuves = Array.isArray(result.preuves) ? result.preuves : [];
+        const preuve = preuves[preuves.length - 1];
+        if (preuve?.fichier_url) {
+            window.open(preuve.fichier_url, "_blank", "noopener");
+            return;
+        }
+
+        const facture = FACTURES.find(item => item.numero_facture === numeroFacture);
+        const files = Array.isArray(facture?.contestation?.fichiers) ? facture.contestation.fichiers : [];
+        const contestationUrl = files.find(file => file?.file_url)?.file_url;
+        if (contestationUrl) {
+            window.open(contestationUrl, "_blank", "noopener");
+            return;
+        }
+        alert(window.t('no_proof_uploaded'));
+    } catch (error) {
+        console.error("Erreur ouverture justificatif :", error);
+        alert(`${window.t('unable_open_proof')} ${error.message}`);
+    }
 }
 
 
@@ -225,9 +370,9 @@ function remplirTableau(factures) {
     
         // --- 🔍 Recherche ---
         const matchRecherche =
-            f.client.toLowerCase().includes(recherche) ||
-            f.numero_facture.toLowerCase().includes(recherche) ||
-            f.date.toLowerCase().includes(recherche);
+            String(f.client || "").toLowerCase().includes(recherche) ||
+            String(f.numero_facture || "").toLowerCase().includes(recherche) ||
+            String(f.date || "").toLowerCase().includes(recherche);
     
         return matchMois && matchComp && matchStatut && matchRecherche;
     });
@@ -338,7 +483,7 @@ async function voirFacture(numeroFacture) {
         console.log("📡 → Recherche des preuves de paiement…");
 
         const response = await fetch(
-            `https://assa-ac-duzn.onrender.com/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
+            `http://localhost:5002/api/preuves/by-facture/${encodeURIComponent(numeroFacture)}`,
             { headers: { "Authorization": `Bearer ${token}` } }
         );
 
@@ -533,5 +678,29 @@ document
     .getElementById("filter-statut")
     .addEventListener("change", filtrerFactures);
 
+document.getElementById("factureTableBody").addEventListener("click", event => {
+    const button = event.target.closest("button");
+    if (!button) return;
 
+    const encodedNumero = button.dataset.viewInvoice || button.dataset.viewProof;
+    if (!encodedNumero) return;
 
+    const numeroFacture = decodeURIComponent(encodedNumero);
+    if (button.hasAttribute("data-view-invoice")) {
+        ouvrirApercuFacture(numeroFacture);
+    } else {
+        voirPreuveFacture(numeroFacture);
+    }
+});
+
+document.querySelectorAll("[data-close-invoice-view]").forEach(element => {
+    element.addEventListener("click", fermerApercuFacture);
+});
+
+document.getElementById("invoice-view-print").addEventListener("click", () => window.print());
+
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && document.getElementById("invoice-view-modal").classList.contains("is-open")) {
+        fermerApercuFacture();
+    }
+});

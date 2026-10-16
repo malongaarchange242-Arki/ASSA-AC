@@ -2,7 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CONSERVATION DES VRAIES ROUTES POUR LE RESTE DU FLUX ---
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com';
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            return 'http://localhost:5002';
+        }
+        return 'http://localhost:5002';
     })();
 
     // ==========================
@@ -38,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isChecking = false;
     let typingTimer;
     const doneTypingInterval = 300;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
     
     // ==========================
     // GESTION DU MODE RÉINITIALISATION ET SIMULATION

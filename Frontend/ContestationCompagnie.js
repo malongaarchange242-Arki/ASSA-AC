@@ -1,6 +1,9 @@
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com';
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return 'http://localhost:5002';
+    }
+    return 'http://localhost:5002';
 })();
 let SERVER_INVOICES = [];
 
@@ -111,7 +114,7 @@ async function renderContestationsView() {
         });
     } catch (e) {
         // 🔁 fallback local
-        base = 'https://assa-ac-duzn.onrender.com';
+        base = 'http://localhost:5002';
         url = `${base}/api/factures/company`;
         resp = await fetch(url, {
             headers: { Authorization: `Bearer ${token}` }
@@ -191,24 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Rendu des données
     renderContestationsView(); 
 
-    // 3. Gestion du menu mobile
-    const sidebar = document.getElementById('sidebar');
-    const openBtn = document.getElementById('open-sidebar-btn');
-    const closeBtn = document.getElementById('close-sidebar-btn');
-
-    if (openBtn && sidebar) {
-        openBtn.addEventListener('click', () => {
-            sidebar.classList.remove('-translate-x-full');
-        });
-    }
-
-    if (closeBtn && sidebar) {
-        closeBtn.addEventListener('click', () => {
-            sidebar.classList.add('-translate-x-full');
-        });
-    }
-    
-        // 4. Gestionnaire pour le formulaire de Contestations
+    // 3. Gestionnaire pour le formulaire de Contestations
     const contestationForm = document.getElementById('contestations-form');
     const fileInputContestation = document.getElementById('file-upload-contestation');
     const fileDisplayContestation = document.getElementById('file-upload-display-contestation');
@@ -257,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: fd 
                     });
                 } catch (e) {
-                    resp = await fetch(`https://assa-ac-duzn.onrender.com/api/contestations/upload_contestation`, { 
+                    resp = await fetch(`http://localhost:5002/api/contestations/upload_contestation`, { 
                         method: 'POST', 
                         headers: { 'Authorization': `Bearer ${token}` }, 
                         body: fd 

@@ -143,9 +143,10 @@ export const upload = multer({ storage, fileFilter });
 export const createCompany = async (req, res) => {
   try {
   const { role, id: adminId } = req.user;
-  
-  // Vérification du rôle
-  if (!['Admin','Administrateur','Superviseur','Super Admin'].includes(role)) {
+  const normalizedRole = String(role || '').toLowerCase().trim();
+
+  // Vérification du rôle (tolérante au rôle normalisé dans le JWT)
+  if (!['admin', 'administrateur', 'superviseur', 'super_directeur', 'super admin'].includes(normalizedRole)) {
     return res.status(403).json({ message: 'Accès refusé' });
   }
   
@@ -222,7 +223,7 @@ export const createCompany = async (req, res) => {
   // Lier via table de liaison admin_companies
   const { error: linkError } = await supabase
     .from('admin_companies')
-    .insert([{ admin_id: adminId, company_id: newCompany.id, role: role || 'Administrateur', created_at: new Date() }]);
+    .insert([{ admin_id: adminId, company_id: newCompany.id, created_at: new Date() }]);
 
   // Association admin_companies OK
   if (linkError) {

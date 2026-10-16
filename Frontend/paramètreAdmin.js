@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function applyTheme(theme) {
         const body = document.body;
+        const themeToggle = document.getElementById('theme-toggle');
         
         // Retirer la classe dark-mode par précaution
         body.classList.remove('dark-mode');
@@ -62,11 +63,21 @@ document.addEventListener('DOMContentLoaded', function () {
         // Sauvegarde
         localStorage.setItem('theme', theme);
 
+        if (themeToggle) {
+            const isDark = body.classList.contains('dark-mode');
+            themeToggle.innerHTML = `<i class="fas fa-${isDark ? 'sun' : 'moon'}" aria-hidden="true"></i>`;
+            themeToggle.title = isDark ? 'Passer au mode clair' : 'Passer au mode sombre';
+        }
+
         // Mise à jour visuelle des boutons de sélection
         themeOptions.forEach(option => option.classList.remove('selected'));
         const selectedBtn = document.querySelector(`.theme-option[data-theme="${theme}"]`);
         if (selectedBtn) selectedBtn.classList.add('selected');
     }
+
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
+    });
 
     // Écouteur sur les boutons de thème
     themeOptions.forEach(option => {
@@ -166,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Envoi API
             try {
-                const data = await fetchWithAdmin('https://assa-ac-duzn.onrender.com/api/admins/update-password', {
+                const data = await fetchWithAdmin('http://localhost:5002/api/admins/update-password', {
                     method: 'POST',
                     body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
                 });
@@ -210,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 // Note : Vérifiez si cette route API existe bien sur votre backend
-                const data = await fetchWithAdmin('https://assa-ac-duzn.onrender.com/api/parametres', {
+                const data = await fetchWithAdmin('http://localhost:5002/api/parametres', {
                     method: 'PUT',
                     body: JSON.stringify({ companyName, address, email })
                 });

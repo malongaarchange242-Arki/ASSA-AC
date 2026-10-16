@@ -4,6 +4,29 @@ document.addEventListener('DOMContentLoaded', async () => {
  // 1. Référence au bouton de bascule
     const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
+    const companyFormDialog = document.getElementById('company-form-dialog');
+    const companyFormFrame = document.getElementById('company-form-frame');
+
+    document.getElementById('add-company-button')?.addEventListener('click', () => showCompanyForm());
+    companyFormDialog?.querySelector('.company-form-dialog-close')?.addEventListener('click', closeCompanyForm);
+    companyFormDialog?.addEventListener('click', event => {
+        if (event.target === companyFormDialog) closeCompanyForm();
+    });
+    companyFormDialog?.addEventListener('close', () => {
+        if (companyFormFrame) companyFormFrame.src = 'about:blank';
+    });
+    window.addEventListener('message', event => {
+        if (
+            event.origin !== window.location.origin ||
+            event.source !== companyFormFrame?.contentWindow ||
+            !['company-saved', 'company-close'].includes(event.data?.type)
+        ) {
+            return;
+        }
+
+        closeCompanyForm();
+        if (event.data.type === 'company-saved') fetchCompanies();
+    });
 
     // 2. Fonction pour appliquer le thème
     function applyTheme(theme) {
@@ -60,6 +83,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('fetchCompanies error on DOMContentLoaded:', e);
     }
 });
+
+function showCompanyForm(companyId = '') {
+    const dialog = document.getElementById('company-form-dialog');
+    const frame = document.getElementById('company-form-frame');
+    if (!dialog || !frame) return;
+
+    const formUrl = new URL('enregistrecompagnie.html', window.location.href);
+    formUrl.searchParams.set('modal', '1');
+    if (companyId) formUrl.searchParams.set('id', companyId);
+
+    document.getElementById('company-form-dialog-title').textContent = companyId
+        ? 'Modifier une compagnie'
+        : 'Ajouter une compagnie';
+    frame.src = formUrl.href;
+    dialog.showModal();
+}
+
+function closeCompanyForm() {
+    const dialog = document.getElementById('company-form-dialog');
+    if (dialog?.open) dialog.close();
+}
 
 
 // FIN GESTION DU THÈME
@@ -162,21 +206,36 @@ function initTokenUI() {
 // Construire URL logo correctement
 // --------------------------------------------------
 function buildLogoUrl(logoUrl) {
-    if (!logoUrl) return 'https://via.placeholder.com/60?text=Logo';
-    if (logoUrl.startsWith('http')) return logoUrl;
-    // Supprime "logos/" si déjà présent pour éviter doublon
-    return `https://iswllanzauyloulabutf.supabase.co/storage/v1/object/public/company-logos/${logoUrl.replace(/^logos\//, '')}`;
+    const value = typeof logoUrl === 'string' ? logoUrl.trim() : '';
+    if (!value) return '';
+    if (/^(https?:\/\/|data:|blob:)/i.test(value)) return value;
+    const filename = value.replace(/^logos\//i, '').replace(/^\/+/, '');
+    const encodedFilename = filename.split('/').map(encodeURIComponent).join('/');
+    return `https://ulmwuzpjfbkxkkvdzaoi.supabase.co/storage/v1/object/public/company-logos/${encodedFilename}`;
+}
+
+function createCompanyLogoFallback(companyName) {
+    const name = companyName?.trim() || 'Compagnie';
+    const initials = name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+    const fallback = document.createElement('span');
+    fallback.className = 'company-logo-fallback';
+    fallback.setAttribute('role', 'img');
+    fallback.setAttribute('aria-label', `Logo indisponible pour ${name}`);
+    fallback.textContent = initials || '?';
+    return fallback;
 }
 
 // --------------------------------------------------
-// Affichage des cartes compagnies
+// Affichage des compagnies dans le tableau
 // --------------------------------------------------
 function renderCompanies(companies) {
-    const container = document.querySelector('.company-card-grid');
+    const container = document.querySelector('.company-table-body');
     container.innerHTML = '';
 
     if (!companies.length) {
-        container.innerHTML = '<p>Aucune compagnie trouvée.</p>';
+        const row = document.createElement('tr');
+        row.innerHTML = '<td class="table-message" colspan="8">Aucune compagnie trouvée.</td>';
+        container.appendChild(row);
         return;
     }
 
@@ -184,52 +243,103 @@ function renderCompanies(companies) {
         const status = c.status ? c.status.trim() : 'Inactif';
         const statusClass = status.toLowerCase() === 'actif' ? 'active' : 'inactive';
 
-        const card = document.createElement('div');
-        card.className = `company-card status-${statusClass}`;
-        card.dataset.id = c.id;
-        card.innerHTML = `
-            <div class="card-header">
-                <img src="${buildLogoUrl(c.logo_url)}" alt="Logo ${c.company_name}">
-                <h3>${c.company_name}</h3>
-                <span class="card-id">#${c.id || ''}</span>
-            </div>
-            <div class="card-body">
-                <p><strong>${window.t('representative')} :</strong> ${c.representative_name || '-'}</p>
-                <p><strong>${window.t('email')} :</strong> ${c.email || '-'}</p>
-                <p><strong>${window.t('phone')} :</strong> ${c.phone_number || '-'}</p>
-                <p><strong>${window.t('address')} :</strong> ${c.full_address || '-'}, ${c.city || '-'}, ${c.country || '-'}</p>
-                <p><strong>${window.t('airport_code')} :</strong> ${c.airport_code || '-'}</p>
-                <p><strong>${window.t('status')} :</strong> 
-                    <span class="status-badge ${statusClass}">${status}</span>
-                </p>
-            </div>
-            <div class="card-actions">
-                <button title="Modifier"><i class="fas fa-edit"></i></button>
-                <button title="Supprimer"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-        container.appendChild(card);
+        const row = document.createElement('tr');
+        row.className = `company-row status-${statusClass}`;
+        row.dataset.id = c.id;
+
+        const companyCell = document.createElement('td');
+        companyCell.className = 'company-name-cell';
+        const companyIdentity = document.createElement('div');
+        companyIdentity.className = 'company-identity';
+        const companyNameValue = c.company_name || 'Compagnie';
+        const logoUrl = buildLogoUrl(c.logo_url || c.logo);
+        if (logoUrl) {
+            const logo = document.createElement('img');
+            logo.src = logoUrl;
+            logo.alt = `Logo ${companyNameValue}`;
+            logo.addEventListener('error', () => {
+                logo.replaceWith(createCompanyLogoFallback(companyNameValue));
+            }, { once: true });
+            companyIdentity.appendChild(logo);
+        } else {
+            companyIdentity.appendChild(createCompanyLogoFallback(companyNameValue));
+        }
+
+        const companyDetails = document.createElement('div');
+        companyDetails.className = 'company-identity-details';
+        const companyName = document.createElement('span');
+        companyName.className = 'company-name';
+        companyName.textContent = c.company_name || '-';
+        const companyId = document.createElement('span');
+        companyId.className = 'company-id';
+        companyId.textContent = `#${c.id || '-'}`;
+        companyDetails.append(companyName, companyId);
+        companyIdentity.appendChild(companyDetails);
+        companyCell.appendChild(companyIdentity);
+        row.appendChild(companyCell);
+
+        const address = [c.full_address, c.city, c.country].filter(Boolean).join(', ') || '-';
+        [
+            c.representative_name || '-',
+            c.email || '-',
+            c.phone_number || '-',
+            address,
+            c.airport_code || '-'
+        ].forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+
+        const statusCell = document.createElement('td');
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `status-badge ${statusClass}`;
+        statusBadge.textContent = status;
+        statusCell.appendChild(statusBadge);
+        row.appendChild(statusCell);
+
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'company-actions-cell';
+        const actions = document.createElement('div');
+        actions.className = 'company-actions';
+        [
+            { title: 'Modifier', icon: 'fa-edit' },
+            { title: 'Supprimer', icon: 'fa-trash' }
+        ].forEach(({ title, icon }) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.title = title;
+            button.setAttribute('aria-label', `${title} ${companyName.textContent}`);
+            const buttonIcon = document.createElement('i');
+            buttonIcon.className = `fas ${icon}`;
+            buttonIcon.setAttribute('aria-hidden', 'true');
+            button.appendChild(buttonIcon);
+            actions.appendChild(button);
+        });
+        actionsCell.appendChild(actions);
+        row.appendChild(actionsCell);
+        container.appendChild(row);
     });
 
-    attachCardEvents();
+    attachCompanyRowEvents();
 }
 
 // --------------------------------------------------
 // Événements Modifier / Supprimer
 // --------------------------------------------------
-function attachCardEvents() {
-    document.querySelectorAll('.company-card').forEach(card => {
-        const companyId = card.dataset.id;
+function attachCompanyRowEvents() {
+    document.querySelectorAll('.company-row').forEach(row => {
+        const companyId = row.dataset.id;
         const token = getToken();
 
         // Modifier
-        card.querySelector('button[title="Modifier"]').addEventListener('click', () => {
-            window.location.href = `enregistrecompagnie.html?id=${companyId}`;
+        row.querySelector('button[title="Modifier"]').addEventListener('click', () => {
+            showCompanyForm(companyId);
         });
 
         // Supprimer (sécurisé)
         // Supprimer une compagnie (définitif)
-        card.querySelector('button[title="Supprimer"]').addEventListener('click', async () => {
+        row.querySelector('button[title="Supprimer"]').addEventListener('click', async () => {
 
             if (!confirm('⚠️ Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ?\nCette action est irréversible.')) {
                 return;
@@ -237,7 +347,7 @@ function attachCardEvents() {
 
             try {
                 const res = await fetch(
-                    `https://assa-ac-duzn.onrender.com/api/companies/delete/${companyId}`,
+                    `http://localhost:5002/api/companies/delete/${companyId}`,
                     {
                         method: 'DELETE',
                         headers: {
@@ -255,11 +365,14 @@ function attachCardEvents() {
                 // ✅ Message succès
                 alert(`✅ Compagnie "${result.company?.company_name || ''}" supprimée avec succès`);
 
-                // ✅ Retirer la carte du DOM
-                card.remove();
+                // ✅ Retirer la ligne du tableau
+                row.remove();
 
                 // ✅ Mettre à jour la liste globale
                 allCompanies = allCompanies.filter(c => c.id.toString() !== companyId);
+                if (!document.querySelector('.company-row')) {
+                    renderCompanies([]);
+                }
 
             } catch (err) {
                 console.error(err);
@@ -274,13 +387,18 @@ function attachCardEvents() {
 // Récupération des compagnies depuis l’API
 // --------------------------------------------------
 async function fetchCompanies() {
-    const container = document.querySelector('.company-card-grid');
-    container.innerHTML = '<p>Chargement des compagnies...</p>';
+    const container = document.querySelector('.company-table-body');
+    container.setAttribute('aria-busy', 'true');
+    container.innerHTML = Array.from({ length: 4 }, () => `
+        <tr class="admin-skeleton-row">
+            ${Array.from({ length: 8 }, () => '<td><span class="admin-skeleton admin-skeleton-block"></span></td>').join('')}
+        </tr>
+    `).join('');
 
     try {
         const token = getToken();
 
-        const res = await fetch('https://assa-ac-duzn.onrender.com/api/companies/all', {
+        const res = await fetch('http://localhost:5002/api/companies/all', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -288,6 +406,7 @@ async function fetchCompanies() {
 
         const json = await res.json();
         allCompanies = json.companies || []; 
+        container.setAttribute('aria-busy', 'false');
         renderCompanies(allCompanies);
 
         // Applique le filtre si une recherche était en cours (utile après l'actualisation)
@@ -297,7 +416,20 @@ async function fetchCompanies() {
         }
 
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">Erreur lors du chargement : ${err.message}</p>`;
+        container.setAttribute('aria-busy', 'false');
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.className = 'table-message table-error';
+        cell.colSpan = 8;
+        cell.append(`Erreur lors du chargement : ${err.message} `);
+        const retryButton = document.createElement('button');
+        retryButton.type = 'button';
+        retryButton.className = 'btn-refresh';
+        retryButton.textContent = 'Réessayer';
+        retryButton.addEventListener('click', fetchCompanies);
+        cell.appendChild(retryButton);
+        row.appendChild(cell);
+        container.replaceChildren(row);
         console.error(err);
     }
 }

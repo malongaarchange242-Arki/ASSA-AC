@@ -199,7 +199,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Determine API base (same heuristic as other frontend modules)
         const API_BASE = (() => {
             const origin = window.location.origin;
-            return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com';
+            if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+                return 'http://localhost:5002';
+            }
+            return 'http://localhost:5002';
         })();
 
         const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenSuperviseur');
@@ -290,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (proofsEl) proofsEl.innerHTML = '<div class="notice">Chargement des preuves…</div>';
 
-        const API_BASE = (() => { const origin = window.location.origin; return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com'; })();
+        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
         const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
         const url = `${API_BASE}/api/preuves/by-facture/${encodeURIComponent(numero)}`;
 
@@ -467,7 +470,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Try to fetch the full list from the API to ensure we display all factures
         try {
-            const API_BASE = (() => { const origin = window.location.origin; return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com'; })();
+            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
             const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
             const url = `${API_BASE}/api/factures`;
             console.info('Fetching factures from API:', url);

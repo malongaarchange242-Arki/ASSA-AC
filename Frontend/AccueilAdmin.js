@@ -43,13 +43,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             applyTheme(newTheme);
         });
     }
+
 });
 
 
 document.addEventListener('DOMContentLoaded', async () => {
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com';
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            return 'http://localhost:5002';
+        }
+        return 'http://localhost:5002';
     })();
 
     const adminTokenKey = 'jwtTokenAdmin';
@@ -177,4 +181,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-

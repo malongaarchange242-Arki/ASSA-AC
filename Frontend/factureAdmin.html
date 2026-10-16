@@ -11,38 +11,32 @@
 
     <!-- CSS global unifié (AccueilAdmin + GestionCompagnie) -->
     <link rel="stylesheet" href="factureAdmin.css">
+    <link rel="stylesheet" href="AccueilAdmin.css">
+    <link rel="stylesheet" href="adminNavigation.css">
 </head>
 
 <body>
-    <!-- Sidebar (identique aux autres pages) -->
-    <div class="sidebar">
-        <div class="header-logo-container">
-            <img src="assa-ac_LOGO.png" alt="Logo ASSA-AC" id="assaac-logo">
-            <div class="logo-text">ASSA-AC PORTAIL</div>
-        </div>
-
-        <nav class="nav-menu">
-            <a href="AccueilAdmin.html"><i class="fas fa-th-large"></i><span data-i18n="dashboard"> Tableau de Bord</span></a>
-            <a href="gestioncompagnie.html"><i class="fas fa-building"></i><span data-i18n="manage_companies"> Gestion des Compagnies</span></a>
-            <a href="factureAdmin.html" class="active"><i class="fas fa-file-invoice-dollar"></i><span data-i18n="invoicing"> Facturation</span></a>
-            <a href="enregistrefacture.html" class="toggleAside"><i class="fas fa-file-circle-plus"></i><span data-i18n="create_invoice"> Créer une facture</span></a>
-            <a href="messagerieAdmin.html"><i class="fas fa-comments"></i><span data-i18n="messaging"> Messagerie</span></a>
-            <a href="ArchiveAdmin.html"><i class="fas fa-receipt"></i><span data-i18n="registry_operations"> Registre des opérations</span></a>
-            <a href="journalActivité.html"><i class="fas fa-history"></i><span data-i18n="recent_activity"> Journal d'Activité</span></a>
-            <a href="paramètreAdmin.html"><i class="fas fa-cog"></i><span data-i18n="settings"> Paramètres</span></a>
-        </nav>
-
-        <div class="sidebar-bottom">
-            <a href="Index.html"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout"> Déconnexion</span></a>
-        </div>
-    </div>
+    <script>
+        try {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark' || ((theme === null || theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.body.classList.add('dark-mode');
+            }
+        } catch (error) {
+            console.error('Unable to restore the Admin theme.', error);
+        }
+    </script>
+    <div id="admin-sidebar-root"></div>
 
     <!-- Main content -->
-    <div class="main-content">
+    <main class="main-content">
         <!-- Header -->
         <div class="header">
-            <div style="display:flex; align-items:center; gap:16px;">
-                <div class="header-title">
+            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="header-title-group">
+                <div class="header-title page-heading">
                     <h1 style="margin:0; font-size:1.25rem;">Facturation</h1>
                 </div>
 
@@ -140,7 +134,30 @@
                             </tr>
                         </thead>
                         <tbody id="factureTableBody">
-                            <!-- Lignes insérées dynamiquement -->
+                            <tr class="admin-skeleton-row">
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            </tr>
+                            <tr class="admin-skeleton-row">
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            </tr>
+                            <tr class="admin-skeleton-row">
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                                <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -151,9 +168,29 @@
         </div>
     </div>
 
+    <div id="invoice-view-modal" class="invoice-view-modal" aria-hidden="true">
+        <div class="invoice-view-backdrop" data-close-invoice-view></div>
+        <section class="invoice-view-dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-view-title">
+            <header class="invoice-view-toolbar">
+                <div>
+                    <h2 id="invoice-view-title">Détail de la facture</h2>
+                    <p id="invoice-view-reference"></p>
+                </div>
+                <div class="invoice-view-actions">
+                    <button type="button" id="invoice-view-print" class="invoice-view-print">
+                        <i class="fas fa-print" aria-hidden="true"></i> Imprimer
+                    </button>
+                    <button type="button" class="invoice-view-close" data-close-invoice-view aria-label="Fermer">×</button>
+                </div>
+            </header>
+            <div id="invoice-view-content" class="invoice-view-content" aria-live="polite"></div>
+        </section>
+    </div>
+
     <script src="langSwitch.js"></script>
     <script src="script.js"></script>
     <script src="factureAdmin.js"></script>
+    <script src="adminShell.js"></script>
 
 </body>
 

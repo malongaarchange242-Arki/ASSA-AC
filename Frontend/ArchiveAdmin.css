@@ -4,7 +4,6 @@
     --light-bg: #F5F7FA;
     --text-color: #3C4043;
     --border-color: #DADCE0;
-    --sidebar-width: 260px;
     --alert-red: #D93025;
     --status-paid: #34A853;
     --status-pending: #F9AB00;
@@ -21,7 +20,6 @@
     --danger: #dc2626;
     --shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
     --radius: 12px;
-    --sidebar: #0f1724;
 
     --overlay-bg: rgba(0, 0, 0, 0.4);
     --aside-width: 520px;
@@ -36,11 +34,6 @@ body.dark-mode {
 }
 
 /* Dark mode adjustments for components */
-body.dark-mode .sidebar {
-    background: linear-gradient(180deg, #041022, #02101a);
-    box-shadow: 4px 0 18px rgba(0, 0, 0, 0.6);
-}
-
 body.dark-mode .card,
 body.dark-mode .company-card,
 body.dark-mode .card-table-container,
@@ -116,113 +109,6 @@ a {
 button {
     font-family: inherit;
     cursor: pointer;
-}
-
-/* ================== Sidebar ================== */
-.sidebar {
-    width: var(--sidebar-width);
-    background: linear-gradient(180deg, var(--sidebar), #071024);
-    color: #fff;
-    padding: 22px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 18px;
-    box-shadow: 4px 0 18px rgba(2, 6, 23, 0.12);
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 1000;
-}
-
-.header-logo-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-#assaac-logo {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #06b6d4, #7c3aed);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.logo-text {
-    font-weight: 700;
-    font-size: 1.15rem;
-    color: #e6f3ff;
-}
-
-/* Nav */
-.nav-menu {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-right: 6px;
-}
-
-.nav-menu a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px;
-    border-radius: 10px;
-    color: rgba(255, 255, 255, 0.92);
-    font-weight: 600;
-    font-size: 14px;
-    transition: background 0.25s, transform 0.12s;
-}
-
-.nav-menu a i {
-    width: 18px;
-    text-align: center;
-}
-
-.nav-menu a:hover {
-    background: rgba(255, 255, 255, 0.06);
-    transform: translateX(2px);
-}
-
-.nav-menu a.active {
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-/* Sidebar bottom */
-.sidebar-bottom {
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-/* ================== Main content ================== */
-.main-content {
-    flex: 1;
-    margin-left: var(--sidebar-width);
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
-
-/* Header */
-.header {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 14px 22px;
-    background: transparent;
-    border-bottom: 1px solid rgba(15, 23, 36, 0.04);
-    position: sticky;
-    top: 0;
-    z-index: 900;
 }
 
 .header-actions {
@@ -302,7 +188,6 @@ button {
 
 /* ---------- Archive page ---------- */
 .archive-management {
-    padding: 28px;
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -678,14 +563,6 @@ textarea:focus {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
-    :root {
-        --sidebar-width: 220px;
-    }
-
-    .archive-management {
-        padding: 18px;
-    }
-
     .print-selector-group {
         flex-wrap: wrap;
         gap: 8px;
@@ -693,28 +570,8 @@ textarea:focus {
 }
 
 @media (max-width: 768px) {
-    .sidebar {
-        width: 76px;
-    }
-
-    .main-content {
-        margin-left: 76px;
-    }
-
-    .archive-management {
-        padding: 12px;
-    }
-
     .user-info {
         display: none;
-    }
-
-    .nav-menu a {
-        justify-content: center;
-    }
-
-    .nav-menu a i {
-        margin-right: 0;
     }
 
     .archive-table thead {

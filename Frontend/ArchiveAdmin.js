@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
-    const API_BASE = 'https://assa-ac-duzn.onrender.com';
+    const API_BASE = 'http://localhost:5002';
 
     /* =====================================================
        AUTH
@@ -271,6 +271,12 @@ document.addEventListener('DOMContentLoaded', async () => {
        LOAD ARCHIVES
     ===================================================== */
     const loadArchives = async (monthValue = 'current') => {
+        archiveTableBody.setAttribute('aria-busy', 'true');
+        archiveTableBody.innerHTML = Array.from({ length: 3 }, () => `
+            <tr class="admin-skeleton-row">
+                ${Array.from({ length: 5 }, () => '<td><span class="admin-skeleton admin-skeleton-block"></span></td>').join('')}
+            </tr>
+        `).join('');
         try {
             const { mois, annee } = getMonthParams(monthValue);
             const res = await fetchWithAuth(
@@ -281,11 +287,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     
             populateMonthSelect(archivesData, monthValue);
             paginateArchives(archivesData, 6);
+            archiveTableBody.setAttribute('aria-busy', 'false');
 
-    
-        } catch {
-            archiveTableBody.innerHTML =
-                `<tr><td colspan="6">Erreur chargement archives</td></tr>`;
+        } catch (error) {
+            console.error('Erreur chargement archives :', error);
+            archiveTableBody.setAttribute('aria-busy', 'false');
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.textContent = 'Erreur lors du chargement des archives. ';
+            const retryButton = document.createElement('button');
+            retryButton.type = 'button';
+            retryButton.textContent = 'Réessayer';
+            retryButton.addEventListener('click', () => loadArchives(monthValue));
+            cell.appendChild(retryButton);
+            row.appendChild(cell);
+            archiveTableBody.replaceChildren(row);
         }
     };
     

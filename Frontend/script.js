@@ -10,7 +10,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Base API dynamique
     const API_BASE = (() => {
         const origin = window.location.origin;
-        return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com';
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            return 'http://localhost:5002';
+        }
+        return 'http://localhost:5002';
     })();
 
     // Gestion des tokens — accepter également le token du superviseur
@@ -33,6 +36,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         factures: document.querySelector('.stat-card:nth-child(2) .stat-value'),
         contestees: document.querySelector('#facturesContesteesValue') // 👈 AJOUT
     };
+    const dashboardError = document.getElementById('dashboard-load-error');
+    const dashboardFailures = new Map();
+
+    function updateDashboardFailure(key, message) {
+        if (!dashboardError) return;
+        if (message) dashboardFailures.set(key, message);
+        else dashboardFailures.delete(key);
+
+        dashboardError.hidden = dashboardFailures.size === 0;
+        dashboardError.replaceChildren();
+        if (dashboardError.hidden) return;
+
+        dashboardError.append(document.createTextNode(
+            `Certaines statistiques n’ont pas pu être chargées (${[...dashboardFailures.values()].join(' ; ')}). `
+        ));
+        const retryButton = document.createElement('button');
+        retryButton.type = 'button';
+        retryButton.textContent = 'Réessayer';
+        retryButton.addEventListener('click', async () => {
+            dashboardError.hidden = true;
+            await Promise.all([chargerCompanies(), chargerFactures()]);
+        });
+        dashboardError.appendChild(retryButton);
+    }
 
     // ================== Refresh Token ==================
     async function refreshToken() {
@@ -154,10 +181,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 statCards.companies.textContent = '0';
             }
+            statCards.companies.classList.remove('admin-skeleton');
+            statCards.companies.removeAttribute('title');
+            statCards.companies.removeAttribute('aria-label');
+            updateDashboardFailure('companies', null);
 
         } catch (err) {
             console.error('Erreur récupération compagnies :', err);
-            statCards.companies.textContent = '0';
+            if (statCards.companies) {
+                statCards.companies.textContent = '—';
+                statCards.companies.classList.remove('admin-skeleton');
+                statCards.companies.title = 'Erreur lors du chargement des compagnies';
+                statCards.companies.setAttribute('aria-label', 'Erreur lors du chargement des compagnies');
+                if (!dashboardError) statCards.companies.textContent = '0';
+            }
+            updateDashboardFailure('companies', 'compagnies');
         }
     }
 
@@ -200,6 +238,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const finalText = (Number.isFinite(count) ? String(count) : String(facturesArr.length || '0'));
             console.log('Setting statCards.factures -> element:', statCards.factures, 'value:', finalText);
             statCards.factures.textContent = finalText;
+            statCards.factures.classList.remove('admin-skeleton');
+            statCards.factures.removeAttribute('title');
+            statCards.factures.removeAttribute('aria-label');
             // Check if something overwrites the value shortly after
             setTimeout(() => console.log('After 1s statCards.factures.textContent:', statCards.factures ? statCards.factures.textContent : 'no-element'), 1000);
             setTimeout(() => console.log('After 3s statCards.factures.textContent:', statCards.factures ? statCards.factures.textContent : 'no-element'), 3000);
@@ -220,14 +261,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : [];
 
                 statCards.contestees.textContent = contestees.length;
+                statCards.contestees.classList.remove('admin-skeleton');
+                statCards.contestees.removeAttribute('title');
+                statCards.contestees.removeAttribute('aria-label');
             }
+            updateDashboardFailure('factures', null);
 
     
         } catch (err) {
             console.error('Erreur récupération factures :', err);
     
-            statCards.factures.textContent = '0';
-            if (statCards.contestees) statCards.contestees.textContent = '0';
+            if (statCards.factures) {
+                statCards.factures.textContent = '—';
+                statCards.factures.classList.remove('admin-skeleton');
+                statCards.factures.title = 'Erreur lors du chargement des factures';
+                statCards.factures.setAttribute('aria-label', 'Erreur lors du chargement des factures');
+                if (!dashboardError) statCards.factures.textContent = '0';
+            }
+            if (statCards.contestees) {
+                statCards.contestees.textContent = '—';
+                statCards.contestees.classList.remove('admin-skeleton');
+                statCards.contestees.title = 'Erreur lors du chargement des factures contestées';
+                statCards.contestees.setAttribute('aria-label', 'Erreur lors du chargement des factures contestées');
+                if (!dashboardError) statCards.contestees.textContent = '0';
+            }
+            updateDashboardFailure('factures', 'factures');
         }
     }
     

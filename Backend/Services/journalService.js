@@ -24,8 +24,7 @@ export const logActivite = async ({
       type_activite,
       categorie,
       module,
-      reference,
-      description,
+      description: description || reference || 'Activité système',
 
       id_admin,
       id_companie,
@@ -33,8 +32,12 @@ export const logActivite = async ({
       utilisateur_nom: utilisateur_nom || (id_admin ? 'Administrateur' : 'Système'),
       utilisateur_email: utilisateur_email || null,
 
-      date_activite: new Date()
+      created_at: new Date()
     };
+
+    if (reference && !payload.description) {
+      payload.description = String(reference);
+    }
 
     const { data, error } = await supabase
       .from('journal_activite')
@@ -60,11 +63,14 @@ export const getRecentActivites = async (limit = 10) => {
       .from('journal_activite')
       .select('*')
       .in('type_activite', TYPES_VISIBLES)
-      .order('date_activite', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(Number(limit) || 10);
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      date_activite: item.date_activite ?? item.created_at ?? null
+    }));
 
   } catch (err) {
     console.error('Erreur journalService:', err.message);
@@ -79,10 +85,13 @@ export const getActivitesByCompanie = async (id_companie) => {
       .select('*')
       .eq('id_companie', id_companie)
       .in('type_activite', TYPES_VISIBLES)
-      .order('date_activite', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      date_activite: item.date_activite ?? item.created_at ?? null
+    }));
 
   } catch (err) {
     console.error('Erreur journalService:', err.message);

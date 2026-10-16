@@ -44,7 +44,8 @@ const enrichActivites = async (activites) => {
 
       return {
         ...act,
-        utilisateur
+        utilisateur,
+        date_activite: act.date_activite ?? act.created_at ?? null
       };
     })
   );
@@ -60,10 +61,13 @@ export const getAllActivites = async (req, res) => {
     const { data, error } = await supabase
       .from('journal_activite')
       .select('*')
-      .order('date_activite', { ascending: false });
+      .order('created_at', { ascending: false });
     if (error) throw error;
 
-    const activites = await enrichActivites(data);
+    const activites = await enrichActivites((data || []).map(item => ({
+      ...item,
+      date_activite: item.date_activite ?? item.created_at ?? null
+    })));
     res.status(200).json({ success: true, activites });
   } catch (err) {
     console.error(err);
@@ -81,10 +85,13 @@ export const getActivitesByAdmin = async (req, res) => {
       .from('journal_activite')
       .select('*')
       .eq('id_admin', id_admin)
-      .order('date_activite', { ascending: false });
+      .order('created_at', { ascending: false });
     if (error) throw error;
 
-    const activites = await enrichActivites(data);
+    const activites = await enrichActivites((data || []).map(item => ({
+      ...item,
+      date_activite: item.date_activite ?? item.created_at ?? null
+    })));
     res.status(200).json({ success: true, activites });
   } catch (err) {
     console.error(err);
@@ -109,10 +116,13 @@ export const getActivitesByCompanie = async (req, res) => {
       .from('journal_activite')
       .select('*')
       .eq('id_companie', companyId)
-      .order('date_activite', { ascending: false });
+      .order('created_at', { ascending: false });
     if (error) throw error;
 
-    const activites = await enrichActivites(data);
+    const activites = await enrichActivites((data || []).map(item => ({
+      ...item,
+      date_activite: item.date_activite ?? item.created_at ?? null
+    })));
     res.status(200).json({ success: true, activites });
   } catch (err) {
     console.error(err);
@@ -132,12 +142,15 @@ export const getRecentActivites = async (req, res) => {
       .select('*')
       .not('type_activite', 'eq', 'system')      // ❌ Exclure les logs Système
       .not('description', 'ilike', '%consultée%') // ❌ Exclure "liste consultée"
-      .order('date_activite', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(n);
 
     if (error) throw error;
 
-    const activites = await enrichActivites(data);
+    const activites = await enrichActivites((data || []).map(item => ({
+      ...item,
+      date_activite: item.date_activite ?? item.created_at ?? null
+    })));
     res.status(200).json({ success: true, activites });
   } catch (err) {
     console.error(err);

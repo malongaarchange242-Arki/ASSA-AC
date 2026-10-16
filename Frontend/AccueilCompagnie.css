@@ -4,29 +4,64 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
+#company-invoice-dashboard {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#company-invoice-dashboard #main-content-scroll {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#company-invoice-dashboard #factures-view {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+#company-invoice-dashboard #factures-view > .grid {
+    flex-shrink: 0;
+}
+
+.invoice-list-card {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.invoice-list-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.invoice-list-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #fff;
+}
+
+.dark .invoice-list-scroll thead th {
+    background-color: #1f2937;
+}
+
 .modal {
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-/* --- HEADER FIXE --- */
-#main-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 20; 
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-}
-
-@media (min-width: 1024px) { /* lg breakpoint */
-    #main-header {
-        left: 16rem; /* 16rem = w-64 */
+@media (max-width: 639px) {
+    .invoice-list-card {
+        padding: 1rem;
     }
-}
-
-/* Marge pour le contenu sous le header */
-#main-content-scroll {
-    margin-top: 5.5rem;
 }
 
 /* Effet Neon */

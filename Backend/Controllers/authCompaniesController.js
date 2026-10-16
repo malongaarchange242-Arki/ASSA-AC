@@ -485,7 +485,10 @@ export const updateCompanyInfo = async (req, res) => {
 
       if (uploadError) {
         console.error("❌ Erreur upload Supabase:", uploadError);
-        return res.status(500).json({ message: "Erreur upload logo" });
+        return res.status(500).json({
+          message: "Erreur upload logo",
+          erreur: uploadError.message
+        });
       }
 
       publicLogoUrl = supabase.storage

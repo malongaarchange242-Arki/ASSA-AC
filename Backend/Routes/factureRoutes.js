@@ -10,6 +10,7 @@ import {
   updateFactureStatut,
   generateRef,
   getInvoicesByCompany,
+  getFacturePdf,
   confirmerFacture,
   deleteFacture
 } from '../Controllers/facturecontroller.js';
@@ -103,6 +104,9 @@ router.put(
   checkRole(['superviseur', 'super_directeur']),
   rejectFacture
 );
+
+// 🔹 Générer et consulter le PDF d'une facture
+router.get('/:numero_facture/pdf', verifyToken, getFacturePdf);
 
 // 🔹 Facture par numéro
 router.get('/:numero_facture', verifyToken, getFactureByNumero);

@@ -98,9 +98,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 🔄 FETCH ACTIVITÉS
     // =============================
     async function chargerActivites() {
+        activityList.setAttribute('aria-busy', 'true');
         try {
             const response = await fetch(
-                'https://assa-ac-duzn.onrender.com/api/journal/recent?limit=50',
+                'http://localhost:5002/api/journal/recent?limit=50',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -119,13 +120,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             remplirFiltreUtilisateurs(allActivities);
             appliquerFiltres();
+            activityList.setAttribute('aria-busy', 'false');
 
         } catch (err) {
             console.error('Erreur chargement journal :', err);
-            activityList.innerHTML = `
-                <li style="text-align:center; color:red; padding:15px;">
-                    Impossible de charger le journal d'activité
-                </li>`;
+            activityList.setAttribute('aria-busy', 'false');
+            const item = document.createElement('li');
+            item.style.cssText = 'text-align:center; color:red; padding:15px;';
+            item.append('Impossible de charger le journal d’activité. ');
+            const retryButton = document.createElement('button');
+            retryButton.type = 'button';
+            retryButton.textContent = 'Réessayer';
+            retryButton.addEventListener('click', chargerActivites);
+            item.appendChild(retryButton);
+            activityList.replaceChildren(item);
         }
     }
 
@@ -209,7 +217,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const query = searchInput.value.toLowerCase().trim();
         if (query) {
             filtered = filtered.filter(act =>
-                    'https://assa-ac-duzn.onrender.com/api/journal/recent?limit=50',
                 (act.description || '').toLowerCase().includes(query)
             );
         }

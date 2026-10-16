@@ -2,9 +2,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // CONSTANTES
     // -----------------------
-    const API_BASE = 'https://assa-ac-duzn.onrender.com';
+    const API_BASE = 'http://localhost:5002';
     const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +
         API_BASE.replace(/^https?:\/\//, '').replace(/\/$/, '') + '/ws';
+
+    function buildCompanyLogoUrl(rawLogoUrl) {
+        if (!rawLogoUrl) return '';
+        if (rawLogoUrl.startsWith('http')) return rawLogoUrl;
+        const filename = rawLogoUrl.startsWith('logos/') ? rawLogoUrl.slice(6) : rawLogoUrl.replace(/^\/+/, '');
+        return `https://ulmwuzpjfbkxkkvdzaoi.supabase.co/storage/v1/object/public/company-logos/${encodeURIComponent(filename)}`;
+    }
 
     // -----------------------
     // ÉLÉMENTS DOM
@@ -84,8 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (u.includes('via.placeholder.com') || u.includes('dummyimage.com')) return makeLetterAvatar(company.company_name);
             return raw;
         }
-        const filename = raw.startsWith('logos/') ? raw.slice(6) : raw.replace(/^\/+/, '');
-        return `https://iswllanzauyloulabutf.supabase.co/storage/v1/object/public/company-logos/${filename}`;
+        return buildCompanyLogoUrl(raw);
     }
 
     function scrollChatBottom() {

@@ -9,38 +9,6 @@ body {
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-/* --- STYLES SPÉCIFIQUES POUR LE HEADER ABSOLUMENT FIXE --- */
-#main-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 20; 
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-}
-
-@media (min-width: 1024px) { /* lg breakpoint */
-    #main-header {
-        left: 16rem; /* 16rem = 256px = w-64 (taille de la sidebar) */
-    }
-}
-
-/* Ajustement pour le défilement du contenu sous l'en-tête */
-#main-content-scroll {
-     /* Avec le champ de recherche, le header est plus haut sur mobile. */
-    margin-top: 9rem; 
-    /* Définir une hauteur minimale pour remplir l'écran moins le header */
-    min-height: calc(100vh - 9rem);
-}
-
-@media (min-width: 768px) { /* md breakpoint */
-    #main-content-scroll {
-        margin-top: 5.5rem; /* Rétablit pour le header md qui est sur une ligne */
-        /* Définir une hauteur minimale pour remplir l'écran moins le header */
-        min-height: calc(100vh - 5.5rem);
-    }
-}
-
 /* Effet "neon" (shadow glow) */
 .hover-neon-glow:hover {
     box-shadow: 0 0 10px rgba(79, 70, 229, 0.6); /* primary: #4f46e5 */
@@ -60,20 +28,6 @@ body {
     color: #a5b4fc; /* indigo-300 */
 }
 
-
-/* Assurer que les conteneurs de chat prennent toute la hauteur */
-.chat-container-full-height {
-    /* Assure que la zone de contenu sous le header prend toute la hauteur restante */
-    height: calc(100vh - 5.5rem); /* Hauteur minimale de 100vh - hauteur du header md */
-    display: flex; 
-}
-
-@media (max-width: 767px) { /* sm breakpoint et moins */
-    .chat-container-full-height {
-         /* Ajustement pour le header plus haut sur mobile */
-        height: calc(100vh - 9rem);
-    }
-}
 
 /* Style pour la zone d'aperçu des fichiers */
 .file-tag {

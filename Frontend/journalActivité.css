@@ -8,8 +8,6 @@
     --danger: #dc2626;
     --shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
     --radius: 12px;
-    --sidebar: #0f1724;
-    --sidebar-width: 260px;
 
     --border-color: rgba(15, 23, 36, 0.08);
     --overlay-bg: rgba(0, 0, 0, 0.4);
@@ -38,19 +36,6 @@
 body.dark-mode {
     background: linear-gradient(180deg, #071226 0%, #041022 100%);
     color: #dbeafe;
-}
-
-body.dark-mode .sidebar {
-    background: linear-gradient(180deg, #041022, #02101a);
-    box-shadow: 4px 0 18px rgba(0, 0, 0, 0.6);
-}
-
-body.dark-mode .nav-menu a {
-    color: rgba(255, 255, 255, 0.92);
-}
-
-body.dark-mode .nav-menu a.active {
-    background: rgba(255, 255, 255, 0.04);
 }
 
 body.dark-mode .header {
@@ -184,144 +169,6 @@ button {
     cursor: pointer;
 }
 
-/* ================== SIDEBAR ================== */
-.sidebar {
-    width: var(--sidebar-width);
-    background: linear-gradient(180deg, var(--sidebar), #071024);
-    color: #fff;
-    padding: 22px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 18px;
-    box-shadow: 4px 0 18px rgba(2, 6, 23, 0.12);
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 1000;
-}
-
-.header-logo-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 25px;
-}
-
-/* #assaac-logo est traité comme conteneur pour permettre un fond dégradé
-   et contenir une image si nécessaire */
-#assaac-logo {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #06b6d4, #7c3aed);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    flex-shrink: 0;
-}
-
-/* Si vous utilisez une image à l'intérieur du conteneur */
-#assaac-logo img {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-    display: block;
-}
-
-/* Si vous utilisez directement une image avec l'id (fallback) */
-img#assaac-logo {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    object-fit: cover;
-    background: linear-gradient(135deg, #06b6d4, #7c3aed);
-}
-
-.logo-text {
-    font-weight: 700;
-    font-size: 1.2rem;
-    letter-spacing: 0.2px;
-    color: #e6f3ff;
-}
-
-/* ================== NAV MENU ================== */
-.nav-menu {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-right: 6px;
-}
-
-.nav-menu a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px;
-    border-radius: 10px;
-    color: rgba(255, 255, 255, 0.92);
-    font-weight: 600;
-    font-size: 14px;
-    transition: background 0.25s, transform 0.12s;
-}
-
-.nav-menu a i {
-    width: 18px;
-    text-align: center;
-}
-
-.nav-menu a:hover {
-    background: rgba(255, 255, 255, 0.06);
-    transform: translateX(2px);
-}
-
-.nav-menu a.active {
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-.sidebar-bottom {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.sidebar-bottom a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 8px;
-    color: #fff;
-    font-weight: 600;
-}
-
-/* ================== MAIN CONTENT ================== */
-.main-content {
-    flex: 1;
-    margin-left: var(--sidebar-width);
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow-y: auto;
-}
-
-/* ================== HEADER ================== */
-/* Structure principale du header : gauche (logo + recherche) / droite (icônes) */
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 22px;
-    background: transparent;
-    border-bottom: 1px solid rgba(15, 23, 36, 0.04);
-    flex-shrink: 0;
-    z-index: 900;
-}
-
 .page-title {
     margin: 0;
     font-size: 1.4rem;
@@ -422,11 +269,6 @@ img#assaac-logo {
 }
 
 /* ================== Contenu Journal d'Activité ================== */
-.history-management {
-    padding: 30px;
-    overflow: auto;
-}
-
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -629,27 +471,8 @@ img#assaac-logo {
 }
 
 @media (max-width: 760px) {
-
-    /* Sidebar réduit / caché sur mobile (simple approche) */
-    .sidebar {
-        transform: translateX(-100%);
-        position: fixed;
-        z-index: 1100;
-    }
-
-    .main-content {
-        margin-left: 0;
-    }
-
     .search-bar input {
         width: 160px;
-    }
-
-    /* Empile header : logo + recherche au dessus, icônes en dessous */
-    .header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
     }
 
     .header-left {

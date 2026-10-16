@@ -1,114 +1,119 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Enregistrement d'une Compagnie</title>
-<link rel="stylesheet" href="enregistrecompagnie.css">
-
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrement d'une Compagnie</title>
+    <link rel="stylesheet" href="enregistrecompagnie.css">
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 sm:p-8">
-    
+<body>
+    <script>
+        if (new URLSearchParams(window.location.search).get('modal') === '1') {
+            document.body.classList.add('company-form-embedded');
+        }
+    </script>
 
+    <main class="company-form-card">
+        <header class="company-form-heading">
+            <span class="company-form-eyebrow">ESPACE ADMINISTRATEUR</span>
+            <h1>Enregistrement d'une Nouvelle Compagnie</h1>
+            <p>Renseignez les informations de la compagnie pour compléter son dossier.</p>
+            <div class="company-form-required-note"><span aria-hidden="true">*</span> Champs obligatoires</div>
+        </header>
 
-<div class="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-100">
-<header class="text-center mb-8">
-    <h1 class="text-3xl font-bold text-gray-800 border-b pb-2 mb-2">Enregistrement d'une Nouvelle Compagnie</h1>
-    <p class="text-gray-500">Veuillez fournir tous les détails nécessaires.</p>
-</header>
+        <form id="company-registration-form" enctype="multipart/form-data">
+            <section class="company-form-section" aria-labelledby="company-details-title">
+                <div class="company-form-section-heading">
+                    <span class="company-form-section-number">01</span>
+                    <div>
+                        <h2 id="company-details-title">Identité de la compagnie</h2>
+                        <p>Nom et représentant légal</p>
+                    </div>
+                </div>
 
-<form id="company-registration-form" enctype="multipart/form-data">
-    <!-- Détails de la compagnie -->
-    <fieldset class="mb-8 border border-gray-200 p-4 rounded-xl">
-        <legend class="text-lg font-semibold text-primary px-2">Détails de la Compagnie</legend>
-        <div class="mb-4">
-            <label for="company-name" class="block text-sm font-medium text-gray-700 mb-2">Nom de la compagnie <span class="text-red-500">*</span></label>
-            <input type="text" id="company-name" name="company_name" required class="form-input" placeholder="Ex: Compagnie d'Aviation AS-AC">
-        </div>
-        <div class="mb-4">
-            <label for="representative-name" class="block text-sm font-medium text-gray-700 mb-2">Nom du Représentant <span class="text-red-500">*</span></label>
-            <input type="text" id="representative-name" name="representative_name" required class="form-input" placeholder="Ex: Jean Dupont (CEO)">
-        </div>
-        <div class="mb-4">
-            <label for="logo-file" class="block text-sm font-medium text-gray-700 mb-2">Logo de la compagnie</label>
-            <input type="file" id="logo-file" name="logo_url" accept="image/*" class="form-input">
-            <img id="current-logo" src="" alt="Logo actuel" class="w-32 h-32 object-cover rounded-md border" />
-        </div>
-        
-    </fieldset>
+                <div class="company-form-fields">
+                    <div class="company-form-field">
+                        <label for="company-name">Nom de la compagnie <span class="required-mark">*</span></label>
+                        <input type="text" id="company-name" name="company_name" required autocomplete="organization" placeholder="Ex. Compagnie d'Aviation AS-AC">
+                    </div>
+                    <div class="company-form-field">
+                        <label for="representative-name">Nom du représentant <span class="required-mark">*</span></label>
+                        <input type="text" id="representative-name" name="representative_name" required autocomplete="name" placeholder="Ex. Jean Dupont">
+                    </div>
+                </div>
+            </section>
 
-    <!-- Coordonnées -->
-    <fieldset class="mb-8 border border-gray-200 p-4 rounded-xl">
-        <legend class="text-lg font-semibold text-primary px-2">Coordonnées</legend>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="mb-4 sm:mb-0">
-                <label for="phone-number" class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-                <input type="tel" id="phone-number" name="phone_number" class="form-input" placeholder="+237 XXX XXX XXX">
-            </div>
-            <div>
-                <label for="email-address" class="block text-sm font-medium text-gray-700 mb-2">Email <span class="text-red-500">*</span></label>
-                <input type="email" id="email-address" name="email" required class="form-input" placeholder="contact@compagnie.com">
-            </div>
-        </div>
-    </fieldset>
+            <section class="company-form-section" aria-labelledby="company-contact-title">
+                <div class="company-form-section-heading">
+                    <span class="company-form-section-number">02</span>
+                    <div>
+                        <h2 id="company-contact-title">Coordonnées</h2>
+                        <p>Informations pour contacter la compagnie</p>
+                    </div>
+                </div>
 
-    <!-- Localisation -->
-    <fieldset class="mb-8 border border-gray-200 p-4 rounded-xl">
-        <legend class="text-lg font-semibold text-primary px-2">Localisation</legend>
-        <div class="mb-4">
-            <label for="full-address" class="block text-sm font-medium text-gray-700 mb-2">Adresse Complète <span class="text-red-500">*</span></label>
-            <input type="text" id="full-address" name="full_address" required class="form-input" placeholder="Ex: 12 Rue de la Liberté, Quartier Administratif">
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label for="country" class="block text-sm font-medium text-gray-700 mb-2">Pays <span class="text-red-500">*</span></label>
-                <input type="text" id="country" name="country" required class="form-input" placeholder="Ex: Cameroun">
-            </div>
-            <div>
-                <label for="city" class="block text-sm font-medium text-gray-700 mb-2">Ville <span class="text-red-500">*</span></label>
-                <input type="text" id="city" name="city" required class="form-input" placeholder="Ex: Douala">
-            </div>
-            <div>
-                <label for="airport-code" class="block text-sm font-medium text-gray-700 mb-2">
-                    Code IATA de l'Aéroport
-                </label>
-            
-                <select id="airport-code" name="airport_code" class="form-input">
-                    <option value="">-- Sélectionnez un aéroport --</option>
-                </select>
-            </div>
-            
-        </div>
-    </fieldset>
+                <div class="company-form-fields company-form-fields-two">
+                    <div class="company-form-field">
+                        <label for="phone-number">Téléphone</label>
+                        <input type="tel" id="phone-number" name="phone_number" autocomplete="tel" placeholder="+237 XXX XXX XXX">
+                    </div>
+                    <div class="company-form-field">
+                        <label for="email-address">Adresse e-mail <span class="required-mark">*</span></label>
+                        <input type="email" id="email-address" name="email" required autocomplete="email" placeholder="contact@compagnie.com">
+                    </div>
+                </div>
+            </section>
 
-    <!-- <fieldset class="mb-8 border border-gray-200 p-4 rounded-xl">
-        <legend class="text-lg font-semibold text-primary px-2">Admin de la Compagnie</legend>
-        <div class="mb-4">
-            <label for="admin-name" class="block text-sm font-medium text-gray-700 mb-2">Nom complet de l'admin <span class="text-red-500">*</span></label>
-            <input type="text" id="admin-name" name="admin_name" class="form-input" placeholder="Ex: Jean Dupont">
-        </div>
-        <div class="mb-4">
-            <label for="admin-email" class="block text-sm font-medium text-gray-700 mb-2">Email de l'admin <span class="text-red-500">*</span></label>
-            <input type="email" id="admin-email" name="admin_email" class="form-input" placeholder="admin@compagnie.com">
-        </div>
-        <div class="mb-4">
-            <label for="admin-password" class="block text-sm font-medium text-gray-700 mb-2">Mot de passe admin <span class="text-red-500">*</span></label>
-            <input type="password" id="admin-password" name="admin_password" class="form-input" placeholder="Mot de passe">
-        </div>
-    </fieldset> -->
+            <section class="company-form-section" aria-labelledby="company-location-title">
+                <div class="company-form-section-heading">
+                    <span class="company-form-section-number">03</span>
+                    <div>
+                        <h2 id="company-location-title">Localisation</h2>
+                        <p>Adresse administrative et code aéroport</p>
+                    </div>
+                </div>
 
-    <div id="form-message" class="text-center p-3 mb-6 hidden rounded-xl font-medium border transition-opacity duration-300"></div>
+                <div class="company-form-fields">
+                    <div class="company-form-field">
+                        <label for="full-address">Adresse complète <span class="required-mark">*</span></label>
+                        <input type="text" id="full-address" name="full_address" required autocomplete="street-address" placeholder="Ex. 12 Rue de la Liberté, Quartier Administratif">
+                    </div>
+                    <div class="company-form-fields-three">
+                        <div class="company-form-field">
+                            <label for="country">Pays <span class="required-mark">*</span></label>
+                            <input type="text" id="country" name="country" required autocomplete="country-name" list="country-options" aria-describedby="country-hint" placeholder="Saisissez quelques lettres...">
+                            <datalist id="country-options"></datalist>
+                            <p class="company-form-field-hint" id="country-hint">Tapez pour rechercher puis sélectionnez un pays dans la liste.</p>
+                        </div>
+                        <div class="company-form-field">
+                            <label for="city">Ville <span class="required-mark">*</span></label>
+                            <input type="text" id="city" name="city" required autocomplete="address-level2" list="city-options" aria-describedby="city-hint" placeholder="Choisissez d'abord un pays">
+                            <datalist id="city-options"></datalist>
+                            <div class="city-suggestions-status">
+                                <p class="company-form-field-hint" id="city-hint" role="status" aria-live="polite">Les villes seront proposées après le choix du pays.</p>
+                                <button type="button" class="city-suggestions-retry" id="retry-city-load" hidden>Réessayer</button>
+                            </div>
+                        </div>
+                        <div class="company-form-field">
+                            <label for="airport-code">Aéroport principal <span class="field-optional">Facultatif</span></label>
+                            <select id="airport-code" name="airport_code">
+                                <option value="">Choisir un code IATA</option>
+                            </select>
+                            <p class="company-form-field-hint">Choisissez l'aéroport de rattachement de la compagnie.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-    <div class="text-center">
-        <button type="submit" id="save-button" class="w-full sm:w-1/2 py-3 bg-primary text-black font-semibold text-lg rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg shadow-primary/30 transform hover:scale-[1.01]">
-            Enregistrer la Compagnie
-        </button>
-    </div>
-</form>
-</div>
+            <div id="form-message" class="company-form-message" role="status" aria-live="polite" hidden></div>
 
-<script src="enregistrecompagnie.js"></script>
+            <footer class="company-form-actions">
+                <button type="button" id="cancel-company-form" class="company-form-cancel">Annuler</button>
+                <button type="submit" id="save-button" class="company-form-submit">Enregistrer la compagnie</button>
+            </footer>
+        </form>
+    </main>
+
+    <script src="enregistrecompagnie.js"></script>
 </body>
 </html>

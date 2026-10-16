@@ -1,5 +1,5 @@
 // ======================= CONSTANTES =======================
-const API_BASE = 'https://assa-ac-duzn.onrender.com'; // Base URL pour tous les appels API
+const API_BASE = 'http://localhost:5002'; // Base URL pour tous les appels API
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;
@@ -15,6 +15,8 @@ const formMessage = document.getElementById('form-message');
 
 const modalWrapper = document.getElementById('modal-wrapper');
 const previewContent = document.getElementById('preview-content');
+const modalContainer = document.getElementById('modal-container');
+const mainContent = document.querySelector('.main-content');
 
 const invoiceIdInput = document.getElementById('invoice-id');
 const clientSelect = document.getElementById('client-name');
@@ -23,6 +25,10 @@ const airportInput = document.getElementById('airport');
 
 let rowCounter = 0;
 let companiesData = {}; // mapping: company_name -> { id, airport, city }
+let previewZoom = 100;
+let previewScrollTop = 0;
+let previousMainOverflowY = '';
+let previewOpener = null;
 
 // ======================= UTILITAIRES =======================
 function showMessage(msg, type = 'info') {
@@ -459,49 +465,42 @@ async function createInvoiceDraft() {
     }
 }
 
-async function showPreview() {
+function setPreviewButtonLoading(isLoading) {
     const previewBtn = document.getElementById('preview-button');
-    if (previewBtn) {
-        previewBtn.disabled = true;
-        previewBtn.classList.add('btn-disabled');
-        previewBtn.setAttribute('aria-disabled', 'true');
-        // Fallback visual enforcement in case CSS rules are overridden or not applied
-        previewBtn.style.pointerEvents = 'none';
-        previewBtn.style.background = '#6b7280';
-        previewBtn.style.borderColor = '#6b7280';
-        previewBtn.style.boxShadow = 'none';
-        previewBtn.style.color = '#ffffff';
-    }
+    if (!previewBtn) return;
 
-    if (!validateForm()) {
-        if (previewBtn) {
-            previewBtn.disabled = false;
-            previewBtn.classList.remove('btn-disabled');
-            previewBtn.removeAttribute('aria-disabled');
-            previewBtn.style.pointerEvents = '';
-            previewBtn.style.background = '';
-            previewBtn.style.borderColor = '';
-            previewBtn.style.boxShadow = '';
-            previewBtn.style.color = '';
+    if (isLoading) {
+        if (!previewBtn.dataset.idleContent) {
+            previewBtn.dataset.idleContent = previewBtn.innerHTML;
         }
+        previewBtn.disabled = true;
+        previewBtn.classList.add('btn-disabled', 'is-loading');
+        previewBtn.setAttribute('aria-disabled', 'true');
+        previewBtn.setAttribute('aria-busy', 'true');
+        previewBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i><span>Préparation de l’aperçu...</span>';
         return;
     }
+
+    previewBtn.disabled = false;
+    previewBtn.classList.remove('btn-disabled', 'is-loading');
+    previewBtn.removeAttribute('aria-disabled');
+    previewBtn.removeAttribute('aria-busy');
+    if (previewBtn.dataset.idleContent) {
+        previewBtn.innerHTML = previewBtn.dataset.idleContent;
+        delete previewBtn.dataset.idleContent;
+    }
+}
+
+async function showPreview() {
+    if (!validateForm()) return;
+
+    setPreviewButtonLoading(true);
 
     try {
         // Save (create or update) the invoice first, then use the returned reference
         const ref = await createInvoiceDraft();
         if (!ref) {
             showMessage('Impossible d\'enregistrer la facture avant aperçu.', 'error');
-            if (previewBtn) {
-                previewBtn.disabled = false;
-                previewBtn.classList.remove('btn-disabled');
-                previewBtn.removeAttribute('aria-disabled');
-                previewBtn.style.pointerEvents = '';
-                previewBtn.style.background = '';
-                previewBtn.style.borderColor = '';
-                previewBtn.style.boxShadow = '';
-                previewBtn.style.color = '';
-            }
             return;
         }
         // 1. Génération des lignes du tableau de détails
@@ -570,16 +569,32 @@ async function showPreview() {
 
         // 4. HTML complet
         const previewHTML = `
-        <div class="invoice-document print:p-0">
-            
-            ${headerHTML}
-
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
-                <button type="button" onclick="closePreview()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition">Modifier / Retour</button>
-                <button type="button" onclick="sendInvoice(this)" id="send-invoice-button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Envoyer & Enregistrer</button>
-                <button type="button" onclick="printPreview()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Imprimer</button>
+            <div class="preview-toolbar print-controls">
+                <div class="preview-heading">
+                    <h2 id="preview-title">Aperçu de la facture</h2>
+                    <p id="preview-description">Vérifiez le document avant de l’envoyer ou de l’imprimer.</p>
+                </div>
+                <div class="preview-tools" aria-label="Outils d’affichage">
+                    <div class="preview-zoom-controls" aria-label="Zoom du document">
+                        <button type="button" onclick="adjustPreviewZoom(-10)" aria-label="Réduire le zoom">−</button>
+                        <output id="preview-zoom-level" aria-live="polite">100%</output>
+                        <button type="button" onclick="adjustPreviewZoom(10)" aria-label="Augmenter le zoom">+</button>
+                    </div>
+                    <button type="button" id="preview-fullscreen-button" class="preview-tool-button" onclick="togglePreviewFullscreen()" aria-pressed="false">Plein écran</button>
+                    <button type="button" onclick="closePreview()" class="preview-close-button" aria-label="Fermer l’aperçu" title="Fermer l’aperçu">×</button>
+                </div>
+                <div class="preview-actions">
+                    <button type="button" onclick="closePreview()" class="preview-action-button preview-back-button">Modifier / Retour</button>
+                    <button type="button" onclick="sendInvoice(this)" id="send-invoice-button" class="preview-action-button preview-send-button">Envoyer & Enregistrer</button>
+                    <button type="button" onclick="printPreview()" class="preview-action-button preview-print-button">Imprimer</button>
+                </div>
             </div>
-            <div id="preview-message" style="display:none; margin-bottom:8px; padding:8px; border-radius:6px; font-weight:600;"></div>
+            <div class="invoice-viewer" id="invoice-viewer" tabindex="0" aria-label="Zone de lecture de la facture">
+                <div class="invoice-sheet-viewport">
+                    <div class="invoice-document">
+                ${headerHTML}
+
+                <div id="preview-message" style="display:none; margin-bottom:8px; padding:8px; border-radius:6px; font-weight:600;"></div>
 
             <div class="invoice-title" style="margin-top: 10px; font-size: 14pt; font-weight: bold; text-align: center;">
                 FACTURE ${invoiceNumber}
@@ -647,31 +662,100 @@ async function showPreview() {
                 </ul>
             </div>
 
-            
-        </div>
+                    </div>
+                </div>
+            </div>
         `;
 
         previewContent.innerHTML = previewHTML;
         document.getElementById('form-area').classList.add('hidden');
+        previewZoom = 100;
+        updatePreviewZoomLabel();
+        openPreview();
         modalWrapper.classList.remove('hidden');
-        modalWrapper.scrollTop = 0;
+        modalWrapper.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+            updateInvoiceSheetScale();
+            document.getElementById('preview-fullscreen-button')?.focus({ preventScroll: true });
+        });
 
     } catch (error) {
-        // Re-enable preview button on error
-        if (previewBtn) {
-            previewBtn.disabled = false;
-            previewBtn.classList.remove('btn-disabled');
-            previewBtn.removeAttribute('aria-disabled');
-        }
         showMessage(`Erreur de validation: ${error.message}`, 'error');
         console.error(error);
+    } finally {
+        if (modalWrapper.classList.contains('hidden')) {
+            setPreviewButtonLoading(false);
+        }
     }
 }
+
+function updateInvoiceSheetScale() {
+    const sheetViewport = previewContent.querySelector('.invoice-sheet-viewport');
+    const invoiceDocument = previewContent.querySelector('.invoice-document');
+    if (!sheetViewport || !invoiceDocument || modalWrapper.classList.contains('hidden')) return;
+
+    invoiceDocument.style.transform = 'none';
+    const scale = previewZoom / 100;
+    const documentWidth = invoiceDocument.offsetWidth;
+    const documentHeight = invoiceDocument.scrollHeight;
+    invoiceDocument.style.transform = `scale(${scale})`;
+    sheetViewport.style.width = `${documentWidth * scale}px`;
+    sheetViewport.style.height = `${documentHeight * scale}px`;
+
+    const logo = invoiceDocument.querySelector('img');
+    if (logo && !logo.complete && !logo.dataset.scaleListener) {
+        logo.dataset.scaleListener = 'true';
+        const rescale = () => {
+            delete logo.dataset.scaleListener;
+            updateInvoiceSheetScale();
+        };
+        logo.addEventListener('load', rescale, { once: true });
+        logo.addEventListener('error', rescale, { once: true });
+    }
+}
+
+function updatePreviewZoomLabel() {
+    const zoomLabel = document.getElementById('preview-zoom-level');
+    if (zoomLabel) zoomLabel.value = `${previewZoom}%`;
+}
+
+function adjustPreviewZoom(change) {
+    previewZoom = Math.min(150, Math.max(50, previewZoom + change));
+    updatePreviewZoomLabel();
+    requestAnimationFrame(updateInvoiceSheetScale);
+}
+
+function togglePreviewFullscreen() {
+    const fullscreenButton = document.getElementById('preview-fullscreen-button');
+    const isFullscreen = modalWrapper.classList.toggle('is-fullscreen');
+    modalContainer.classList.toggle('is-fullscreen', isFullscreen);
+    if (fullscreenButton) {
+        fullscreenButton.textContent = isFullscreen ? 'Quitter le plein écran' : 'Plein écran';
+        fullscreenButton.setAttribute('aria-pressed', String(isFullscreen));
+    }
+    requestAnimationFrame(updateInvoiceSheetScale);
+}
+
+function openPreview() {
+    previewOpener = document.activeElement;
+    previewScrollTop = mainContent?.scrollTop || 0;
+    if (mainContent) {
+        previousMainOverflowY = mainContent.style.overflowY;
+        mainContent.style.overflowY = 'hidden';
+    }
+}
+
+window.addEventListener('resize', () => requestAnimationFrame(updateInvoiceSheetScale));
+new ResizeObserver(() => requestAnimationFrame(updateInvoiceSheetScale)).observe(previewContent);
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !modalWrapper.classList.contains('hidden')) {
+        closePreview();
+    }
+});
 
 // ======================= IMPRESSION ET GESTION VUE (inchangé) =======================
 function printPreview() {
     try {
-        alert("ATTENTION : Pour obtenir une facture propre, veuillez DÉSACTIVER les options 'En-têtes et pieds de page' dans les paramètres de la boîte de dialogue d'impression de votre navigateur.");
         const contentToPrint = document.getElementById('preview-content').innerHTML;
 
         if (!contentToPrint.trim()) {
@@ -695,16 +779,26 @@ function printPreview() {
                 <title>Facture ${document.getElementById('invoice-id').value}</title>
                 <link rel="stylesheet" href="enregistrefacture.css"> 
                 <style>
-                    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; }
+                    @page { size: A4; margin: 0; }
+                    html, body { display: block; width: 210mm; min-height: 0; height: auto; overflow: visible; font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 0; }
                     .print-controls { display: none !important; }
-                    /* Assurer que les styles du modal/aperçu sont appliqués */
+                    .invoice-viewer { display: block !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
+                    .invoice-sheet-viewport { display: block !important; width: 210mm !important; height: auto !important; margin: 0 !important; }
                     .invoice-document {
+                        box-sizing: border-box !important;
+                        width: 210mm !important;
+                        max-height: none !important;
+                        overflow: visible !important;
+                        border: 0 !important;
                         padding: 15mm !important;
-                        min-height: auto !important;
+                        min-height: 297mm !important;
                         box-shadow: none !important;
+                        transform: none !important;
+                        page-break-after: auto;
                     }
                     table { border-collapse: collapse; width: 100%; }
                     img { max-width: 100%; }
+                    tr, .payment-conditions, .signature-block { break-inside: avoid; page-break-inside: avoid; }
                 </style>
             </head>
             <body>
@@ -731,21 +825,18 @@ function printPreview() {
 
 function closePreview() {
     modalWrapper.classList.add('hidden');
+    modalWrapper.setAttribute('aria-hidden', 'true');
+    modalWrapper.classList.remove('is-fullscreen');
+    modalContainer.classList.remove('is-fullscreen');
     document.getElementById('form-area').classList.remove('hidden');
-    window.scrollTo(0, 0);
+    if (mainContent) {
+        mainContent.style.overflowY = previousMainOverflowY;
+        mainContent.scrollTop = previewScrollTop;
+    }
 
-    // Re-enable the preview button when closing the modal
-    const previewBtn = document.getElementById('preview-button');
-    if (previewBtn) {
-        previewBtn.disabled = false;
-        previewBtn.classList.remove('btn-disabled');
-        previewBtn.removeAttribute('aria-disabled');
-        // Remove inline fallback styles applied when disabling
-        previewBtn.style.pointerEvents = '';
-        previewBtn.style.background = '';
-        previewBtn.style.borderColor = '';
-        previewBtn.style.boxShadow = '';
-        previewBtn.style.color = '';
+    setPreviewButtonLoading(false);
+    if (previewOpener instanceof HTMLElement) {
+        previewOpener.focus({ preventScroll: true });
     }
 }
 

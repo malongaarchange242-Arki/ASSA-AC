@@ -1,0 +1,48 @@
+@view-transition {
+    navigation: auto;
+}
+
+html {
+    background: var(--page);
+}
+
+::view-transition-old(root),
+::view-transition-new(root),
+::view-transition-group(admin-sidebar) {
+    animation: none;
+}
+
+.sidebar {
+    view-transition-name: admin-sidebar;
+}
+
+body.admin-navigating::before {
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    animation: admin-navigation-indicator 1.2s ease-in-out infinite;
+    content: "";
+    pointer-events: none;
+}
+
+@keyframes admin-navigation-indicator {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.admin-navigating::before,
+    .sidebar.sidebar-ready {
+        animation: none;
+        transition: none;
+    }
+}

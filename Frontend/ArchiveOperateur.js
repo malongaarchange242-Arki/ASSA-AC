@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
      const TOKEN_KEY = 'jwtTokenOperateur';
      const REFRESH_KEY = null; // no admin refresh for operator pages
      const operateurId = localStorage.getItem('operateurId');
-     const API_BASE = 'https://assa-ac-duzn.onrender.com';
+     const API_BASE = 'http://localhost:5002';
 
     /* =====================================================
        AUTH

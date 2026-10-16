@@ -3,6 +3,7 @@ import supabase from '../Config/db.js';
 import nodemailer from 'nodemailer';
 import { createArchive } from '../Services/archiveService.js';
 import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
+import { generateInvoicePdf } from '../Services/invoicePdfService.js';
 
 
 
@@ -105,17 +106,18 @@ export const generateNumeroFacture = async (compagnieId, dateStr) => {
 // Helper : Envoyer un email de facture
 // ===============================================================
 const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
+  const port = Number(process.env.SMTP_PORT);
+  if (!process.env.SMTP_HOST || !port || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('Configuration SMTP incomplète');
+  }
+
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,          // smtp.gmail.com
-    port: Number(process.env.SMTP_PORT),  // 587
-    secure: false,                        // IMPORTANT : STARTTLS = false ici
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS         // mot de passe d'application
-    },
-    tls: {
-      rejectUnauthorized: false,
-      ciphers: "SSLv3"                    // ajoute stabilité Gmail
+      pass: process.env.SMTP_PASS
     }
   });
 
@@ -133,7 +135,16 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
     `
   };
 
-  return transporter.sendMail(mailOptions);
+  const info = await transporter.sendMail(mailOptions);
+  const recipientAccepted = info.accepted.some(
+    recipient => String(recipient).toLowerCase() === to.trim().toLowerCase()
+  );
+
+  if (!recipientAccepted) {
+    throw new Error(`Le serveur SMTP n'a pas accepté le destinataire ${to}`);
+  }
+
+  return info;
 };
 
 
@@ -311,16 +322,22 @@ export const createFacture = async (req, res) => {
     console.log("📧 Email compagnie trouvé :", company?.email);
 
     // 5️⃣ Envoi email à la compagnie
+    let emailNotificationStatus = 'not_sent';
     try {
       if (company?.email) {
-        console.log("👉 Envoi facture à :", company.email);
-        await sendInvoiceEmail(company.email, numero_facture, montant_total);
-        console.log("✅ Email envoyé !");
+        const emailInfo = await sendInvoiceEmail(company.email, numero_facture, montant_total);
+        emailNotificationStatus = 'smtp_accepted';
+        console.info('SMTP a accepté la notification de facture', {
+          to: company.email,
+          messageId: emailInfo.messageId,
+          response: emailInfo.response
+        });
       } else {
         console.warn("⚠ Aucune adresse email dans la compagnie :", compagnieId);
       }
     } catch (err) {
-      console.error("❌ Échec envoi email :", err);
+      emailNotificationStatus = 'failed';
+      console.error("Échec de la notification de facture :", err);
     }
 
     // 🔹 ARCHIVAGE (AUDIT)
@@ -344,7 +361,8 @@ export const createFacture = async (req, res) => {
       success: true,
       message: 'Facture créée avec succès',
       facture: factureData,
-      numero_facture
+      numero_facture,
+      email_notification_status: emailNotificationStatus
     });
 
   } catch (err) {
@@ -509,11 +527,19 @@ export const getInvoicesByCompany = async (req, res) => {
         }
       }
 
-      if (!companyIds.length) {
+      if (['administrateur', 'admin'].includes(normalizedRole)) {
+        if (companyIds.length) {
+          query = query.or(`id_admin.eq.${userId},id_companie.in.(${companyIds.join(',')})`);
+        } else if (userId) {
+          query = query.eq('id_admin', userId);
+        } else {
+          return res.status(200).json([]);
+        }
+      } else if (!companyIds.length) {
         return res.status(200).json([]);
+      } else {
+        query = query.in("id_companie", companyIds);
       }
-
-      query = query.in("id_companie", companyIds);
     }
 
     /* =======================================================
@@ -590,40 +616,97 @@ export const getInvoicesByCompany = async (req, res) => {
 // ===============================================================
 // READ : Facture par numéro
 // ===============================================================
+async function getAuthorizedInvoice(numero_facture, user) {
+  const numeroDecoded = decodeURIComponent(numero_facture);
+  const { data: facture, error } = await supabase
+    .from('factures')
+    .select('*')
+    .eq('numero_facture', numeroDecoded)
+    .eq('archived', false)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!facture) return { status: 404, message: 'Facture non trouvée' };
+
+  const role = String(user?.role || '').toLowerCase().trim();
+  const userId = user?.id;
+  const fullAccessRoles = ['operateur', 'operator', 'superviseur', 'super_directeur', 'superadmin', 'super_admin', 'super admin'];
+  let hasAccess = fullAccessRoles.includes(role);
+
+  if (role === 'company' || role === 'compagnie') {
+    hasAccess = String(user?.id_companie || '') === String(facture.id_companie || '');
+  } else if (['administrateur', 'admin'].includes(role)) {
+    hasAccess = String(facture.id_admin || '') === String(userId || '');
+
+    const { data: link, error: linkError } = await supabase
+      .from('admin_companies')
+      .select('company_id')
+      .eq('admin_id', userId)
+      .eq('company_id', facture.id_companie)
+      .maybeSingle();
+
+    if (linkError) throw linkError;
+    hasAccess = hasAccess || Boolean(link);
+
+    if (!hasAccess) {
+      const { data: ownedCompany, error: ownedCompanyError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('id', facture.id_companie)
+        .eq('id_admin', userId)
+        .maybeSingle();
+
+      if (ownedCompanyError) throw ownedCompanyError;
+      hasAccess = Boolean(ownedCompany);
+    }
+  }
+
+  if (!hasAccess) {
+    return { status: 403, message: "Vous n'êtes pas autorisé à consulter cette facture." };
+  }
+
+  const { data: lignes, error: lignesError } = await supabase
+    .from('lignes_facture')
+    .select('*')
+    .eq('numero_facture', numeroDecoded)
+    .order('numero_ligne');
+
+  if (lignesError) throw lignesError;
+  return { facture, lignes };
+}
+
 export const getFactureByNumero = async (req, res) => {
   try {
-    const { numero_facture } = req.params;
-    const id_companie = req.user?.id_companie;
-
-    const numero_decoded = decodeURIComponent(numero_facture);
-
-    console.log("🔍 Numéro reçu :", numero_facture);
-    console.log("🔓 Numéro décodé :", numero_decoded);
-
-    const { data: facture, error } = await supabase
-      .from('factures')
-      .select('*')
-      .eq('numero_facture', numero_decoded)
-      .eq('id_companie', id_companie)
-      .eq('archived', false)
-      .single();
-
-    if (error || !facture)
-      return res.status(404).json({ message: 'Facture non trouvée' });
-
-    const { data: lignes, error: lignesError } = await supabase
-      .from('lignes_facture')
-      .select('*')
-      .eq('numero_facture', numero_decoded)
-      .order('numero_ligne');
-
-    if (lignesError) throw lignesError;
-
-    res.status(200).json({ facture, lignes });
+    const result = await getAuthorizedInvoice(req.params.numero_facture, req.user);
+    if (result.status) return res.status(result.status).json({ message: result.message });
+    res.status(200).json({ facture: result.facture, lignes: result.lignes });
   } catch (err) {
     console.error(err);
     res.status(500).json({
       message: 'Erreur récupération facture',
+      error: err.message
+    });
+  }
+};
+
+export const getFacturePdf = async (req, res) => {
+  try {
+    const result = await getAuthorizedInvoice(req.params.numero_facture, req.user);
+    if (result.status) return res.status(result.status).json({ message: result.message });
+
+    const pdf = await generateInvoicePdf(result.facture, result.lignes);
+    const filename = `facture-${String(result.facture.numero_facture).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${filename}"`,
+      'Content-Length': pdf.length,
+      'Cache-Control': 'private, no-store'
+    });
+    res.status(200).send(pdf);
+  } catch (err) {
+    console.error('Erreur génération PDF facture :', err);
+    res.status(500).json({
+      message: 'Erreur génération PDF facture',
       error: err.message
     });
   }

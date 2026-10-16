@@ -1,7 +1,10 @@
 // ------------------- CONFIG -------------------
 const API_BASE = (() => {
     const origin = window.location.origin;
-    return origin.includes(':5002') ? origin : 'https://assa-ac-duzn.onrender.com';
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return 'http://localhost:5002';
+    }
+    return 'http://localhost:5002';
 })();
 let SERVER_INVOICES = [];
 
@@ -30,7 +33,7 @@ async function loadCompanyInvoices() {
         try {
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         } catch (e) {
-            base = 'https://assa-ac-duzn.onrender.com';
+            base = 'http://localhost:5002';
             url = `${base}/api/factures/company`;
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         }
@@ -263,14 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Menu mobile
-    const sidebar = document.getElementById('sidebar');
-    const openBtn = document.getElementById('open-sidebar-btn');
-    const closeBtn = document.getElementById('close-sidebar-btn');
-    if(openBtn) openBtn.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
-    if(closeBtn) closeBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
-
-        // 4. Formulaire paiements
+    // 3. Formulaire paiements
     const paiementForm = document.getElementById('paiements-form');
     const fileInputPaiement = document.getElementById('file-upload-paiement');
     const fileDisplayPaiement = document.getElementById('file-upload-display-paiement');

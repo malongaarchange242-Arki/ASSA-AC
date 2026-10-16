@@ -2,7 +2,7 @@
 // ====================================================================
 // 📌 CONFIG API
 // ====================================================================
-const API_BASE = "https://assa-ac-duzn.onrender.com";
+const API_BASE = "http://localhost:5002";
 
 let ALL_INVOICES = []; 
 let currentSortColumn = null;
@@ -390,19 +390,51 @@ function formatNumber(num) {
 }
 
 
-function openInvoicePage(numero, status) {
+async function openInvoicePage(numero) {
     if (!numero) {
         console.error("Numéro de facture manquant !");
         return;
     }
 
-    const s = (status || "").toLowerCase();
-    const encodedNumero = encodeURIComponent(numero);
+    const pdfWindow = window.open('', '_blank');
+    if (!pdfWindow) {
+        alert("Autorisez l'ouverture des fenêtres pop-up pour consulter le PDF.");
+        return;
+    }
 
-    if (s === "payée" || s === "payee") {
-        window.location.href = `FacturePreview_certifier.html?numero=${encodedNumero}`;
-    } else {
-        window.location.href = `FacturePreview.html?numero=${encodedNumero}`;
+    const token = localStorage.getItem("jwtTokenCompany");
+    if (!token) {
+        pdfWindow.close();
+        alert("Votre session a expiré. Veuillez vous reconnecter.");
+        return;
+    }
+
+    pdfWindow.document.title = "Chargement du PDF de la facture";
+    pdfWindow.document.body.textContent = "Chargement du PDF de la facture…";
+
+    try {
+        const response = await fetch(`${API_BASE}/api/factures/${encodeURIComponent(numero)}/pdf`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const contentType = response.headers.get("content-type") || "";
+            const error = contentType.includes("application/json")
+                ? await response.json()
+                : { message: await response.text() };
+            throw new Error(error.message || "Impossible de générer le PDF de cette facture.");
+        }
+
+        if (!(response.headers.get("content-type") || "").includes("application/pdf")) {
+            throw new Error("Le serveur n'a pas renvoyé un document PDF.");
+        }
+
+        const pdfUrl = URL.createObjectURL(await response.blob());
+        pdfWindow.location.replace(pdfUrl);
+    } catch (error) {
+        console.error("Erreur ouverture du PDF de facture :", error);
+        pdfWindow.close();
+        alert(`Impossible d'ouvrir le PDF de la facture : ${error.message}`);
     }
 }
 
@@ -468,18 +500,6 @@ window.downloadRecapCSV = function () {
 // ====================================================================
 document.addEventListener('DOMContentLoaded', () => {
     setTheme(localStorage.getItem('theme') || 'light');
-
-    const sidebar = document.getElementById('sidebar');
-    const openBtn = document.getElementById('open-sidebar-btn');
-    const closeBtn = document.getElementById('close-sidebar-btn');
-
-    openBtn?.addEventListener('click', () =>
-        sidebar.classList.remove('-translate-x-full')
-    );
-
-    closeBtn?.addEventListener('click', () =>
-        sidebar.classList.add('-translate-x-full')
-    );
 
     document.getElementById("search-input").addEventListener("input", applySearch);
 
