@@ -33,6 +33,7 @@ let previewZoom = 100;
 let previewScrollTop = 0;
 let previousMainOverflowY = '';
 let previewOpener = null;
+let invoiceDraftSaved = false;
 
 // ======================= UTILITAIRES =======================
 function showMessage(msg, type = 'info') {
@@ -60,6 +61,7 @@ function showMessage(msg, type = 'info') {
 
 function resetInvoiceForm() {
     invoiceIdInput.value = '';
+    invoiceDraftSaved = false;
     clientSelect.value = '';
     issueLocationInput.value = '';
     airportInput.value = '';
@@ -437,69 +439,6 @@ function updateInvoiceLanguage() {
 
 window.addEventListener('app-language-change', updateInvoiceLanguage);
 
-async function fetchNextInvoiceId() {
-    let token = getInvoiceToken();
-    if (!token) {
-        invoiceIdInput.value = "REF-TEST-0001";
-        return;
-    }
-
-    try {
-        // determine airport and period; prefer explicit airport input, otherwise derive from selected client
-        const airportVal = (airportInput && airportInput.value) ? airportInput.value : (clientSelect && companiesData[clientSelect.value] ? companiesData[clientSelect.value].airport : '');
-        const periodVal = document.getElementById('period')?.value || '';
-
-        if (!airportVal) {
-            showMessage(t('invoice_airport_required'), 'error');
-            return;
-        }
-        if (!periodVal) {
-            showMessage(t('invoice_period_required'), 'error');
-            return;
-        }
-
-        const airport = encodeURIComponent(airportVal);
-        const period = encodeURIComponent(periodVal);
-        const companyId = (clientSelect && companiesData[clientSelect.value]) ? companiesData[clientSelect.value].id : '';
-        const url = `${API_BASE}/api/factures/generate-ref?airport=${airport}&period=${period}&id_companie=${encodeURIComponent(companyId)}`;
-        const response = await fetch(url, {
-            method: "GET",
-            headers: getInvoiceAuthHeaders(token)
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                try {
-                    const err = await response.json().catch(() => ({}));
-                    console.warn('API 401 response:', err);
-                } catch (e) {}
-
-                // Clear local token and prompt re-login to avoid repeated 401s
-                localStorage.removeItem(INVOICE_TOKEN_KEY);
-                showMessage(t('invoice_session_expired'), 'error');
-
-                // Optional: redirect to login page after short delay if a login page exists
-                setTimeout(() => {
-                    if (window.location.pathname.indexOf('login') === -1) {
-                        // adjust path if your app uses a different login route
-                        // window.location.href = '/login.html';
-                    }
-                }, 1200);
-
-                return;
-            }
-            throw new Error(`Impossible de générer la référence (Statut: ${response.status})`);
-        }
-
-        const data = await response.json();
-        invoiceIdInput.value = data.numero_facture;
-
-    } catch (error) {
-        console.error(error);
-        showMessage(t('invoice_reference_error').replace('{error}', error.message), 'error');
-    }
-}
-
 // ======================= APERÇU =======================
 function validateForm() {
     const requiredInputs = document.querySelectorAll('#invoice-form [required]');
@@ -552,7 +491,7 @@ function buildInvoicePayload() {
     };
 }
 
-// Create or update invoice on server; returns the invoice reference (numero_facture) or null on failure
+// Create or update the saved draft; returns its invoice reference or null on failure
 async function createInvoiceDraft() {
     if (!validateForm()) return null;
 
@@ -572,7 +511,7 @@ async function createInvoiceDraft() {
     }
 
     try {
-        if (invoiceIdInput.value) {
+        if (invoiceDraftSaved) {
             // update existing
             const resp = await fetch(`${API_BASE}/api/factures/${encodeURIComponent(invoiceIdInput.value)}`, {
                 method: 'PUT',
@@ -587,6 +526,7 @@ async function createInvoiceDraft() {
 
             const data = await resp.json();
             if (data.numero_facture) invoiceIdInput.value = data.numero_facture;
+            invoiceDraftSaved = true;
             return invoiceIdInput.value;
         } else {
             // create new
@@ -603,6 +543,7 @@ async function createInvoiceDraft() {
 
             const data = await resp.json();
             if (data.numero_facture) invoiceIdInput.value = data.numero_facture;
+            invoiceDraftSaved = true;
             return data.numero_facture || invoiceIdInput.value;
         }
     } catch (err) {
@@ -1054,7 +995,7 @@ async function sendInvoice(buttonElement) {
         }
 
         let response;
-        if (invoiceIdInput.value) {
+        if (invoiceDraftSaved) {
             // If invoice reference exists, update the existing invoice to avoid duplicates
             response = await fetch(`${API_BASE}/api/factures/${encodeURIComponent(invoiceIdInput.value)}`, {
                 method: 'PUT',
@@ -1079,6 +1020,7 @@ async function sendInvoice(buttonElement) {
         if (resData && resData.numero_facture) {
             invoiceIdInput.value = resData.numero_facture;
         }
+        invoiceDraftSaved = true;
 
         const refShown = invoiceIdInput.value
             ? ` (${t('invoice_reference_label').replace('{reference}', invoiceIdInput.value)})`
@@ -1167,7 +1109,6 @@ window.onload = () => {
         document.getElementById('issue-date').value = today.toISOString().split('T')[0];
         document.getElementById('period').value = getPreviousMonthPeriod();
 
-        fetchNextInvoiceId();
         loadClients();
 
         if (!itemsContainer.children.length) addItemRow();

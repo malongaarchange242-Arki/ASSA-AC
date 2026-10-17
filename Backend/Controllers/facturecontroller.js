@@ -748,8 +748,7 @@ export const getFacturePdf = async (req, res) => {
 // ===============================================================
 export const updateFacture = async (req, res) => {
   try {
-    const { numero_facture } = req.params;
-    const id_companie = req.user?.id_companie;
+    const numero_facture = req.params.numero_facture;
 
     const { nom_client, objet, periode, aeroport, date_emission,
             lieu_emission, montant_total, devise, montant_en_lettres, lignes } = req.body;
@@ -758,15 +757,36 @@ export const updateFacture = async (req, res) => {
       .from('factures')
       .select('*')
       .eq('numero_facture', numero_facture)
-      .eq('id_companie', id_companie)
       .eq('archived', false)
-      .single();
+      .maybeSingle();
 
-    if (factureError || !factureData) return res.status(404).json({ message: 'Facture non trouvée ou accès refusé' });
-    // Autorisation : only OPERATOR (or the original creator) may update
-    const role = req.user?.role;
-    if (!['Operateur','Operator'].includes(role) && req.user?.id !== factureData.created_by) {
-      return res.status(403).json({ message: 'Action réservée à l\'opérateur ayant créé la facture' });
+    if (factureError) throw factureError;
+    if (!factureData) return res.status(404).json({ message: 'Facture non trouvée' });
+
+    const role = String(req.user?.role || '').toLowerCase().trim();
+    const userId = req.user?.id;
+    let canUpdate = role === 'super_directeur';
+
+    if (role === 'operateur') {
+      canUpdate = String(factureData.created_by || '') === String(userId || '');
+    } else if (role === 'administrateur') {
+      canUpdate = String(factureData.id_admin || '') === String(userId || '');
+
+      if (!canUpdate) {
+        const { data: link, error: linkError } = await supabase
+          .from('admin_companies')
+          .select('company_id')
+          .eq('admin_id', userId)
+          .eq('company_id', factureData.id_companie)
+          .maybeSingle();
+
+        if (linkError) throw linkError;
+        canUpdate = Boolean(link);
+      }
+    }
+
+    if (!canUpdate) {
+      return res.status(403).json({ message: "Vous n'êtes pas autorisé à modifier cette facture." });
     }
 
     const { data: updatedData, error: updateError } = await supabase
@@ -801,7 +821,7 @@ export const updateFacture = async (req, res) => {
       reference: numero_facture,
       description: `Mise à jour de la facture ${numero_facture} (${nom_client})`,
       id_admin: req.user.id,
-      id_companie
+      id_companie: factureData.id_companie
     });
     
     

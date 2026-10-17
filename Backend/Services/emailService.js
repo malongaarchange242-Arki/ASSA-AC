@@ -1,6 +1,19 @@
 import nodemailer from 'nodemailer';
 
-const RESEND_API_URL = 'https://api.resend.com/emails';
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+
+function getBrevoSender(from) {
+  const configuredSender = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_FROM || from;
+  if (!configuredSender) return null;
+
+  const normalizedSender = String(configuredSender).replace(/^\s*SMTP_FROM\s*=\s*/i, '').trim();
+  const formattedSender = normalizedSender.match(/^(.*?)\s*<([^<>]+)>$/);
+  const email = (formattedSender ? formattedSender[2] : normalizedSender).trim();
+  const name = process.env.BREVO_SENDER_NAME
+    || (formattedSender?.[1].trim() || 'ASSA-AC');
+
+  return { email, name };
+}
 
 function getSmtpConfiguration() {
   const port = Number(process.env.SMTP_PORT);
@@ -20,8 +33,8 @@ function getSmtpConfiguration() {
 }
 
 export function isEmailConfigured() {
-  if (process.env.RESEND_API_KEY) {
-    return Boolean(process.env.EMAIL_FROM);
+  if (process.env.BREVO_API_KEY) {
+    return Boolean(getBrevoSender());
   }
   return Boolean(getSmtpConfiguration());
 }
@@ -30,30 +43,31 @@ export async function sendEmail({ to, subject, text, html, attachments = [], fro
   if (!to) throw new Error('Destinataire e-mail manquant');
   if (!subject) throw new Error('Objet de l’e-mail manquant');
 
-  if (process.env.RESEND_API_KEY) {
-    const sender = process.env.EMAIL_FROM || from;
+  if (process.env.BREVO_API_KEY) {
+    const sender = getBrevoSender(from);
     if (!sender) {
-      throw new Error('EMAIL_FROM est requis pour envoyer des e-mails via Resend');
+      throw new Error('SMTP_FROM (ou BREVO_SENDER_EMAIL) est requis pour envoyer des e-mails via Brevo');
     }
 
     const payload = {
-      from: sender,
-      to: Array.isArray(to) ? to : [to],
+      sender,
+      to: (Array.isArray(to) ? to : [to]).map(recipient => (
+        typeof recipient === 'string' ? { email: recipient } : recipient
+      )),
       subject,
-      ...(text ? { text } : {}),
-      ...(html ? { html } : {}),
+      ...(text ? { textContent: text } : {}),
+      ...(html ? { htmlContent: html } : {}),
       ...(attachments.length ? {
-        attachments: attachments.map((attachment) => {
+        attachment: attachments.map((attachment) => {
           if (!attachment.content) {
             throw new Error(`Contenu manquant pour la pièce jointe ${attachment.filename || ''}`);
           }
 
           return {
-            filename: attachment.filename,
+            name: attachment.filename,
             content: Buffer.isBuffer(attachment.content)
               ? attachment.content.toString('base64')
-              : attachment.content,
-            ...(attachment.contentType ? { content_type: attachment.contentType } : {})
+              : attachment.content
           };
         })
       } : {})
@@ -63,10 +77,10 @@ export async function sendEmail({ to, subject, text, html, attachments = [], fro
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
-      const response = await fetch(RESEND_API_URL, {
+      const response = await fetch(BREVO_API_URL, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'api-key': process.env.BREVO_API_KEY,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload),
@@ -75,20 +89,22 @@ export async function sendEmail({ to, subject, text, html, attachments = [], fro
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const detail = result.message || result.error || `HTTP ${response.status}`;
-        throw new Error(`Resend a refusé l’envoi : ${detail}`);
+        const detail = result.message || result.code || `HTTP ${response.status}`;
+        throw new Error(`Brevo a refusé l’envoi : ${detail}`);
       }
-      if (!result.id) throw new Error('Resend n’a pas retourné d’identifiant de message');
+      if (!result.messageId) throw new Error('Brevo n’a pas retourné d’identifiant de message');
 
       return {
-        provider: 'resend',
-        messageId: result.id,
-        response: `Accepted by Resend (${result.id})`,
-        accepted: Array.isArray(to) ? to : [to]
+        provider: 'brevo',
+        messageId: result.messageId,
+        response: `Accepted by Brevo (${result.messageId})`,
+        accepted: Array.isArray(to) ? to.map(recipient => (
+          typeof recipient === 'string' ? recipient : recipient.email
+        )) : [to]
       };
     } catch (error) {
       if (error.name === 'AbortError') {
-        throw new Error('Délai dépassé lors de la connexion à Resend');
+        throw new Error('Délai dépassé lors de la connexion à Brevo');
       }
       throw error;
     } finally {
@@ -98,10 +114,10 @@ export async function sendEmail({ to, subject, text, html, attachments = [], fro
 
   const smtp = getSmtpConfiguration();
   if (!smtp) {
-    throw new Error('Configuration e-mail manquante : configurez RESEND_API_KEY et EMAIL_FROM ou les variables SMTP');
+    throw new Error('Configuration e-mail manquante : configurez BREVO_API_KEY et SMTP_FROM (ou BREVO_SENDER_EMAIL), ou les variables SMTP');
   }
 
-  const sender = from || process.env.EMAIL_FROM || process.env.SMTP_USER;
+  const sender = from || process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER;
   const transporter = nodemailer.createTransport(smtp);
   const info = await transporter.sendMail({
     from: sender,

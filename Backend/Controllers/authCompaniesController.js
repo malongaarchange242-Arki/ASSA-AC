@@ -33,7 +33,6 @@ const generateTempPassword = () => Math.random().toString(36).slice(-8) + Math.f
 const sendFirstLoginEmail = async (to, otp, tempPassword) => {
   try {
     const info = await sendEmail({
-      from: process.env.EMAIL_FROM || `"ASSA-AC" <${process.env.SMTP_USER}>`,
       to,
       subject: 'Première connexion - ASSA-AC',
       text: `Bonjour,\n\nVotre code OTP : ${otp}\nMot de passe temporaire : ${tempPassword}\nValable 10 minutes.\n\nMerci.`
