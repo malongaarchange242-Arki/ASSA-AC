@@ -743,6 +743,52 @@ export const getFacturePdf = async (req, res) => {
   }
 };
 
+export const resendInvoiceEmail = async (req, res) => {
+  try {
+    const result = await getAuthorizedInvoice(req.params.numero_facture, req.user);
+    if (result.status) return res.status(result.status).json({ message: result.message });
+
+    const facture = result.facture;
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .select('email')
+      .eq('id', facture.id_companie)
+      .maybeSingle();
+
+    if (companyError) throw companyError;
+    if (!company?.email) {
+      return res.status(422).json({ message: 'Aucune adresse e-mail n’est configurée pour cette compagnie.' });
+    }
+
+    const invoicePdf = await generateInvoicePdf(facture, result.lignes);
+    const emailInfo = await sendInvoiceEmail(
+      company.email,
+      facture.numero_facture,
+      facture.montant_total,
+      invoicePdf
+    );
+
+    console.info('E-mail de facture renvoyé au client :', {
+      provider: emailInfo.provider,
+      messageId: emailInfo.messageId,
+      numero_facture: facture.numero_facture,
+      to: company.email
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `La facture a été renvoyée à ${company.email}.`,
+      email: company.email
+    });
+  } catch (err) {
+    console.error('Erreur lors du renvoi de la facture :', err);
+    return res.status(500).json({
+      message: 'Impossible de renvoyer la facture par e-mail.',
+      error: err.message
+    });
+  }
+};
+
 // ===============================================================
 // UPDATE Facture
 // ===============================================================
@@ -886,6 +932,99 @@ export const archiveFacture = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur archivage facture', error: err.message });
+  }
+};
+
+export const cancelInvoiceDraft = async (req, res) => {
+  try {
+    const numero_facture = req.params.numero_facture;
+    const { data: facture, error: factureError } = await supabase
+      .from('factures')
+      .select('numero_facture, id_admin, id_companie, created_by, statut, daf_status, archived')
+      .eq('numero_facture', numero_facture)
+      .eq('archived', false)
+      .maybeSingle();
+
+    if (factureError) throw factureError;
+    if (!facture) return res.status(404).json({ message: 'Brouillon introuvable ou déjà annulé.' });
+
+    const role = String(req.user?.role || '').toLowerCase().trim();
+    const userId = String(req.user?.id || '');
+    let canCancel = role === 'super_directeur';
+
+    if (role === 'operateur') {
+      canCancel = String(facture.created_by || '') === userId;
+    } else if (role === 'administrateur') {
+      canCancel = String(facture.id_admin || '') === userId;
+
+      if (!canCancel) {
+        const { data: link, error: linkError } = await supabase
+          .from('admin_companies')
+          .select('company_id')
+          .eq('admin_id', req.user.id)
+          .eq('company_id', facture.id_companie)
+          .maybeSingle();
+
+        if (linkError) throw linkError;
+        canCancel = Boolean(link);
+      }
+    } else if (role === 'company') {
+      canCancel = String(req.user?.id_companie || '') === String(facture.id_companie || '');
+    }
+
+    if (!canCancel) {
+      return res.status(403).json({ message: "Vous n'êtes pas autorisé à annuler cette facture." });
+    }
+
+    if (facture.statut !== 'Impayée' || ![null, undefined, 'not_submitted'].includes(facture.daf_status)) {
+      return res.status(409).json({ message: 'Cette facture a déjà été traitée et ne peut plus être annulée depuis l’aperçu.' });
+    }
+
+    const [{ data: preuve, error: preuveError }, { data: contestation, error: contestationError }] = await Promise.all([
+      supabase.from('preuve_paiement').select('numero_facture').eq('numero_facture', numero_facture).limit(1),
+      supabase.from('contestation').select('numero_facture').eq('numero_facture', numero_facture).limit(1)
+    ]);
+
+    if (preuveError) throw preuveError;
+    if (contestationError) throw contestationError;
+    if (preuve?.length || contestation?.length) {
+      return res.status(409).json({ message: 'Cette facture a une preuve de paiement ou une contestation et ne peut plus être annulée.' });
+    }
+
+    const { data: cancelledInvoice, error: cancelError } = await supabase
+      .from('factures')
+      .update({ archived: true, statut: 'Archivée' })
+      .eq('numero_facture', numero_facture)
+      .eq('archived', false)
+      .eq('statut', 'Impayée')
+      .or('daf_status.is.null,daf_status.eq.not_submitted')
+      .select('numero_facture')
+      .maybeSingle();
+
+    if (cancelError) throw cancelError;
+    if (!cancelledInvoice) {
+      return res.status(409).json({ message: 'La facture a changé de statut et ne peut plus être annulée.' });
+    }
+
+    await logActivite({
+      module: 'Factures',
+      type_activite: 'delete',
+      categorie: 'Facture',
+      reference: numero_facture,
+      description: `Annulation de la facture ${numero_facture}`,
+      id_admin: req.user.id,
+      id_companie: facture.id_companie,
+      utilisateur_email: req.user.email
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Facture annulée avec succès.',
+      numero_facture
+    });
+  } catch (err) {
+    console.error('Erreur annulation facture :', err);
+    return res.status(500).json({ message: 'Erreur lors de l’annulation de la facture.', error: err.message });
   }
 };
 

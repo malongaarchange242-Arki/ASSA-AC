@@ -182,12 +182,17 @@
                     <p id="invoice-view-reference"></p>
                 </div>
                 <div class="invoice-view-actions">
+                    <button type="button" id="invoice-view-resend" class="invoice-view-resend">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                        <span data-i18n="invoice_resend">Renvoyer la facture</span>
+                    </button>
                     <button type="button" id="invoice-view-print" class="invoice-view-print">
                         <i class="fas fa-print" aria-hidden="true"></i> Imprimer
                     </button>
                     <button type="button" class="invoice-view-close" data-close-invoice-view aria-label="Fermer">×</button>
                 </div>
             </header>
+            <p id="invoice-view-email-feedback" class="invoice-view-email-feedback" role="status" aria-live="polite" hidden></p>
             <div id="invoice-view-content" class="invoice-view-content" aria-live="polite"></div>
         </section>
     </div>

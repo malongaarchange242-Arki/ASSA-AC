@@ -1151,6 +1151,32 @@ body.invoice-view-open {
     color: #fff;
 }
 
+.invoice-view-resend {
+    background: #1d4ed8;
+    color: #fff;
+}
+
+.invoice-view-resend:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.invoice-view-email-feedback {
+    margin: 0;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+}
+
+.invoice-view-email-feedback.is-success {
+    color: #166534;
+    background: #f0fdf4;
+}
+
+.invoice-view-email-feedback.is-error {
+    color: #9f1239;
+    background: #fff1f2;
+}
+
 .invoice-view-close {
     width: 38px;
     padding: 0 !important;

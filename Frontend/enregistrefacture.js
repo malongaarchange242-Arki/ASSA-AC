@@ -667,11 +667,11 @@ async function showPreview() {
                         <button type="button" onclick="adjustPreviewZoom(10)" aria-label="Augmenter le zoom" data-i18n-aria-label="invoice_zoom_in">+</button>
                     </div>
                     <button type="button" id="preview-fullscreen-button" class="preview-tool-button" onclick="togglePreviewFullscreen()" aria-pressed="false" data-i18n="invoice_fullscreen">Plein écran</button>
-                    <button type="button" onclick="closePreview()" class="preview-close-button" aria-label="Fermer l’aperçu" title="Fermer l’aperçu" data-i18n-aria-label="invoice_close_preview" data-i18n-title="invoice_close_preview">×</button>
+                    <button type="button" onclick="cancelInvoiceDraft(this)" class="preview-close-button" aria-label="Annuler la facture" title="Annuler la facture" data-i18n-aria-label="invoice_cancel" data-i18n-title="invoice_cancel">×</button>
                 </div>
                 <div class="preview-actions">
                     <button type="button" onclick="closePreview()" class="preview-action-button preview-back-button" data-i18n="invoice_edit_back">Modifier / Retour</button>
-                    <button type="button" onclick="sendInvoice(this)" id="send-invoice-button" class="preview-action-button preview-send-button" data-i18n="invoice_send_save">Envoyer & Enregistrer</button>
+                    <button type="button" onclick="sendInvoice(this)" id="send-invoice-button" class="preview-action-button preview-send-button" data-i18n="invoice_send_save">Enregistrer & Envoyer</button>
                     <button type="button" onclick="printPreview()" class="preview-action-button preview-print-button" data-i18n="print">Imprimer</button>
                 </div>
             </div>
@@ -924,6 +924,54 @@ function closePreview() {
     setPreviewButtonLoading(false);
     if (previewOpener instanceof HTMLElement) {
         previewOpener.focus({ preventScroll: true });
+    }
+}
+
+async function cancelInvoiceDraft(buttonElement) {
+    if (buttonElement?.disabled) return;
+
+    if (!invoiceDraftSaved) {
+        closePreview();
+        resetInvoiceForm();
+        showMessage(t('invoice_cancelled'), 'success');
+        return;
+    }
+
+    const token = getInvoiceToken();
+    if (!token) {
+        showMessage(t('invoice_session_expired'), 'error');
+        return;
+    }
+
+    if (buttonElement) buttonElement.disabled = true;
+    try {
+        const response = await fetch(`${API_BASE}/api/factures/cancel-draft/${encodeURIComponent(invoiceIdInput.value)}`, {
+            method: 'DELETE',
+            headers: getInvoiceAuthHeaders(token)
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.message || `Erreur API ${response.status}`);
+        }
+
+        closePreview();
+        resetInvoiceForm();
+        showMessage(t('invoice_cancelled'), 'success');
+    } catch (error) {
+        console.error('Erreur lors de l’annulation de la facture :', error);
+        const previewMsg = document.getElementById('preview-message');
+        if (previewMsg) {
+            previewMsg.textContent = t('invoice_cancel_error').replace('{error}', error.message);
+            previewMsg.style.display = 'block';
+            previewMsg.style.background = '#fff1f2';
+            previewMsg.style.color = '#9f1239';
+            previewMsg.style.border = '1px solid #fca5a5';
+        } else {
+            showMessage(t('invoice_cancel_error').replace('{error}', error.message), 'error');
+        }
+    } finally {
+        if (buttonElement) buttonElement.disabled = false;
     }
 }
 

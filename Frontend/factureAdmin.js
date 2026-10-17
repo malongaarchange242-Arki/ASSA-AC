@@ -309,6 +309,13 @@ function renderInvoiceDetails(facture, lignes) {
 async function ouvrirApercuFacture(numeroFacture) {
     const modal = document.getElementById("invoice-view-modal");
     const content = document.getElementById("invoice-view-content");
+    const resendButton = document.getElementById("invoice-view-resend");
+    const emailFeedback = document.getElementById("invoice-view-email-feedback");
+    resendButton.dataset.numeroFacture = numeroFacture;
+    resendButton.disabled = true;
+    emailFeedback.hidden = true;
+    emailFeedback.textContent = "";
+    emailFeedback.className = "invoice-view-email-feedback";
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("invoice-view-open");
@@ -322,9 +329,44 @@ async function ouvrirApercuFacture(numeroFacture) {
         if (!response.ok) throw new Error(result.message || "Impossible de charger cette facture.");
         if (!result.facture || !Array.isArray(result.lignes)) throw new Error("La réponse de la facture est incomplète.");
         renderInvoiceDetails(result.facture, result.lignes);
+        resendButton.disabled = false;
     } catch (error) {
         console.error("Erreur ouverture facture :", error);
         content.innerHTML = `<p class="invoice-view-error" role="alert">${escapeHtml(error.message)}</p>`;
+    }
+}
+
+async function renvoyerFacture(button) {
+    const numeroFacture = button.dataset.numeroFacture;
+    if (!numeroFacture || button.disabled) return;
+
+    const emailFeedback = document.getElementById("invoice-view-email-feedback");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    emailFeedback.hidden = true;
+    emailFeedback.textContent = "";
+
+    try {
+        const response = await fetch(`${API_URL}/api/factures/${encodeURIComponent(numeroFacture)}/resend-email`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || `Erreur HTTP ${response.status}`);
+
+        emailFeedback.textContent = result.message || window.t("invoice_resend_success");
+        emailFeedback.classList.add("is-success");
+    } catch (error) {
+        console.error("Erreur lors du renvoi de la facture :", error);
+        emailFeedback.textContent = `${window.t("invoice_resend_error")} ${error.message}`;
+        emailFeedback.classList.add("is-error");
+    } finally {
+        emailFeedback.hidden = false;
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
     }
 }
 
@@ -729,6 +771,9 @@ document.querySelectorAll("[data-close-invoice-view]").forEach(element => {
 });
 
 document.getElementById("invoice-view-print").addEventListener("click", () => window.print());
+document.getElementById("invoice-view-resend").addEventListener("click", event => {
+    renvoyerFacture(event.currentTarget);
+});
 
 document.addEventListener("keydown", event => {
     if (event.key === "Escape" && document.getElementById("invoice-view-modal").classList.contains("is-open")) {

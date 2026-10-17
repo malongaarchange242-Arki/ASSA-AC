@@ -11,8 +11,10 @@ import {
   generateRef,
   getInvoicesByCompany,
   getFacturePdf,
+  resendInvoiceEmail,
   confirmerFacture,
-  deleteFacture
+  deleteFacture,
+  cancelInvoiceDraft
 } from '../Controllers/facturecontroller.js';
 
 import { verifyToken, checkRole } from '../Middleware/auth.js';
@@ -65,6 +67,22 @@ router.put(
   verifyToken,
   checkRole(['administrateur', 'superviseur', 'super_directeur']),
   updateFactureStatut
+);
+
+// 🔹 Annuler un brouillon de facture depuis son aperçu
+router.delete(
+  '/cancel-draft/:numero_facture',
+  verifyToken,
+  checkRole(['operateur', 'administrateur', 'super_directeur', 'company']),
+  cancelInvoiceDraft
+);
+
+// 🔹 Renvoyer la facture par e-mail à la compagnie
+router.post(
+  '/:numero_facture/resend-email',
+  verifyToken,
+  checkRole(['operateur', 'administrateur', 'superviseur', 'super_directeur']),
+  resendInvoiceEmail
 );
 
 /* =========================================================
