@@ -1,7 +1,7 @@
 // Routes/messages.js
 import express from 'express';
 import multer from 'multer';
-import { getMessagesHistory, postMessage, uploadAndSendProof, markMessagesAsRead, countUnreadMessagesCompany, countUnreadMessagesAdmin } from '../Controllers/messagesController.js';
+import { getMessagesHistory, postMessage, uploadAndSendProof, markMessagesAsRead, countUnreadMessagesCompany, countUnreadMessagesAdmin, countUnreadMessagesOperator } from '../Controllers/messagesController.js';
 import { verifyToken, checkRole } from '../Middleware/auth.js';
 
 const router = express.Router();
@@ -17,7 +17,7 @@ export default (broadcastToRoom) => {
   router.get(
     '/history',
     verifyToken,
-    checkRole(['company', 'administrateur', 'superviseur', 'super_directeur']),
+    checkRole(['company', 'administrateur', 'superviseur', 'super_directeur', 'operateur']),
     getMessagesHistory
   );
 
@@ -25,7 +25,7 @@ export default (broadcastToRoom) => {
   router.post(
     '/',
     verifyToken,
-    checkRole(['company', 'administrateur', 'superviseur', 'super_directeur']),
+    checkRole(['company', 'administrateur', 'superviseur', 'super_directeur', 'operateur']),
     upload.array('attachments'),
     (req, res) => postMessage(req, res, broadcastToRoom)
   );
@@ -39,11 +39,12 @@ export default (broadcastToRoom) => {
     (req, res) => uploadAndSendProof(req, res, broadcastToRoom)
   );
 
-  router.get('/messages/unread/admin', verifyToken, countUnreadMessagesAdmin);
-  router.get('/messages/unread/company', verifyToken, countUnreadMessagesCompany);
+  router.get('/unread/admin', verifyToken, countUnreadMessagesAdmin);
+  router.get('/unread/company', verifyToken, countUnreadMessagesCompany);
+  router.get('/unread/operator', verifyToken, checkRole(['operateur']), countUnreadMessagesOperator);
 
   router.put(
-    '/messages/mark-read/:companyId',
+    '/mark-read/:companyId',
     verifyToken,
     markMessagesAsRead
   );

@@ -1,4 +1,11 @@
 let allCompanies = []; // Stocke toutes les compagnies pour la recherche
+let selectedCompanyDetails = null;
+let animateActiveCompanyRows = new URLSearchParams(window.location.search).get('highlight') === 'active';
+
+function isActiveCompany(company) {
+    const status = String(company.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    return status === 'actif' || status === 'active';
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
  // 1. Référence au bouton de bascule
@@ -6,6 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const body = document.body;
     const companyFormDialog = document.getElementById('company-form-dialog');
     const companyFormFrame = document.getElementById('company-form-frame');
+    const companyDetailsDialog = document.getElementById('company-details-dialog');
+    const searchInput = document.getElementById('searchInput');
 
     document.getElementById('add-company-button')?.addEventListener('click', () => showCompanyForm());
     companyFormDialog?.querySelector('.company-form-dialog-close')?.addEventListener('click', closeCompanyForm);
@@ -14,6 +23,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     companyFormDialog?.addEventListener('close', () => {
         if (companyFormFrame) companyFormFrame.src = 'about:blank';
+    });
+    companyDetailsDialog?.querySelector('.company-details-close')?.addEventListener('click', () => companyDetailsDialog.close());
+    companyDetailsDialog?.addEventListener('click', event => {
+        if (event.target === companyDetailsDialog) companyDetailsDialog.close();
+    });
+    document.getElementById('company-messages-action')?.addEventListener('click', () => {
+        const companyId = selectedCompanyDetails?.id_companie || selectedCompanyDetails?.id;
+        if (companyId) localStorage.setItem('id_companie', String(companyId));
     });
     window.addEventListener('message', event => {
         if (
@@ -28,6 +45,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (event.data.type === 'company-saved') fetchCompanies();
     });
 
+    function updateThemeToggleLabel() {
+        if (!themeToggle) return;
+        const label = body.classList.contains('dark-mode')
+            ? t('theme_toggle_light')
+            : t('theme_toggle_dark');
+        themeToggle.title = label;
+        themeToggle.setAttribute('aria-label', label);
+    }
+
+    window.addEventListener('app-language-change', () => {
+        updateThemeToggleLabel();
+        const dialogTitle = document.getElementById('company-form-dialog-title');
+        if (dialogTitle) {
+            dialogTitle.textContent = companyFormDialog?.dataset.companyId
+                ? t('company_edit_dialog')
+                : t('company_add_dialog');
+        }
+        if (searchInput) filterCompanies(searchInput.value);
+        if (companyDetailsDialog?.open && selectedCompanyDetails) renderCompanyDetails(selectedCompanyDetails);
+
+        const tokenButton = document.getElementById('token-setter-btn');
+        if (tokenButton) tokenButton.textContent = t('token_paste_button');
+        const tokenTitle = document.getElementById('token-dialog-title');
+        if (tokenTitle) tokenTitle.textContent = t('token_dialog_title');
+        const tokenInstructions = document.getElementById('token-dialog-instructions');
+        if (tokenInstructions) tokenInstructions.textContent = t('token_dialog_instructions');
+        const tokenInput = document.getElementById('token-input');
+        if (tokenInput) tokenInput.placeholder = t('token_placeholder');
+        const tokenSave = document.getElementById('token-save');
+        if (tokenSave) tokenSave.textContent = t('token_save');
+        const tokenCancel = document.getElementById('token-cancel');
+        if (tokenCancel) tokenCancel.textContent = t('token_cancel');
+    });
+
     // 2. Fonction pour appliquer le thème
     function applyTheme(theme) {
         if (theme === 'dark') {
@@ -36,7 +87,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (themeToggle) {
                 // Icône Soleil pour passer au mode clair
                 themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                themeToggle.title = "Passer au Mode Clair";
             }
         } else {
             body.classList.remove('dark-mode');
@@ -44,9 +94,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (themeToggle) {
                 // Icône Lune pour passer au mode sombre
                 themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-                themeToggle.title = "Passer au Mode Sombre";
             }
         }
+        updateThemeToggleLabel();
     }
 
     // 3. Détecter et appliquer le thème au chargement
@@ -93,9 +143,10 @@ function showCompanyForm(companyId = '') {
     formUrl.searchParams.set('modal', '1');
     if (companyId) formUrl.searchParams.set('id', companyId);
 
+    dialog.dataset.companyId = companyId;
     document.getElementById('company-form-dialog-title').textContent = companyId
-        ? 'Modifier une compagnie'
-        : 'Ajouter une compagnie';
+        ? t('company_edit_dialog')
+        : t('company_add_dialog');
     frame.src = formUrl.href;
     dialog.showModal();
 }
@@ -116,7 +167,7 @@ function closeCompanyForm() {
 function getToken() {
     const token = localStorage.getItem('jwtTokenAdmin');
     if (!token) {
-        alert("Vous n'êtes pas connecté !");
+        alert(t('token_missing'));
         window.location.href = 'login.html';
         throw new Error("Token manquant");
     }
@@ -135,7 +186,7 @@ function initTokenUI() {
     // Floating button
     const btn = document.createElement('button');
     btn.id = 'token-setter-btn';
-    btn.textContent = 'Coller token';
+    btn.textContent = t('token_paste_button');
     Object.assign(btn.style, {
         position: 'fixed',
         right: '16px',
@@ -165,12 +216,12 @@ function initTokenUI() {
     });
 
     panel.innerHTML = `
-        <h3 style="margin:0 0 8px 0;">Saisir le token Admin</h3>
-        <p style="margin:0 0 12px 0;font-size:12px;color:#444">Collez ici votre ` + "jwtTokenAdmin" + ` et cliquez sur Enregistrer.</p>
-        <textarea id="token-input" style="width:100%;height:90px;padding:8px;border:1px solid #ccc;border-radius:4px;"></textarea>
+        <h3 id="token-dialog-title" style="margin:0 0 8px 0;">${t('token_dialog_title')}</h3>
+        <p id="token-dialog-instructions" style="margin:0 0 12px 0;font-size:12px;color:#444">${t('token_dialog_instructions')}</p>
+        <textarea id="token-input" placeholder="${t('token_placeholder')}" style="width:100%;height:90px;padding:8px;border:1px solid #ccc;border-radius:4px;"></textarea>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-            <button id="token-save" style="background:#16a34a;color:#fff;padding:8px 12px;border:none;border-radius:4px;cursor:pointer">Enregistrer</button>
-            <button id="token-cancel" style="background:#6b7280;color:#fff;padding:8px 12px;border:none;border-radius:4px;cursor:pointer">Fermer</button>
+            <button id="token-save" style="background:#16a34a;color:#fff;padding:8px 12px;border:none;border-radius:4px;cursor:pointer">${t('token_save')}</button>
+            <button id="token-cancel" style="background:#6b7280;color:#fff;padding:8px 12px;border:none;border-radius:4px;cursor:pointer">${t('token_cancel')}</button>
         </div>
     `;
 
@@ -188,11 +239,11 @@ function initTokenUI() {
 
     document.getElementById('token-save').addEventListener('click', () => {
         const v = document.getElementById('token-input').value.trim();
-        if (!v) return alert('Veuillez coller le token JWT.');
+        if (!v) return alert(t('token_required'));
         localStorage.setItem('jwtTokenAdmin', v);
         modal.style.display = 'none';
         btn.remove();
-        alert('Token enregistré. La page va se recharger.');
+        alert(t('token_saved'));
         window.location.reload();
     });
 
@@ -215,12 +266,12 @@ function buildLogoUrl(logoUrl) {
 }
 
 function createCompanyLogoFallback(companyName) {
-    const name = companyName?.trim() || 'Compagnie';
+    const name = companyName?.trim() || t('company_no_name');
     const initials = name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
     const fallback = document.createElement('span');
     fallback.className = 'company-logo-fallback';
     fallback.setAttribute('role', 'img');
-    fallback.setAttribute('aria-label', `Logo indisponible pour ${name}`);
+    fallback.setAttribute('aria-label', t('company_logo_unavailable').replace('{company}', name));
     fallback.textContent = initials || '?';
     return fallback;
 }
@@ -234,24 +285,48 @@ function renderCompanies(companies) {
 
     if (!companies.length) {
         const row = document.createElement('tr');
-        row.innerHTML = '<td class="table-message" colspan="8">Aucune compagnie trouvée.</td>';
+        const cell = document.createElement('td');
+        cell.className = 'table-message';
+        cell.colSpan = 8;
+        cell.textContent = t('company_no_results');
+        row.appendChild(cell);
         container.appendChild(row);
         return;
     }
 
     companies.forEach(c => {
-        const status = c.status ? c.status.trim() : 'Inactif';
-        const statusClass = status.toLowerCase() === 'actif' ? 'active' : 'inactive';
+        const status = typeof c.status === 'string' && c.status.trim() ? c.status.trim() : 'Inactif';
+        const normalizedStatus = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const statusTranslations = {
+            actif: 'company_status_active',
+            active: 'company_status_active',
+            inactif: 'company_status_inactive',
+            inactive: 'company_status_inactive',
+            enattente: 'company_status_pending',
+            pending: 'company_status_pending',
+            suspendu: 'company_status_suspended',
+            suspended: 'company_status_suspended'
+        };
+        const statusClass = ['actif', 'active'].includes(normalizedStatus) ? 'active' : 'inactive';
+        const translatedStatus = statusTranslations[normalizedStatus]
+            ? t(statusTranslations[normalizedStatus])
+            : status;
 
         const row = document.createElement('tr');
         row.className = `company-row status-${statusClass}`;
+        if (isActiveCompany(c)) {
+            row.classList.add('company-active-highlight');
+            if (animateActiveCompanyRows) row.classList.add('animate-active-highlight');
+        }
         row.dataset.id = c.id;
+        row.tabIndex = 0;
+        const companyNameValue = c.company_name || t('company_no_name');
+        row.setAttribute('aria-label', `${t('view_company_details')}: ${companyNameValue}`);
 
         const companyCell = document.createElement('td');
         companyCell.className = 'company-name-cell';
         const companyIdentity = document.createElement('div');
         companyIdentity.className = 'company-identity';
-        const companyNameValue = c.company_name || 'Compagnie';
         const logoUrl = buildLogoUrl(c.logo_url || c.logo);
         if (logoUrl) {
             const logo = document.createElement('img');
@@ -294,7 +369,7 @@ function renderCompanies(companies) {
         const statusCell = document.createElement('td');
         const statusBadge = document.createElement('span');
         statusBadge.className = `status-badge ${statusClass}`;
-        statusBadge.textContent = status;
+        statusBadge.textContent = translatedStatus;
         statusCell.appendChild(statusBadge);
         row.appendChild(statusCell);
 
@@ -303,12 +378,13 @@ function renderCompanies(companies) {
         const actions = document.createElement('div');
         actions.className = 'company-actions';
         [
-            { title: 'Modifier', icon: 'fa-edit' },
-            { title: 'Supprimer', icon: 'fa-trash' }
-        ].forEach(({ title, icon }) => {
+            { action: 'edit', title: t('company_edit'), icon: 'fa-edit' },
+            { action: 'delete', title: t('company_delete'), icon: 'fa-trash' }
+        ].forEach(({ action, title, icon }) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.title = title;
+            button.dataset.companyAction = action;
             button.setAttribute('aria-label', `${title} ${companyName.textContent}`);
             const buttonIcon = document.createElement('i');
             buttonIcon.className = `fas ${icon}`;
@@ -330,18 +406,33 @@ function renderCompanies(companies) {
 function attachCompanyRowEvents() {
     document.querySelectorAll('.company-row').forEach(row => {
         const companyId = row.dataset.id;
-        const token = getToken();
+
+        const openDetails = () => {
+            const company = allCompanies.find(item => String(item.id) === String(companyId));
+            if (company) showCompanyDetails(company);
+        };
+
+        row.addEventListener('click', event => {
+            if (event.target.closest('button, a')) return;
+            openDetails();
+        });
+        row.addEventListener('keydown', event => {
+            if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button, a')) {
+                event.preventDefault();
+                openDetails();
+            }
+        });
 
         // Modifier
-        row.querySelector('button[title="Modifier"]').addEventListener('click', () => {
+        row.querySelector('button[data-company-action="edit"]').addEventListener('click', () => {
             showCompanyForm(companyId);
         });
 
         // Supprimer (sécurisé)
         // Supprimer une compagnie (définitif)
-        row.querySelector('button[title="Supprimer"]').addEventListener('click', async () => {
+        row.querySelector('button[data-company-action="delete"]').addEventListener('click', async () => {
 
-            if (!confirm('⚠️ Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ?\nCette action est irréversible.')) {
+            if (!confirm(t('company_confirm_delete'))) {
                 return;
             }
 
@@ -359,11 +450,11 @@ function attachCompanyRowEvents() {
                 const result = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(result.message || 'Erreur lors de la suppression');
+                    throw new Error(result.message || 'Company deletion failed');
                 }
 
                 // ✅ Message succès
-                alert(`✅ Compagnie "${result.company?.company_name || ''}" supprimée avec succès`);
+                alert(t('company_delete_success').replace('{company}', result.company?.company_name || ''));
 
                 // ✅ Retirer la ligne du tableau
                 row.remove();
@@ -376,11 +467,160 @@ function attachCompanyRowEvents() {
 
             } catch (err) {
                 console.error(err);
-                alert('❌ Erreur : ' + err.message);
+                alert(t('company_delete_error'));
             }
         });
 
     });
+}
+
+function showCompanyDetails(company) {
+    const dialog = document.getElementById('company-details-dialog');
+    if (!dialog) return;
+    selectedCompanyDetails = company;
+    renderCompanyDetails(company);
+    dialog.showModal();
+}
+
+function renderCompanyDetails(company) {
+    const name = String(company.company_name || t('company_no_name'));
+    const title = document.getElementById('company-details-title');
+    const id = document.getElementById('company-details-id');
+    const logoContainer = document.getElementById('company-details-logo');
+    const statusElement = document.getElementById('company-details-status');
+    const contactDetails = document.getElementById('company-contact-details');
+    const locationDetails = document.getElementById('company-location-details');
+    const accountDetails = document.getElementById('company-account-details');
+    if (!title || !id || !logoContainer || !statusElement || !contactDetails || !locationDetails || !accountDetails) return;
+
+    title.textContent = name;
+    id.textContent = company.id || company.id_companie ? String(company.id || company.id_companie) : '—';
+    logoContainer.replaceChildren();
+
+    const logoUrl = buildLogoUrl(company.logo_url || company.logo);
+    if (logoUrl) {
+        const logo = document.createElement('img');
+        logo.src = logoUrl;
+        logo.alt = t('company_logo_unavailable').replace('{company}', name);
+        logo.addEventListener('error', () => {
+            logo.replaceWith(createCompanyLogoFallback(name));
+        }, { once: true });
+        logoContainer.appendChild(logo);
+    } else {
+        logoContainer.appendChild(createCompanyLogoFallback(name));
+    }
+
+    const rawStatus = String(company.status || '').trim();
+    const normalizedStatus = rawStatus.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s_-]/g, '');
+    const statusInfo = {
+        actif: ['company_status_active', 'active'],
+        active: ['company_status_active', 'active'],
+        inactif: ['company_status_inactive', 'inactive'],
+        inactive: ['company_status_inactive', 'inactive'],
+        enattente: ['company_status_pending', 'pending'],
+        pending: ['company_status_pending', 'pending'],
+        suspendu: ['company_status_suspended', 'suspended'],
+        suspended: ['company_status_suspended', 'suspended']
+    }[normalizedStatus];
+    statusElement.replaceChildren();
+    statusElement.hidden = !rawStatus;
+    if (rawStatus) {
+        statusElement.className = `company-details-status${statusInfo ? ` is-${statusInfo[1]}` : ''}`;
+        statusElement.textContent = statusInfo ? t(statusInfo[0]) : rawStatus;
+    }
+
+    const displayValue = (rawValue, isDate = false) => {
+        if (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') return '—';
+        const value = String(rawValue).trim();
+        if (isDate) {
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) {
+                return date.toLocaleString(localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR');
+            }
+        }
+        return value;
+    };
+
+    const appendContactField = (labelKey, rawValue, iconClass) => {
+        const item = document.createElement('div');
+        item.className = 'company-details-contact-item';
+        const icon = document.createElement('i');
+        icon.className = `fas ${iconClass}`;
+        icon.setAttribute('aria-hidden', 'true');
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'company-details-field-icon';
+        iconWrap.appendChild(icon);
+        const text = document.createElement('div');
+        text.className = 'company-details-contact-copy';
+        const label = document.createElement('span');
+        label.className = 'company-details-field-label';
+        label.textContent = t(labelKey);
+        const value = document.createElement('span');
+        value.className = 'company-details-field-value';
+        value.textContent = displayValue(rawValue);
+        text.append(label, value);
+        item.append(iconWrap, text);
+        contactDetails.appendChild(item);
+    };
+
+    const appendRow = (container, labelKey, rawValue, options = {}) => {
+        const term = document.createElement('dt');
+        term.textContent = t(labelKey);
+        const description = document.createElement('dd');
+        if (options.status) {
+            const badge = document.createElement('span');
+            badge.className = `company-details-status${statusInfo ? ` is-${statusInfo[1]}` : ''}`;
+            badge.textContent = rawStatus ? (statusInfo ? t(statusInfo[0]) : rawStatus) : '—';
+            description.appendChild(badge);
+        } else {
+            description.textContent = displayValue(rawValue, options.date);
+        }
+        container.append(term, description);
+    };
+
+    contactDetails.replaceChildren();
+    appendContactField('representative', company.representative_name, 'fa-user');
+    appendContactField('email', company.email, 'fa-envelope');
+    appendContactField('phone', company.phone_number, 'fa-phone');
+
+    locationDetails.replaceChildren();
+    appendRow(locationDetails, 'address', company.full_address);
+    appendRow(locationDetails, 'company_city', company.city);
+    appendRow(locationDetails, 'company_country', company.country);
+    appendRow(locationDetails, 'airport_code', company.airport_code);
+
+    accountDetails.replaceChildren();
+    appendRow(accountDetails, 'status', company.status, { status: true });
+    appendRow(accountDetails, 'company_created_at', company.created_at, { date: true });
+    appendRow(accountDetails, 'company_updated_at', company.updated_at, { date: true });
+    appendRow(accountDetails, 'company_last_login', company.last_login, { date: true });
+
+    const contactAction = document.getElementById('company-contact-action');
+    const invoicesAction = document.getElementById('company-invoices-action');
+    const messagesAction = document.getElementById('company-messages-action');
+    const actionsCard = document.getElementById('company-quick-actions-card');
+    const email = String(company.email || '').trim();
+    if (contactAction) {
+        contactAction.hidden = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        if (!contactAction.hidden) contactAction.href = `mailto:${email}`;
+    }
+    if (invoicesAction) {
+        invoicesAction.hidden = !name || name === t('company_no_name');
+        if (!invoicesAction.hidden) {
+            const invoiceUrl = new URL('factureAdmin.html', window.location.href);
+            invoiceUrl.searchParams.set('company', name);
+            invoicesAction.href = invoiceUrl.href;
+        }
+    }
+    if (messagesAction) {
+        const companyId = company.id_companie || company.id;
+        messagesAction.hidden = !companyId || company.status !== 'Actif';
+        if (companyId) messagesAction.href = 'messagerieAdmin.html';
+    }
+    if (actionsCard) {
+        actionsCard.hidden = [contactAction, invoicesAction, messagesAction]
+            .every(action => !action || action.hidden);
+    }
 }
 
 // --------------------------------------------------
@@ -402,12 +642,23 @@ async function fetchCompanies() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!res.ok) throw new Error(`Erreur ${res.status} : ${res.statusText}`);
+        if (!res.ok) throw new Error(String(res.status));
 
         const json = await res.json();
         allCompanies = json.companies || []; 
         container.setAttribute('aria-busy', 'false');
         renderCompanies(allCompanies);
+        const shouldHighlightActiveCompanies = animateActiveCompanyRows;
+        animateActiveCompanyRows = false;
+        if (shouldHighlightActiveCompanies) {
+            const firstActiveRow = container.querySelector('.company-active-highlight');
+            if (firstActiveRow) {
+                firstActiveRow.scrollIntoView({
+                    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                    block: 'center'
+                });
+            }
+        }
 
         // Applique le filtre si une recherche était en cours (utile après l'actualisation)
         const searchInput = document.getElementById('searchInput');
@@ -421,11 +672,14 @@ async function fetchCompanies() {
         const cell = document.createElement('td');
         cell.className = 'table-message table-error';
         cell.colSpan = 8;
-        cell.append(`Erreur lors du chargement : ${err.message} `);
+        const status = /^\d{3}$/.test(err.message) ? err.message : '';
+        cell.append(status
+            ? t('company_load_error').replace('{status}', status) + ' '
+            : `${t('company_load_failed')} `);
         const retryButton = document.createElement('button');
         retryButton.type = 'button';
         retryButton.className = 'btn-refresh';
-        retryButton.textContent = 'Réessayer';
+        retryButton.textContent = t('company_retry');
         retryButton.addEventListener('click', fetchCompanies);
         cell.appendChild(retryButton);
         row.appendChild(cell);

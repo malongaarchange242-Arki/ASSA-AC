@@ -62,6 +62,8 @@ if (!token) {
    ============================================================ */
 let FACTURES = [];   // Stocke toutes les factures
 let COMPAGNIES = []; // Stocke la liste unique des compagnies
+const compagnieCible = new URLSearchParams(window.location.search).get("company")?.trim() || "";
+const highlightDisputedInvoices = new URLSearchParams(window.location.search).get("highlight") === "disputed";
 
 /* ============================================================
    1️⃣ CHARGER LES FACTURES
@@ -71,7 +73,7 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
     tbody.setAttribute('aria-busy', 'true');
     tbody.innerHTML = Array.from({ length: 3 }, () => `
         <tr class="admin-skeleton-row">
-            ${Array.from({ length: 6 }, () => '<td><span class="admin-skeleton admin-skeleton-block"></span></td>').join('')}
+            ${Array.from({ length: 7 }, () => '<td><span class="admin-skeleton admin-skeleton-block"></span></td>').join('')}
         </tr>
     `).join('');
     try {
@@ -97,15 +99,32 @@ let COMPAGNIES = []; // Stocke la liste unique des compagnies
 
         extraireCompagnies();
         remplirListeCompagnies();
-        paginateFactures(FACTURES, 8);
+        const requestedCompany = new URLSearchParams(window.location.search).get("company");
+        if (requestedCompany) {
+            const companySelect = document.querySelectorAll(".report-select")[1];
+            const existingOption = Array.from(companySelect.options)
+                .some(option => option.value === requestedCompany);
+            if (!existingOption) companySelect.add(new Option(requestedCompany, requestedCompany));
+            companySelect.value = requestedCompany;
+            filtrerFactures();
+        } else {
+            paginateFactures(FACTURES, 8);
+        }
         tbody.setAttribute('aria-busy', 'false');
+        if (highlightDisputedInvoices) {
+            const firstDisputedInvoice = tbody.querySelector('.invoice-disputed.animate-disputed');
+            firstDisputedInvoice?.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'center'
+            });
+        }
 
     } catch (err) {
         console.error("❌ ERREUR CHARGEMENT:", err);
         tbody.setAttribute('aria-busy', 'false');
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 6;
+        cell.colSpan = 7;
         cell.textContent = `${window.t('unable_load_invoices')} `;
         const retryButton = document.createElement('button');
         retryButton.type = 'button';
@@ -151,7 +170,7 @@ function remplirTableau(factures) {
     tbody.innerHTML = "";
 
     if (!factures.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="table-message">Aucune facture disponible.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="table-message">Aucune facture disponible.</td></tr>`;
         return;
     }
 
@@ -161,15 +180,21 @@ function remplirTableau(factures) {
         const dateEmission = formatInvoiceDate(fact.date);
         const montant = Number(fact.amount) || 0;
         const statut = String(fact.status || "Impayée");
+        const estContestee = statut.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() === "contestee";
         const encodedNumero = encodeURIComponent(numeroFacture);
+        const preuveEnvoyee = Boolean(fact.preuve_paiement_url);
 
         const statutClass =
             statut.toLowerCase() === "payée" ? "payee" :
-            statut.toLowerCase() === "contestée" ? "contester" :
+            estContestee ? "contested" :
             "en-attente";
 
         tbody.innerHTML += `
-            <tr data-facture-id="${escapeHtml(encodedNumero)}" data-statut="${escapeHtml(statut.toLowerCase())}">
+            <tr class="${[
+                compagnieCible && compagnie.trim().toLocaleLowerCase() === compagnieCible.toLocaleLowerCase() ? "invoice-company-highlight" : "",
+                estContestee ? "invoice-disputed" : "",
+                estContestee && highlightDisputedInvoices ? "animate-disputed" : ""
+            ].filter(Boolean).join(" ")}" data-facture-id="${escapeHtml(encodedNumero)}" data-statut="${escapeHtml(statut.toLowerCase())}">
                 <td>${escapeHtml(numeroFacture)}</td>
                 <td>${escapeHtml(compagnie)}</td>
                 <td>${escapeHtml(dateEmission)}</td>
@@ -177,6 +202,12 @@ function remplirTableau(factures) {
                 <td>
                     <span class="status-badge ${statutClass}">
                         ${escapeHtml(statut)}
+                    </span>
+                </td>
+                <td class="payment-proof-cell">
+                    <span class="payment-proof-badge ${preuveEnvoyee ? "is-sent" : "is-missing"}">
+                        <i class="fas ${preuveEnvoyee ? "fa-circle-check" : "fa-circle-minus"}" aria-hidden="true"></i>
+                        ${window.t(preuveEnvoyee ? "payment_proof_sent" : "payment_proof_not_sent")}
                     </span>
                 </td>
                 <td style="text-align:center;">

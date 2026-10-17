@@ -69,3 +69,22 @@ body {
     box-shadow: 0 0 10px rgba(79, 70, 229, 0.6); 
     transform: translateY(-2px);
 }
+
+.highlighted-invoice-row td {
+    animation: invoice-row-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes invoice-row-blink {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: rgba(79, 70, 229, 0.16);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .highlighted-invoice-row td {
+        animation: none;
+    }
+}

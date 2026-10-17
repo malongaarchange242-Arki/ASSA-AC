@@ -26,30 +26,30 @@
 
     <main class="main-content">
         <header class="header">
-            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Open menu" data-i18n-aria-label="open_menu" aria-expanded="false" aria-controls="sidebar">
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
             <div class="page-heading">
                 <h1 data-i18n="manage_companies">Gestion des Compagnies</h1>
-                <p>Consultez et gérez les compagnies enregistrées</p>
+                <p data-i18n="company_management_description">Consultez et gérez les compagnies enregistrées</p>
             </div>
             <div class="search-bar">
                 <i class="fas fa-search" aria-hidden="true"></i>
-                <input id="searchInput" type="search" placeholder="Rechercher une compagnie, un ID..." data-i18n-placeholder="search_company_id" aria-label="Rechercher une compagnie">
+                <input id="searchInput" type="search" placeholder="Rechercher une compagnie, un ID..." data-i18n-placeholder="search_company_id" aria-label="Rechercher une compagnie" data-i18n-aria-label="search_company_accessible">
             </div>
             <div class="user-interaction-group">
-                <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle" type="button" aria-label="Changer de thème">
+                <button class="icon-btn" title="Passer au mode sombre" data-i18n-title="theme_toggle_dark" id="theme-toggle" type="button" aria-label="Passer au mode sombre" data-i18n-aria-label="theme_toggle_dark">
                     <i class="fas fa-moon" aria-hidden="true"></i>
                 </button>
-                <button class="icon-btn notification-btn" title="Notifications" type="button" aria-label="Notifications">
+                <button class="icon-btn notification-btn" title="Notifications" data-i18n-title="notifications" type="button" aria-label="Notifications" data-i18n-aria-label="notifications">
                     <i class="fas fa-bell" aria-hidden="true"></i>
                 </button>
-                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue" aria-label="Changer la langue">
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer de langue" data-i18n-title="change_language" aria-label="Changer de langue" data-i18n-aria-label="change_language">
                     <i class="fas fa-language" aria-hidden="true"></i>
                     <span id="langLabel">FR</span>
                 </button>
                 <div class="user-info">
-                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    <img src="Icône profile.png" alt="Avatar" data-i18n-alt="profile_avatar" class="user-avatar">
                 </div>
             </div>
         </header>
@@ -58,7 +58,7 @@
             <div class="page-header">
                 <div>
                     <h2 data-i18n="manage_companies">Gestion des Compagnies</h2>
-                    <p>Retrouvez les informations et le statut de chaque compagnie.</p>
+                    <p data-i18n="company_management_subtitle">Retrouvez les informations et le statut de chaque compagnie.</p>
                 </div>
                 <div class="action-buttons">
                     <button class="btn-refresh" type="button" onclick="fetchCompanies()"><i class="fas fa-sync-alt" aria-hidden="true"></i><span data-i18n="refresh">Actualiser</span></button>
@@ -67,7 +67,7 @@
             </div>
 
             <div class="company-table-wrap">
-                <table class="company-table" aria-label="Liste des compagnies">
+                <table class="company-table" aria-label="Liste des compagnies" data-i18n-aria-label="company_list_accessible">
                     <colgroup>
                         <col class="company-col-name">
                         <col class="company-col-representative">
@@ -97,10 +97,78 @@
 
         <dialog class="company-form-dialog" id="company-form-dialog" aria-labelledby="company-form-dialog-title">
             <div class="company-form-dialog-header">
-                <h2 id="company-form-dialog-title">Ajouter une compagnie</h2>
-                <button type="button" class="company-form-dialog-close" aria-label="Fermer la fenêtre">&times;</button>
+                <h2 id="company-form-dialog-title" data-i18n="company_add_dialog">Ajouter une compagnie</h2>
+                <button type="button" class="company-form-dialog-close" aria-label="Fermer la fenêtre" data-i18n-aria-label="close_window">&times;</button>
             </div>
             <iframe id="company-form-frame" title="Formulaire d’enregistrement de compagnie"></iframe>
+        </dialog>
+
+        <dialog class="company-details-dialog" id="company-details-dialog" aria-labelledby="company-details-title">
+            <header class="company-details-header">
+                <div class="company-details-identity">
+                    <div class="company-details-logo" id="company-details-logo"></div>
+                    <div class="company-details-heading">
+                        <div class="company-details-title-row">
+                            <h2 id="company-details-title"></h2>
+                            <span class="company-details-status" id="company-details-status" hidden></span>
+                        </div>
+                        <p class="company-details-id">
+                            <span data-i18n="company_id">Identifiant de la compagnie</span>
+                            <span id="company-details-id"></span>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="company-details-close" aria-label="Fermer la fenêtre" data-i18n-aria-label="close_window">
+                    <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="company-details-layout">
+                <div class="company-details-column company-details-column-left">
+                    <section class="company-details-card" aria-labelledby="company-contact-heading">
+                        <h3 class="company-details-card-heading" id="company-contact-heading">
+                            <i class="fas fa-address-card" aria-hidden="true"></i>
+                            <span data-i18n="contact_information">Informations de contact</span>
+                        </h3>
+                        <div class="company-details-card-content" id="company-contact-details"></div>
+                    </section>
+                    <section class="company-details-card company-quick-actions" id="company-quick-actions-card" aria-labelledby="company-actions-heading">
+                        <h3 class="company-details-card-heading" id="company-actions-heading">
+                            <i class="fas fa-bolt" aria-hidden="true"></i>
+                            <span data-i18n="quick_actions">Actions rapides</span>
+                        </h3>
+                        <div class="company-details-actions">
+                            <a class="company-details-action company-details-action-primary" id="company-contact-action" hidden>
+                                <i class="fas fa-envelope" aria-hidden="true"></i>
+                                <span data-i18n="contact_company">Contacter la compagnie</span>
+                            </a>
+                            <a class="company-details-action" id="company-invoices-action" hidden>
+                                <i class="fas fa-file-invoice" aria-hidden="true"></i>
+                                <span data-i18n="view_invoices">Voir les factures</span>
+                            </a>
+                            <a class="company-details-action" id="company-messages-action" hidden>
+                                <i class="fas fa-comment-dots" aria-hidden="true"></i>
+                                <span data-i18n="view_messages">Voir les messages</span>
+                            </a>
+                        </div>
+                    </section>
+                </div>
+                <div class="company-details-column company-details-column-right">
+                    <section class="company-details-card" aria-labelledby="company-location-heading">
+                        <h3 class="company-details-card-heading" id="company-location-heading">
+                            <i class="fas fa-location-dot" aria-hidden="true"></i>
+                            <span data-i18n="location">Localisation</span>
+                        </h3>
+                        <dl class="company-details-rows" id="company-location-details"></dl>
+                    </section>
+                    <section class="company-details-card" aria-labelledby="company-account-heading">
+                        <h3 class="company-details-card-heading" id="company-account-heading">
+                            <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                            <span data-i18n="account_information">Informations du compte</span>
+                        </h3>
+                        <dl class="company-details-rows" id="company-account-details"></dl>
+                    </section>
+                </div>
+            </div>
         </dialog>
     </main>
 

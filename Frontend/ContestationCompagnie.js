@@ -130,27 +130,26 @@ async function renderContestationsView() {
         ['impayée', 'impayee'].includes(inv.status.toLowerCase())
     );
 
-    let options = '<option value="">Sélectionnez une facture impayée...</option>';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = unpaidInvoices.length
+        ? 'Sélectionnez une facture impayée...'
+        : 'Aucune facture impayée';
+    select.replaceChildren(placeholder);
 
-    if (!unpaidInvoices.length) {
-        options += '<option value="">Aucune facture impayée</option>';
-    } else {
-        unpaidInvoices.forEach(invoice => {
-            const formattedAmount = Number(invoice.amount || 0).toLocaleString('fr-CM', {
-                style: 'currency',
-                currency: 'XAF',
-                minimumFractionDigits: 0
-            });
+    unpaidInvoices.forEach(invoice => {
+        if (!invoice.numero_facture) return;
 
-            options += `
-                <option value="${invoice.id}">
-                    ${invoice.numero_facture} (${formattedAmount})
-                </option>
-            `;
+        const formattedAmount = Number(invoice.amount || 0).toLocaleString('fr-CM', {
+            style: 'currency',
+            currency: 'XAF',
+            minimumFractionDigits: 0
         });
-    }
-
-    select.innerHTML = options;
+        const option = document.createElement('option');
+        option.value = invoice.numero_facture;
+        option.textContent = `${invoice.numero_facture} (${formattedAmount})`;
+        select.appendChild(option);
+    });
 }
 
 
@@ -198,10 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const contestationForm = document.getElementById('contestations-form');
     const fileInputContestation = document.getElementById('file-upload-contestation');
     const fileDisplayContestation = document.getElementById('file-upload-display-contestation');
+    const submitContestationButton = document.getElementById('submit-contestation-button');
+    const submitContestationSpinner = submitContestationButton?.querySelector('.contestation-submit-spinner');
 
     if (contestationForm) {
         contestationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (submitContestationButton?.disabled) return;
+
             const invoiceId = document.getElementById('invoice-select-contestation').value;
             const explanation = document.getElementById('dispute-explanation').value;
             const files = fileInputContestation.files ? Array.from(fileInputContestation.files) : [];
@@ -216,6 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 showModal('Authentification requise', 'Veuillez vous reconnecter.'); 
                 return; 
             }
+
+            if (submitContestationButton) {
+                submitContestationButton.disabled = true;
+                submitContestationButton.setAttribute('aria-busy', 'true');
+            }
+            if (submitContestationSpinner) submitContestationSpinner.hidden = false;
 
             try {
                 const fd = new FormData();
@@ -283,6 +292,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error('Erreur soumission contestation:', err);
                 showModal('Erreur', 'Une erreur est survenue lors de la soumission.');
+            } finally {
+                if (submitContestationButton) {
+                    submitContestationButton.disabled = false;
+                    submitContestationButton.removeAttribute('aria-busy');
+                }
+                if (submitContestationSpinner) submitContestationSpinner.hidden = true;
             }
         });
     }

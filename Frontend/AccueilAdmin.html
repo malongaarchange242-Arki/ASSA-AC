@@ -25,50 +25,50 @@
 
     <main class="main-content">
         <header class="header">
-            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Open menu" data-i18n-aria-label="open_menu" aria-expanded="false" aria-controls="sidebar">
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
             <div class="page-heading">
                 <h1 data-i18n="dashboard">Tableau de Bord</h1>
-                <p>Vue d'ensemble de l'activité ASSA-AC</p>
+                <p data-i18n="dashboard_description">Vue d'ensemble de l'activité ASSA-AC</p>
             </div>
             <div class="user-interaction-group">
-                <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle" type="button" aria-label="Changer de thème">
+                <button class="icon-btn" title="Switch to dark mode" data-i18n-title="theme_toggle_dark" id="theme-toggle" type="button" aria-label="Switch to dark mode" data-i18n-aria-label="theme_toggle_dark">
                     <i class="fas fa-moon" aria-hidden="true"></i>
                 </button>
-                <button class="icon-btn notification-btn" title="Notifications" type="button" aria-label="Notifications">
+                <button class="icon-btn notification-btn" title="Notifications" data-i18n-title="notifications" type="button" aria-label="Notifications" data-i18n-aria-label="notifications">
                     <i class="fas fa-bell" aria-hidden="true"></i>
                     <span class="notif-badge" id="notifCount" hidden>0</span>
                 </button>
-                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue" aria-label="Changer la langue">
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Change language" data-i18n-title="change_language" aria-label="Change language" data-i18n-aria-label="change_language">
                     <i class="fas fa-language" aria-hidden="true"></i>
                     <span id="langLabel">FR</span>
                 </button>
                 <div class="user-info">
-                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    <img src="Icône profile.png" alt="Profile avatar" data-i18n-alt="profile_avatar" class="user-avatar">
                 </div>
             </div>
         </header>
 
-        <section class="dashboard-grid" aria-label="Indicateurs et activité récente">
-            <article class="card stat-card companies-card">
+        <section class="dashboard-grid" aria-label="Statistics and recent activity" data-i18n-aria-label="dashboard_aria">
+            <a href="gestioncompagnie.html?highlight=active" class="card stat-card companies-card companies-card-link" aria-label="Compagnies Actives" data-i18n-aria-label="active_companies">
                 <div class="stat-icon"><i class="fas fa-building" aria-hidden="true"></i></div>
                 <div class="stat-title" data-i18n="active_companies">Compagnies Actives</div>
                 <div class="stat-value admin-skeleton" id="companies-value">0</div>
-            </article>
+            </a>
 
-            <article class="card stat-card">
+            <a href="factureAdmin.html" class="card stat-card invoice-count-link" aria-label="Nombre total de factures" data-i18n-aria-label="total_number_invoices">
                 <div class="stat-icon"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></div>
                 <div class="stat-title" data-i18n="total_number_invoices">Nombre total de factures</div>
                 <div class="stat-value admin-skeleton">0</div>
-            </article>
+            </a>
 
-            <article class="card stat-card alert-card">
+            <a href="factureAdmin.html?highlight=disputed" class="card stat-card alert-card disputed-invoices-link" aria-label="Factures Contestées" data-i18n-aria-label="disputed_invoices">
                 <div class="stat-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
                 <div class="stat-title" data-i18n="disputed_invoices">Factures Contestées</div>
                 <div class="stat-value admin-skeleton" id="facturesContesteesValue">0</div>
                 <div class="stat-extra" data-i18n="needs_action">Nécessite une action rapide</div>
-            </article>
+            </a>
 
             <a href="enregistrefacture.html" class="card stat-card quick-action toggleAside">
                 <div class="stat-icon"><i class="fas fa-plus-circle" aria-hidden="true"></i></div>

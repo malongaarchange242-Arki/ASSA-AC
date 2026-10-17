@@ -65,7 +65,7 @@
                     <span id="theme-text">Mode Jour</span>
                 </button>
 
-                <a href="Index.html" onclick="showModal('Déconnexion', 'Vous avez été déconnecté avec succès.')" class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
+                <a href="Index.html" data-company-logout class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     Déconnexion
                 </a>
@@ -89,13 +89,10 @@
 
                 <div class="company-header-actions flex items-center space-x-4 w-full md:w-auto justify-end">
                     
-                    <button class="relative p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition hidden sm:block" title="Notifications" data-i18n-title="notifications">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                        <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-gray-800 bg-red-500"></span>
-                    </button>
-                    <button id="toggleLang" class="relative p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition hidden sm:block" title="Language">
-                        <i class="fa-solid fa-language"></i>
+                    <button id="toggleLang" class="company-language-switch" type="button" title="Changer de langue" aria-label="Changer de langue" aria-pressed="false" data-i18n-title="change_language" data-i18n-aria-label="change_language">
+                        <i class="fa-solid fa-language" aria-hidden="true"></i>
                         <span id="langLabel">FR</span>
+                        <i class="fa-solid fa-chevron-down company-language-chevron" aria-hidden="true"></i>
                     </button>
                     
                     <button class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -115,19 +112,18 @@
                 <div id="factures-view">
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow">
+                        <button type="button" id="valid-invoices-filter" aria-pressed="false" class="w-full text-left bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400" data-i18n="valid_invoices">Nombre de Factures Valides</p>
                             <div class="text-3xl font-bold mt-1 text-primary" id="kpi-total-unpaid">0</div> 
-                        </div>
+                        </button>
                         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400" data-i18n="total_invoices">Nombre Total de Factures Reçues</p>
                             <div class="text-3xl font-bold mt-1 text-red-500" id="kpi-overdue-count">0</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow">
+                        <button type="button" id="disputed-invoices-filter" aria-pressed="false" class="w-full text-left bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover-neon-glow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400" data-i18n="dispute_invoices">Factures Contestées</p>
                             <div class="text-3xl font-bold mt-1 text-orange-500" id="kpi-dispute-count">0</div>
-                            
-                        </div>
+                        </button>
                     </div>
                     <div class="invoice-list-card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                         

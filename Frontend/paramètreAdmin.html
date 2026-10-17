@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASSA-AC Admin Dashboard (Paramètres)</title>
+    <title>ASSA-AC Admin - Paramètres</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="paramètreAdmin.css">
     <link rel="stylesheet" href="AccueilAdmin.css">
@@ -24,101 +24,95 @@
     </script>
     <div id="admin-sidebar-root"></div>
 
-    <div class="main-content">
+    <main class="main-content settings-main">
 
-        <div class="header">
-            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+        <header class="header">
+            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" data-i18n-aria-label="open_menu" aria-expanded="false" aria-controls="sidebar">
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
-            <h1 class="page-title page-heading" data-i18n="settings">Paramètres</h1>
+            <div class="page-heading">
+                <h1 data-i18n="settings">Paramètres</h1>
+                <p data-i18n="admin_settings_description">Gérez les préférences et la sécurité de l’administration</p>
+            </div>
             <div class="user-interaction-group">
-                <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle" type="button" aria-label="Changer de thème"><i class="fas fa-moon"></i></button>
-                <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
-                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fas fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+                <button class="icon-btn" title="Passer au mode sombre" data-i18n-title="theme_toggle_dark" id="theme-toggle" type="button" aria-label="Passer au mode sombre" data-i18n-aria-label="theme_toggle_dark"><i class="fas fa-moon" aria-hidden="true"></i></button>
+                <button class="icon-btn notification-btn" title="Notifications" data-i18n-title="notifications" type="button" aria-label="Notifications" data-i18n-aria-label="notifications"><i class="fas fa-bell" aria-hidden="true"></i></button>
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue" data-i18n-title="change_language" aria-label="Changer la langue" data-i18n-aria-label="change_language"><i class="fas fa-language" aria-hidden="true"></i><span id="langLabel">FR</span></button>
                 <div class="user-info">
-                    <img src="Icône profile.png" alt="Avatar" class="user-avatar">
+                    <img src="Icône profile.png" alt="Avatar" data-i18n-alt="profile_avatar" class="user-avatar">
                 </div>
             </div>
-        </div>
+        </header>
 
-        <div class="settings-container">
+        <section class="content-area settings-content-area">
+          <div class="settings-container">
 
-            <nav class="settings-nav">
-                <a href="#general" class="settings-active"><i class="fas fa-info-circle"></i> Général</a>
-                <a href="#themes"><i class="fas fa-palette"></i> Thèmes & Apparence</a>
-                <a href="#security"><i class="fas fa-shield-alt"></i> Sécurité</a>
+            <nav class="settings-nav" aria-label="Rubriques des paramètres">
+                <a href="#general" class="settings-active" aria-current="page"><i class="fas fa-info-circle" aria-hidden="true"></i><span data-i18n="general">Général</span></a>
+                <a href="#themes"><i class="fas fa-palette" aria-hidden="true"></i><span data-i18n="themes_appearance">Thèmes & Apparence</span></a>
+                <a href="#security"><i class="fas fa-shield-alt" aria-hidden="true"></i><span data-i18n="account_security">Sécurité</span></a>
             </nav>
 
             <div class="settings-content">
 
-                <div id="general" class="settings-section">
-                    <h2>Informations Générales de la Société</h2>
+                <section id="general" class="settings-section">
+                    <h2 data-i18n="general_info">Informations Générales de la Société</h2>
                     <form>
-                        <div class="form-group"><label for="company-name">Nom de la Société</label><input type="text"
-                                id="company-name" value="ASSA-AC" required></div>
-                        <div class="form-group"><label for="address">Adresse du Siège Social</label><input type="text"
-                                id="address" value="23 Rue de l'Énergie, Pointe-Noire, Congo"></div>
-                        <div class="form-group"><label for="email">E-mail Officiel</label><input type="email" id="email"
-                                value="contact@assa-ac.com" required></div>
-                        <div class="form-action-bar"><button type="submit"><i class="fas fa-save"></i> Sauvegarder les
-                                Paramètres Généraux</button></div>
+                        <div class="form-group"><label for="company-name" data-i18n="company_name_field">Nom de la Société</label><input type="text"
+                                id="company-name" value="ASSA-AC" autocomplete="organization" required></div>
+                        <div class="form-group"><label for="address" data-i18n="headquarters_address_field">Adresse du Siège Social</label><input type="text"
+                                id="address" value="23 Rue de l'Énergie, Pointe-Noire, Congo" autocomplete="street-address"></div>
+                        <div class="form-group"><label for="email" data-i18n="official_email_field">E-mail Officiel</label><input type="email" id="email"
+                                value="contact@assa-ac.com" autocomplete="email" required></div>
+                        <div class="form-action-bar"><button type="submit"><i class="fas fa-save" aria-hidden="true"></i><span data-i18n="save_general_settings">Sauvegarder les Paramètres Généraux</span></button></div>
                     </form>
-                </div>
+                </section>
 
-                <div id="themes" class="settings-section" style="display: none;">
-                    <h2>Thèmes et Mode d'Affichage</h2>
+                <section id="themes" class="settings-section" style="display: none;">
+                    <h2 data-i18n="themes_mode_desc">Thèmes et Mode d'Affichage</h2>
                     <div class="form-group">
-                        <label>Sélectionnez un Thème (Persistant)</label>
-                        <p style="font-size: 0.9em; color: #70757A;">Votre choix sera sauvegardé et appliqué à toutes
-                            les pages de l'application (grâce à `localStorage`).</p>
+                        <label data-i18n="select_theme">Sélectionnez un Thème (Persistant)</label>
+                        <p data-i18n="your_choice_saved">Votre choix sera sauvegardé et appliqué à toutes les pages de l'application.</p>
                         <div class="theme-selector">
-                            <div class="theme-option" data-theme="light" id="light-mode-btn">
-                                <i class="fas fa-sun"></i>
-                                <span>Mode Jour</span>
-                            </div>
-                            <div class="theme-option" data-theme="dark" id="dark-mode-btn">
-                                <i class="fas fa-moon"></i>
-                                <span>Mode Nuit</span>
-                            </div>
-                            <div class="theme-option" data-theme="system" id="system-mode-btn">
-                                <i class="fas fa-desktop"></i>
-                                <span>Automatique</span>
-                            </div>
+                            <button class="theme-option" type="button" data-theme="light" id="light-mode-btn" aria-pressed="false">
+                                <i class="fas fa-sun" aria-hidden="true"></i><span data-i18n="light_mode">Mode Jour</span>
+                            </button>
+                            <button class="theme-option" type="button" data-theme="dark" id="dark-mode-btn" aria-pressed="false">
+                                <i class="fas fa-moon" aria-hidden="true"></i><span data-i18n="dark_mode">Mode Nuit</span>
+                            </button>
+                            <button class="theme-option" type="button" data-theme="system" id="system-mode-btn" aria-pressed="false">
+                                <i class="fas fa-desktop" aria-hidden="true"></i><span data-i18n="automatic">Automatique</span>
+                            </button>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div id="security" class="settings-section" style="display: none;">
-                    <h2>Sécurité du Compte (Admin Dupont)</h2>
+                <section id="security" class="settings-section" style="display: none;">
+                    <h2 data-i18n="account_security">Sécurité du Compte</h2>
                     <form>
-                        <h3 style="font-size: 1.1em; color: var(--alert-red);">Modifier le Mot de Passe</h3>
+                        <h3 data-i18n="change_password">Modifier le Mot de Passe</h3>
                         <div class="form-group">
-                            <label for="current-password">Mot de Passe Actuel</label>
-                            <input type="password" id="current-password" required>
+                            <label for="current-password" data-i18n="current_password_field">Mot de Passe Actuel</label>
+                            <input type="password" id="current-password" autocomplete="current-password" required>
                         </div>
                         <div class="form-group">
-                            <label for="new-password">Nouveau Mot de Passe</label>
-                            <input type="password" id="new-password" required>
+                            <label for="new-password" data-i18n="new_password_field">Nouveau Mot de Passe</label>
+                            <input type="password" id="new-password" autocomplete="new-password" required>
                         </div>
                         <div class="form-group">
-                            <label for="confirm-password">Confirmer le Nouveau Mot de Passe</label>
-                            <input type="password" id="confirm-password" required>
+                            <label for="confirm-password" data-i18n="confirm_password">Confirmer le Nouveau Mot de Passe</label>
+                            <input type="password" id="confirm-password" autocomplete="new-password" required>
                         </div>
                         <div class="form-action-bar">
-                            <button type="submit"><i class="fas fa-key"></i> Mettre à Jour le Mot de Passe</button>
+                            <button type="submit"><i class="fas fa-key" aria-hidden="true"></i><span data-i18n="update_password_button">Mettre à Jour le Mot de Passe</span></button>
                         </div>
                     </form>
-
-                    <h3
-                        style="font-size: 1.1em; color: var(--primary-blue); margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border-color);">
-                        Authentification à Deux Facteurs (2FA)</h3>
-                    <p style="font-size: 0.9em; color: #70757A;">Renforcez la sécurité de votre compte en activant la
-                        vérification en deux étapes.</p>
-                </div>
+                </section>
 
             </div>
-        </div>
-    </div>
+          </div>
+        </section>
+    </main>
 
     <script src="langSwitch.js"></script>
     <script src="paramètreAdmin.js"></script>

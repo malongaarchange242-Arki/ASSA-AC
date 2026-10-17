@@ -124,6 +124,12 @@ button {
     text-decoration: underline;
 }
 
+.dashboard-activity-message {
+    padding: 1.5rem;
+    color: var(--muted);
+    text-align: center;
+}
+
 .dark-mode .dashboard-load-error {
     color: #fecaca;
     background: #451a1a;
@@ -300,6 +306,10 @@ button {
     gap: 0.5rem;
 }
 
+.operator-dashboard-header .user-interaction-group {
+    margin-left: auto;
+}
+
 .icon-btn {
     display: inline-flex;
     min-width: 2.5rem;
@@ -437,6 +447,36 @@ button {
 .stat-card.companies-card .stat-icon {
     background: #ecfdf5;
     color: #059669;
+}
+
+.companies-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.companies-card-link:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.45);
+    outline-offset: 3px;
+}
+
+.invoice-count-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.invoice-count-link:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.45);
+    outline-offset: 3px;
+}
+
+.disputed-invoices-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.disputed-invoices-link:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.45);
+    outline-offset: 3px;
 }
 
 .stat-card.alert-card .stat-icon {

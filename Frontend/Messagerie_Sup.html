@@ -2,19 +2,33 @@
 <html lang="fr">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Messagerie — ASSA-AC</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messagerie — ASSA-AC Supervision</title>
+
+    <!-- Polices & Icônes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="Messagerie_Sup.css">
+
+    <!-- Stylesheets unifiées -->
+    <link rel="stylesheet" href="superviseurSidebar.css">
+    <link rel="stylesheet" href="Acceuil_Superviseur.css">
+    <link rel="stylesheet" href="messageriSuperviseur.css">
 </head>
 
-<body class="messenger-body">
+<body class="messagerieSuperviseur supervisor-dashboard">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar" aria-label="Navigation principale">
+    <!-- Voile sombre pour menu mobile -->
+    <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Fermer le menu" data-i18n-aria-label="close_menu" hidden></button>
+
+    <!-- Sidebar fixe Superviseur (Bleu nuit moderne) -->
+    <aside class="sidebar" id="supervisorSidebar" aria-label="Navigation principale">
         <div class="brand">
-            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-logo-container">
+                <img class="supervisor-brand-logo" src="assa-ac_LOGO.png" alt="ASSA-AC — Agence de Supervision de la Sécurité Aérienne en Afrique Centrale">
+            </div>
             <div class="brand-text">
                 <span class="brand-title">ASSA‑AC</span>
                 <span class="brand-sub">Supervision</span>
@@ -23,18 +37,35 @@
 
         <nav class="nav">
             <ul>
-                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span>Tableau de
-                            Bord</span></a></li>
-                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span>Opérations
-                            Sensibles</span></a></li>
-                <li><a href="Messagerie_Sup.html"><i class="fa-solid fa-envelope"></i><span>Messagerie</span></a></li>
-                <li><a href="#"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a></li>
+                <li>
+                    <a href="Acceuil_Superviseur.html">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span data-i18n="dashboard">Tableau de Bord</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="operations.html">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span data-i18n="sensitive_ops">Opérations Sensibles</span>
+                    </a>
+                </li>
+                <li class="active">
+                    <a href="messagerieSuperviseur.html">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span data-i18n="messaging">Messagerie</span>
+                        <span class="nav-badge">3</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="parametres_Superviseur.html">
+                        <i class="fa-solid fa-gear"></i>
+                        <span data-i18n="settings">Paramètres</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 
         <div class="sidebar-footer">
-            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i
-                    class="fa-solid fa-moon"></i><span>Mode</span></button>
             <button class="btn-danger" type="button" onclick="window.location.href='index.html'">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span data-i18n="logout">Déconnexion</span>
@@ -42,70 +73,100 @@
         </div>
     </aside>
 
-    <!-- MAIN -->
+    <!-- Conteneur Principal -->
     <div class="main-wrapper">
 
-        <!-- TOPBAR -->
+        <!-- En-tête / Topbar moderne unifiée -->
         <header class="topbar" role="banner">
             <div class="topbar-left">
-                <h2 class="page-title">Centre de Messagerie</h2>
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-controls="supervisorSidebar" aria-expanded="false" aria-label="Ouvrir le menu" data-i18n-aria-label="open_menu">
+                    <i class="fa-solid fa-bars" aria-hidden="true"></i>
+                </button>
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input id="searchInput" type="text" placeholder="Rechercher la compagnie..." data-i18n-placeholder="search_company">
+                </div>
             </div>
 
             <div class="topbar-right">
-                <div class="notif" title="Notifications" aria-live="polite">
-                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span
-                            class="notif-badge">3</span></button>
+                <!-- Bascule Mode Sombre / Clair -->
+                <button id="toggleTheme" type="button" class="icon-btn" aria-pressed="false" title="Passer au mode sombre" aria-label="Changer le thème">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- Notifications -->
+                <div class="notif-wrapper" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button" aria-label="Notifications" data-i18n-aria-label="notifications">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span class="notif-badge" id="notifCount">3</span>
+                    </button>
                 </div>
 
+                <!-- Sélecteur de Langue -->
+                <button id="toggleLang" type="button" class="lang-btn" aria-pressed="false" title="Changer la langue" data-i18n-title="change_language">
+                    <i class="fa-solid fa-language" aria-hidden="true"></i>
+                    <span id="langLabel">FR</span>
+                    <i class="fa-solid fa-chevron-down lang-chevron"></i>
+                </button>
+
+                <!-- Avatar & Menu Profil -->
                 <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
-                    <button class="avatar-btn" aria-expanded="false" type="button"><span
-                            class="avatar">SA</span></button>
+                    <button class="avatar-btn" aria-expanded="false" type="button" aria-label="Ouvrir le menu du profil" data-i18n-aria-label="profile_menu">
+                        <span class="avatar" id="supervisorAvatar">SA</span>
+                    </button>
                     <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
-                        <button class="dropdown-item" type="button"><i class="fa-solid fa-user"></i> Profil</button>
-                        <button class="dropdown-item" type="button"><i class="fa-solid fa-gear"></i> Paramètres</button>
-                        <button class="dropdown-item" type="button"><i class="fa-solid fa-right-from-bracket"></i>
-                            Déconnexion</button>
+                        <button class="dropdown-item" type="button" data-action="profile">
+                            <i class="fa-solid fa-user"></i> Profil
+                        </button>
+                        <button class="dropdown-item" type="button" data-action="settings">
+                            <i class="fa-solid fa-gear"></i> Paramètres
+                        </button>
+                        <button class="dropdown-item text-danger" type="button" data-action="logout">
+                            <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
+                        </button>
                     </div>
                 </div>
             </div>
         </header>
 
+        <!-- Espace Messagerie -->
         <main class="content-area">
             <div class="messaging-container">
-                <div class="msg-sidebar">
-                    <div class="msg-tabs">
-                        <button class="tab-btn active" data-tab="admins">Admins</button>
-                        <button class="tab-btn" data-tab="companies">Compagnies</button>
+                <div class="conversations-list">
+                    <div class="list-header">
+                        <span data-i18n="companies">Compagnies</span>
                     </div>
-                    <div id="contactList" class="contact-list">
-                    </div>
+                    <div id="companyContainer" class="list-body"></div>
                 </div>
 
-                <div class="chat-window">
-                    <div id="chatHeader" class="chat-header">
-                        <div class="active-user-info">
-                            <div class="status-dot"></div>
-                            <span id="activeContactName">Sélectionnez une discussion</span>
+                <div class="chat-area">
+                    <div class="chat-header">
+                        <img id="chat-company-avatar" src="assa-ac_LOGO.png" alt="Logo">
+                        <div class="chat-header-details">
+                            <h2 id="chat-company-name" data-i18n="select_company">Sélectionnez une compagnie</h2>
+                            <p data-i18n="recent_messages">Messages récents</p>
                         </div>
                     </div>
-
-                    <div id="chatBody" class="chat-body">
-                        <div class="welcome-msg">
-                            <i class="fa-solid fa-message"></i>
-                            <p>Sélectionnez un contact pour démarrer une conversation sécurisée.</p>
-                        </div>
+                    <div class="chat-messages" id="chat-messages-content">
+                        <p class="chat-placeholder" data-i18n="select_company_view">Sélectionnez une compagnie pour voir les messages ici.</p>
                     </div>
-
-                    <div class="chat-footer">
-                        <input type="text" id="msgInput" placeholder="Écrivez votre message ici..." autocomplete="off">
-                        <button id="sendMsg"><i class="fa-solid fa-paper-plane"></i></button>
+                    <div class="chat-input-area">
+                        <textarea id="messageInput" rows="2" placeholder="Écrire un message..."></textarea>
+                        <div class="input-actions">
+                            <button class="attach-btn" id="attachBtn"><i class="fas fa-paperclip"></i></button>
+                            <input type="file" id="attachmentInput" multiple style="display:none" />
+                            <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="Messagerie_Sup.js"></script>
+    <!-- Scripts -->
+    <script src="langSwitch.js"></script>
+    <script src="superviseurCommon.js"></script>
+    <script src="messagerieSuperviseur.js"></script>
 </body>
 
 </html>

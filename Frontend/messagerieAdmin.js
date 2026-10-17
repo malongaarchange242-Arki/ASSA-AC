@@ -21,7 +21,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chatCompanyName = document.getElementById('chat-company-name');
     const chatCompanyAvatar = document.getElementById('chat-company-avatar');
     const searchInput = document.getElementById('searchInput');
+    const companySearchInput = document.getElementById('companySearchInput');
+    const companySearchEmpty = document.getElementById('company-search-empty');
+    const messagingContainer = document.querySelector('.messaging-container');
+    const mobileChatBack = document.getElementById('mobile-chat-back');
     const messageInput = document.getElementById('messageInput');
+    const sendError = document.getElementById('send-error');
     const attachBtn = document.getElementById('attachBtn');
     const attachmentInput = document.getElementById('attachmentInput');
     const sendBtn = document.getElementById('sendBtn');
@@ -46,7 +51,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let selectedFiles = [];
     let ws = null;
+    let wsCompanyId = null;
     let selectedIdCompanie = null;
+    let isSendingMessage = false;
+    let historyRequestId = 0;
     const tempMessageMap = new Map();
     const displayedMessages = new Set();
 
@@ -56,10 +64,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showModal(title, message) {
         if (!modal) return console.warn('Modal non trouvé', title, message);
         if (modalTitle) modalTitle.textContent = title;
-        if (modalMessage) modalMessage.innerHTML = message;
+        if (modalMessage) modalMessage.textContent = message;
 
         modal.classList.remove('invisible', 'opacity-0');
         modal.classList.add('visible', 'opacity-100');
+    }
+
+    function showSendError(message) {
+        if (!sendError) return;
+        sendError.textContent = message;
+        sendError.hidden = !message;
     }
 
     function closeModal() {
@@ -96,6 +110,60 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function scrollChatBottom() {
         chatMessagesContent.scrollTop = chatMessagesContent.scrollHeight;
+    }
+
+    function setComposerState() {
+        const hasConversation = Boolean(selectedIdCompanie);
+        const hasContent = Boolean(messageInput.value.trim() || selectedFiles.length);
+        messageInput.disabled = !hasConversation;
+        attachBtn.disabled = !hasConversation || isSendingMessage;
+        sendBtn.disabled = !hasConversation || !hasContent || isSendingMessage;
+        sendBtn.setAttribute('aria-busy', String(isSendingMessage));
+        const sendIcon = sendBtn.querySelector('.fa-paper-plane');
+        const sendSpinner = sendBtn.querySelector('.send-spinner');
+        if (sendIcon) sendIcon.hidden = isSendingMessage;
+        if (sendSpinner) sendSpinner.hidden = !isSendingMessage;
+    }
+
+    function showChatStatus(message, { loading = false, retry } = {}) {
+        chatMessagesContent.replaceChildren();
+        const status = document.createElement('div');
+        status.className = 'chat-status';
+        status.setAttribute('role', loading ? 'status' : 'alert');
+
+        const icon = document.createElement('i');
+        icon.className = loading ? 'fas fa-circle-notch fa-spin' : 'fas fa-exclamation-circle';
+        icon.setAttribute('aria-hidden', 'true');
+        status.appendChild(icon);
+
+        const text = document.createElement('p');
+        if (loading) text.dataset.i18n = 'messages_loading';
+        text.textContent = message;
+        status.appendChild(text);
+
+        if (retry) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.i18n = 'retry';
+            button.textContent = t('retry');
+            button.addEventListener('click', retry, { once: true });
+            status.appendChild(button);
+        }
+
+        if (loading) {
+            const skeletons = document.createElement('div');
+            skeletons.className = 'message-skeletons';
+            skeletons.setAttribute('aria-hidden', 'true');
+            ['left', 'right', 'left'].forEach(alignment => {
+                const skeleton = document.createElement('div');
+                skeleton.className = `message-skeleton message-skeleton-${alignment}`;
+                skeletons.appendChild(skeleton);
+            });
+            status.appendChild(skeletons);
+        }
+
+        chatMessagesContent.appendChild(status);
+        chatMessagesContent.setAttribute('aria-busy', String(loading));
     }
 
     function removeTempMessage(tempId) {
@@ -138,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 : `${API_BASE}/api/messages/unread/company`;
 
             const res = await fetchWithAuth(url);
-            const count = res?.count ?? res ?? 0;
+            const count = res?.unread ?? res?.count ?? 0;
             updateNotifBadge(count);
         } catch (e) {
             console.warn('Erreur récupération notifications', e);
@@ -253,8 +321,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             wrapper.appendChild(t);
         }
 
+        const wasNearBottom = chatMessagesContent.scrollHeight -
+            chatMessagesContent.scrollTop - chatMessagesContent.clientHeight < 100;
+        chatMessagesContent.querySelectorAll('.chat-empty-state, .chat-status').forEach(status => status.remove());
+        chatMessagesContent.setAttribute('aria-busy', 'false');
         chatMessagesContent.appendChild(wrapper);
-        scrollChatBottom();
+        if (wasNearBottom) scrollChatBottom();
 
         if (returnElement) return wrapper;
         return null;
@@ -265,13 +337,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     function connectWebSocket(id_companie) {
         if (!id_companie) return;
-        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        if (ws && String(wsCompanyId) === String(id_companie) &&
+            (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        if (ws) ws.close();
         const session = getSessionInfo();
         if (!session) return;
 
-        ws = new WebSocket(WS_URL);
+        const socket = new WebSocket(WS_URL);
+        ws = socket;
+        wsCompanyId = String(id_companie);
 
-        ws.onopen = () => {
+        socket.onopen = () => {
             try {
                 const joinPayload = { type: 'join', token: session.token };
                 if (id_companie) {
@@ -279,11 +355,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     joinPayload.company_id = id_companie;
                 }
                 if (session.adminId) joinPayload.admin_id = session.adminId;
-                ws.send(JSON.stringify(joinPayload));
+                socket.send(JSON.stringify(joinPayload));
             } catch (e) { console.error('WS join failed', e); }
         };
 
-        ws.onmessage = evt => {
+        socket.onmessage = evt => {
             try {
                 const payload = JSON.parse(evt.data);
                 if (payload.type !== 'message') return;
@@ -312,6 +388,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     if (realEl && tempEl && tempEl.parentNode) {
                         tempEl.parentNode.replaceChild(realEl, tempEl);
+                    } else if (tempEl && tempEl.parentNode) {
+                        tempEl.remove();
                     }
 
                     tempMessageMap.delete(clientTempId);
@@ -329,9 +407,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        ws.onerror = err => console.error('Erreur WS:', err);
-        ws.onclose = () => {
+        socket.onerror = err => console.error('Erreur WS:', err);
+        socket.onclose = () => {
+            if (ws !== socket) return;
             ws = null;
+            wsCompanyId = null;
             setTimeout(() => { if (selectedIdCompanie) connectWebSocket(selectedIdCompanie); }, 3000);
         };
     }
@@ -340,23 +420,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     // LOAD HISTORY
     // -----------------------
     async function loadHistory(adminId, id_companie) {
-        if (!id_companie) { chatMessagesContent.innerHTML = '<p style="color:red;">id_companie manquant.</p>'; return; }
+        if (!id_companie) {
+            showChatStatus(`${t('messages_load_error')} (identifiant de compagnie manquant).`);
+            return;
+        }
+        const requestId = ++historyRequestId;
         try {
             displayedMessages.clear();
             tempMessageMap.clear();
-            chatMessagesContent.innerHTML = '<p style="color:#70757A;">Chargement...</p>';
+            showChatStatus(t('messages_loading'), { loading: true });
 
             const url = `${API_BASE}/api/messages/history?id_companie=${encodeURIComponent(id_companie)}`;
             const data = await fetchWithAuth(url);
-            chatMessagesContent.innerHTML = '';
+            if (requestId !== historyRequestId || String(selectedIdCompanie) !== String(id_companie)) return;
+            if (data === null) throw new Error('Le serveur n’a pas renvoyé l’historique.');
+            chatMessagesContent.replaceChildren();
+            chatMessagesContent.setAttribute('aria-busy', 'false');
 
             if (Array.isArray(data) && data.length) data.forEach(msg => renderMessage(msg));
-            else chatMessagesContent.innerHTML = '<p class="chat-placeholder">Aucun message pour le moment.</p>';
+            else {
+                const empty = document.createElement('div');
+                empty.className = 'chat-empty-state';
+                const icon = document.createElement('span');
+                icon.className = 'empty-state-icon';
+                icon.innerHTML = '<i class="fas fa-comment-dots" aria-hidden="true"></i>';
+                const title = document.createElement('h3');
+                title.dataset.i18n = 'no_messages_title';
+                title.textContent = t('no_messages_title');
+                const description = document.createElement('p');
+                description.dataset.i18n = 'start_conversation';
+                description.textContent = t('start_conversation');
+                empty.append(icon, title, description);
+                chatMessagesContent.appendChild(empty);
+            }
 
             connectWebSocket(id_companie);
         } catch (err) {
+            if (requestId !== historyRequestId || String(selectedIdCompanie) !== String(id_companie)) return;
             console.error('Erreur chargement messages :', err);
-            chatMessagesContent.innerHTML = `<p style="color:red;">Erreur serveur : ${err.message}</p>`;
+            showChatStatus(`${t('messages_load_error')} ${err.message}`, {
+                retry: () => loadHistory(adminId, id_companie)
+            });
         }
     }
 
@@ -392,12 +496,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Afficher/Cacher la preview container si nécessaire
         previewContainer.style.display = selectedFiles.length > 0 ? 'flex' : 'none';
+        setComposerState();
     }
 
     attachBtn.addEventListener('click', () => attachmentInput.click());
     attachmentInput.addEventListener('change', (e) => {
         selectedFiles = Array.from(e.target.files || []);
         updatePreview();
+    });
+    messageInput.addEventListener('input', () => {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = `${Math.min(messageInput.scrollHeight, 128)}px`;
+        showSendError('');
+        setComposerState();
     });
 
     // -----------------------
@@ -407,7 +518,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if ((!text || text.trim().length === 0) && (!files || files.length === 0)) return;
 
         const session = getSessionInfo();
-        if (!session) { showModal('Session expirée', 'Veuillez vous reconnecter'); return; }
+        if (!session) {
+            showSendError(t('session_expired'));
+            showModal('Session expirée', 'Veuillez vous reconnecter');
+            return;
+        }
         const { role, adminId } = session;
 
         let id_companie;
@@ -416,16 +531,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (role === "admin") {
             id_companie = selectedIdCompanie;
             if (!id_companie) {
+                showSendError(t('select_company'));
                 showModal("Erreur", "Veuillez sélectionner une compagnie");
                 return;
             }
         }
 
         if (role === 'admin' && !adminId) {
-            showModal('Erreur', 'admin_id manquant');
+            showSendError(t('admin_id_missing'));
+            showModal('Erreur', t('admin_id_missing'));
             return;
         }
 
+        showSendError('');
+        isSendingMessage = true;
+        setComposerState();
         const tempId = 'temp-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         const tempPayload = {
             id: tempId,
@@ -459,11 +579,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         attachmentInput.value = '';
         selectedFiles = [];
         updatePreview();
-        messageInput.focus();
 
         try {
             const res = await fetchWithAuth(`${API_BASE}/api/messages`, { method: 'POST', body: fd });
             if (!res) throw new Error('Réponse vide du serveur');
+            if (role === 'admin' && String(selectedIdCompanie) !== String(id_companie)) {
+                tempMessageMap.delete(tempId);
+                displayedMessages.delete(tempId);
+                return;
+            }
 
             console.debug('[sendMessage] server response:', res);
 
@@ -475,6 +599,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const tempNode = tempMessageMap.get(clientTempId);
                 const realEl = renderMessage(serverMessage, { returnElement: true });
                 if (realEl && tempNode && tempNode.parentNode) tempNode.parentNode.replaceChild(realEl, tempNode);
+                else if (tempNode && tempNode.parentNode) tempNode.remove();
                 tempMessageMap.delete(clientTempId);
                 displayedMessages.delete(clientTempId);
                 return;
@@ -487,6 +612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const tempNode = tempMessageMap.get(tempId);
                     const realEl = renderMessage(serverMessage, { returnElement: true });
                     if (realEl && tempNode && tempNode.parentNode) tempNode.parentNode.replaceChild(realEl, tempNode);
+                    else if (tempNode && tempNode.parentNode) tempNode.remove();
                     tempMessageMap.delete(tempId);
                     displayedMessages.delete(tempId);
                     return;
@@ -515,7 +641,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tempMessageMap.delete(tempId);
             }
             displayedMessages.delete(tempId);
+            showSendError(`${t('message_send_failed')} ${err.message || err}`);
             showModal('Erreur', `Échec de l'envoi: ${err.message || err}`);
+        } finally {
+            isSendingMessage = false;
+            setComposerState();
+            messageInput.focus();
         }
     }
 
@@ -526,44 +657,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             sendBtn.click();
         }
     });
+    if (mobileChatBack) {
+        mobileChatBack.addEventListener('click', () => {
+            messagingContainer.classList.remove('conversation-open');
+        });
+    }
 
     // -----------------------
     // FETCH COMPANIES (Actives)
     // -----------------------
     async function fetchCompaniesActive() {
         companyContainer.setAttribute('aria-busy', 'true');
-        companyContainer.innerHTML = Array.from({ length: 3 }, () =>
-            '<div class="admin-skeleton admin-skeleton-block"></div>'
-        ).join('');
+        companySearchEmpty.hidden = true;
+        companyContainer.innerHTML = `<div class="messaging-skeleton" aria-hidden="true">
+            <div class="messaging-skeleton-row"></div>
+            <div class="messaging-skeleton-row"></div>
+            <div class="messaging-skeleton-row"></div>
+        </div>`;
         try {
             const session = getSessionInfo();
             if (!session) {
                 companyContainer.setAttribute('aria-busy', 'false');
-                companyContainer.innerHTML = '<p style="color:red;">Session expirée.</p>';
+                companyContainer.textContent = t('session_expired');
                 return;
             }
 
             const data = await fetchWithAuth(`${API_BASE}/api/companies/all`);
-            const companies = Array.isArray(data) ? data : data.companies || [];
+            if (data === null) throw new Error('Le serveur n’a pas renvoyé la liste des compagnies.');
+            const companies = Array.isArray(data) ? data : Array.isArray(data.companies) ? data.companies : [];
             const activeCompanies = companies.filter(c => c.status === 'Actif');
             companyContainer.setAttribute('aria-busy', 'false');
             companyContainer.innerHTML = '';
 
-            if (!activeCompanies.length) { companyContainer.innerHTML = '<p>Aucune compagnie active trouvée.</p>'; return; }
+            if (!activeCompanies.length) {
+                const empty = document.createElement('p');
+                empty.className = 'list-empty-state';
+                empty.dataset.i18n = 'no_active_companies';
+                empty.textContent = t('no_active_companies');
+                companyContainer.appendChild(empty);
+                return;
+            }
 
             activeCompanies.forEach(company => {
                 const card = document.createElement('div');
                 card.className = 'conversation-item';
                 card.dataset.idCompanie = company.id_companie || company.id;
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-pressed', 'false');
+                card.tabIndex = 0;
 
                 const img = document.createElement('img');
                 img.className = 'conv-avatar';
                 img.src = createLogo(company);
                 img.alt = company.company_name || 'Compagnie';
+                img.addEventListener('error', () => {
+                    img.src = makeLetterAvatar(company.company_name || 'U');
+                }, { once: true });
 
                 const info = document.createElement('div');
                 info.className = 'conv-info';
-                const nameDiv = document.createElement('div');
+                const nameDiv = document.createElement('h3');
                 nameDiv.className = 'conv-company';
                 nameDiv.textContent = company.company_name || '(Sans nom)';
                 info.appendChild(nameDiv);
@@ -571,27 +724,58 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.appendChild(img);
                 card.appendChild(info);
 
-                card.addEventListener('click', async () => {
-                    document.querySelectorAll('.conversation-item').forEach(c => c.classList.remove('active'));
+                const openConversation = async () => {
+                    showSendError('');
+                    document.querySelectorAll('.conversation-item').forEach(c => {
+                        c.classList.remove('active');
+                        c.setAttribute('aria-pressed', 'false');
+                    });
                     card.classList.add('active');
+                    card.setAttribute('aria-pressed', 'true');
                     selectedIdCompanie = company.id_companie || company.id;
                     localStorage.setItem('id_companie', selectedIdCompanie);
+                    messagingContainer.classList.add('conversation-open');
+                    setComposerState();
                     if (chatCompanyName) chatCompanyName.textContent = company.company_name || '';
                     if (chatCompanyAvatar) chatCompanyAvatar.src = createLogo(company);
                     const sessionInfo = getSessionInfo();
-                    if (!sessionInfo || !sessionInfo.adminId) { showModal('Erreur', 'admin_id requis.'); return; }
+                    if (!sessionInfo || !sessionInfo.adminId) {
+                        showSendError(t('admin_id_missing'));
+                        showModal('Erreur', t('admin_id_missing'));
+                        return;
+                    }
                     await loadHistory(sessionInfo.adminId, selectedIdCompanie);
+                };
+                card.addEventListener('click', openConversation);
+                card.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openConversation();
+                    }
                 });
 
                 companyContainer.appendChild(card);
             });
+            applyCompanyFilter();
+
+            const savedCompanyId = localStorage.getItem('id_companie');
+            const savedCompanyCard = activeCompanies.length && Array.from(companyContainer.querySelectorAll('.conversation-item'))
+                .find(card => card.dataset.idCompanie === savedCompanyId);
+            if (savedCompanyCard) {
+                savedCompanyCard.click();
+                if (window.matchMedia('(max-width: 650px)').matches) {
+                    messagingContainer.classList.remove('conversation-open');
+                }
+            }
         } catch (err) {
             console.error('Erreur API compagnies:', err);
             companyContainer.setAttribute('aria-busy', 'false');
-            companyContainer.innerHTML = '<p style="color:red;">Erreur serveur. </p>';
+            companyContainer.textContent = t('company_list_load_error');
             const retryButton = document.createElement('button');
             retryButton.type = 'button';
-            retryButton.textContent = 'Réessayer';
+            retryButton.dataset.i18n = 'retry';
+            retryButton.textContent = t('retry');
+            retryButton.className = 'chat-status-retry';
             retryButton.addEventListener('click', fetchCompaniesActive);
             companyContainer.appendChild(retryButton);
         }
@@ -600,17 +784,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // SEARCH
     // -----------------------
-    let searchTimer = null;
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
-            const term = (searchInput.value || '').toLowerCase();
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                const name = (item.querySelector('.conv-company')?.textContent || '').toLowerCase();
-                item.style.display = name.includes(term) ? 'flex' : 'none';
-            });
-        }, 180);
-    });
+    function applyCompanyFilter(value = companySearchInput.value) {
+        const term = value.trim().toLocaleLowerCase();
+        const cards = Array.from(companyContainer.querySelectorAll('.conversation-item'));
+        let visibleCount = 0;
+        cards.forEach(item => {
+            const name = (item.querySelector('.conv-company')?.textContent || '').toLocaleLowerCase();
+            const matches = name.includes(term);
+            item.hidden = !matches;
+            if (matches) visibleCount += 1;
+        });
+        companySearchEmpty.hidden = !term || visibleCount > 0 || cards.length === 0;
+    }
+
+    function syncCompanySearch(source, target) {
+        target.value = source.value;
+        applyCompanyFilter(source.value);
+    }
+
+    searchInput.addEventListener('input', () => syncCompanySearch(searchInput, companySearchInput));
+    companySearchInput.addEventListener('input', () => syncCompanySearch(companySearchInput, searchInput));
 
     // -----------------------
     // INIT & THEME MANAGEMENT
@@ -665,19 +858,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- INITIALISATION GENERALE ---
     (function init() {
         updatePreview();
+        setComposerState();
         fetchCompaniesActive();
 
         // 🔔 Charger les notifications au démarrage
         fetchUnreadCount();
 
-        const saved = localStorage.getItem('id_companie');
-        if (saved) {
-            setTimeout(() => {
-                const el = Array.from(document.querySelectorAll('.conversation-item'))
-                    .find(c => c.dataset.idCompanie === saved);
-                if (el) el.click();
-            }, 600);
-        }
     })();
 
 });

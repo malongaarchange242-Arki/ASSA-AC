@@ -49,7 +49,7 @@ export const loginOperateur = async (req, res) => {
     const payload = { id: user.id, email: user.email, role: ROLE, profile: PROFILE };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
-    await logActivite({ module: 'auth', type_activite: 'login', categorie: 'operateur', reference: user.email, description: 'Connexion opérateur', id_admin: null, utilisateur_email: user.email });
+    await logActivite({ module: 'auth', type_activite: 'login', categorie: 'operateur', reference: user.email, description: 'Connexion opérateur', id_admin: null, utilisateur_nom: user.nom, utilisateur_email: user.email });
 
     return res.json({ token, id: user.id, email: user.email, role: ROLE });
   } catch (err) {

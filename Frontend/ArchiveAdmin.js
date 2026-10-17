@@ -2,6 +2,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Référence au bouton de bascule
        const themeToggle = document.getElementById('theme-toggle');
        const body = document.body;
+
+       function updateThemeToggleLabel() {
+           if (!themeToggle) return;
+           const label = body.classList.contains('dark-mode')
+               ? t('theme_toggle_light')
+               : t('theme_toggle_dark');
+           themeToggle.title = label;
+           themeToggle.setAttribute('aria-label', label);
+       }
    
        // 2. Fonction pour appliquer le thème
        function applyTheme(theme) {
@@ -11,7 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                if (themeToggle) {
                    // Icône Soleil pour passer au mode clair
                    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                   themeToggle.title = "Passer au Mode Clair";
                }
            } else {
                body.classList.remove('dark-mode');
@@ -19,9 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                if (themeToggle) {
                    // Icône Lune pour passer au mode sombre
                    themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-                   themeToggle.title = "Passer au Mode Sombre";
                }
            }
+           updateThemeToggleLabel();
        }
    
        // 3. Détecter et appliquer le thème au chargement
@@ -43,6 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                applyTheme(newTheme);
            });
        }
+       window.addEventListener('app-language-change', updateThemeToggleLabel);
    });
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -58,9 +67,50 @@ document.addEventListener('DOMContentLoaded', async () => {
        AUTH
     ===================================================== */
     let token = localStorage.getItem(TOKEN_KEY);
+    const getLocale = () => localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR';
+    const archiveTypeKeys = {
+        'creation de facture': 'archive_type_invoice_created',
+        'création de facture': 'archive_type_invoice_created',
+        'creation de compagnie': 'archive_type_company_created',
+        'création de compagnie': 'archive_type_company_created',
+        'mise a jour de compagnie': 'archive_type_company_updated',
+        'mise à jour de compagnie': 'archive_type_company_updated',
+        'archivage de compagnie': 'archive_type_company_archived',
+        'restauration de compagnie': 'archive_type_company_restored',
+        "archivage d'administrateur": 'archive_type_admin_archived',
+        'archivage d’administrateur': 'archive_type_admin_archived',
+        "restauration d'administrateur": 'archive_type_admin_restored',
+        'restauration d’administrateur': 'archive_type_admin_restored',
+        'archivage de facture': 'archive_type_invoice_archived',
+        'restauration de facture': 'archive_type_invoice_restored',
+        'confirmation de paiement': 'archive_type_payment_confirmed'
+    };
+
+    const localizeArchiveType = type => {
+        const key = archiveTypeKeys[String(type || '').trim().toLocaleLowerCase('fr-FR')];
+        return key ? t(key) : (type || '-');
+    };
+
+    const localizeArchiveStatus = status => {
+        const normalized = String(status || '').trim().toLocaleLowerCase('fr-FR');
+        const statusKeys = {
+            payée: 'archive_status_paid',
+            paye: 'archive_status_paid',
+            impayée: 'archive_status_unpaid',
+            impayee: 'archive_status_unpaid',
+            contestée: 'archive_status_disputed',
+            contestee: 'archive_status_disputed',
+            validée: 'archive_status_validated',
+            validee: 'archive_status_validated',
+            rejetée: 'archive_status_rejected',
+            rejetee: 'archive_status_rejected'
+        };
+        const key = statusKeys[normalized];
+        return key ? t(key) : (status || '-');
+    };
 
     if (!token) {
-        alert("Vous n'êtes pas connecté !");
+        alert(t('not_connected'));
         window.location.href = 'login.html';
         return;
     }
@@ -111,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const refreshed = await refreshToken();
             if (!refreshed) {
                 clearTokens();
-                alert('Session expirée');
+                alert(t('session_expired'));
                 window.location.href = 'login.html';
                 throw new Error('Token expiré');
             }
@@ -150,13 +200,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const formatDate = (d) => {
         if (!d) return '-';
         const date = new Date(d);
-        return date.toLocaleDateString('fr-FR') + ' ' +
-            date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString(getLocale()) + ' ' +
+            date.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
     };
 
     const formatAmount = (n) => {
         if (!n) return '-';
-        return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
+        return new Intl.NumberFormat(getLocale()).format(n) + ' XAF';
     };
 
     const getMonthParams = (value) => {
@@ -192,18 +242,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const select = document.getElementById("select-month");
         if (!select) return;
     
-        select.innerHTML = "";
-    
         const now = new Date();
-    
-        // Mois en cours
-        select.innerHTML += `
-            <option value="current">
-                Mois en cours (${now.toLocaleString('fr-FR', { month: 'long', year: 'numeric' })})
-            </option>
-            <option value="last">Mois dernier</option>
-        `;
-    
+        const options = [
+            new Option(`${t('current_month')} (${now.toLocaleString(getLocale(), { month: 'long', year: 'numeric' })})`, 'current'),
+            new Option(t('last_month'), 'last')
+        ];
+
         const months = new Set();
     
         archives.forEach(a => {
@@ -218,15 +262,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             .sort((a, b) => b.localeCompare(a))
             .forEach(key => {
                 const [y, m] = key.split("-");
-                const label = new Date(y, m - 1).toLocaleString('fr-FR', {
+                const label = new Date(y, m - 1).toLocaleString(getLocale(), {
                     month: 'long',
                     year: 'numeric'
                 });
-    
-                select.innerHTML += `<option value="${key}">${label}</option>`;
+                options.push(new Option(label, key));
             });
-    
-        // 🔥 RESTAURATION DE LA SÉLECTION
+
+        select.replaceChildren(...options);
         select.value = selectedValue;
     }
     
@@ -238,19 +281,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createArchiveRow = (a) => {
         const tr = document.createElement('tr');
 
-        tr.innerHTML = `
-            <td>${a.type}</td>
-            <td>${a.admin_nom || '-'}</td>
-            <td>${a.compagnie_nom || '-'}</td>
-            <td>${formatDate(a.date_cloture)}</td>
-            <td class="table-actions">
-                <button class="view-btn"><i class="fas fa-eye"></i></button>
-                <button class="pdf-btn"><i class="fas fa-file-pdf"></i></button>
-            </td>
-        `;
+        [localizeArchiveType(a.type), a.ref || '-', a.compagnie_nom || '-', formatDate(a.date_cloture)].forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            tr.appendChild(cell);
+        });
 
-        tr.querySelector('.view-btn').onclick = () => openModal(a);
-        tr.querySelector('.pdf-btn').onclick = () => generateArchivePDF(a);
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'table-actions';
+        const viewButton = document.createElement('button');
+        viewButton.type = 'button';
+        viewButton.className = 'view-btn';
+        viewButton.title = t('archive_view_details');
+        viewButton.setAttribute('aria-label', t('archive_view_details_of'));
+        viewButton.innerHTML = '<i class="fas fa-eye" aria-hidden="true"></i>';
+        const pdfButton = document.createElement('button');
+        pdfButton.type = 'button';
+        pdfButton.className = 'pdf-btn';
+        pdfButton.title = t('archive_download_pdf');
+        pdfButton.setAttribute('aria-label', t('archive_download_pdf_of'));
+        pdfButton.innerHTML = '<i class="fas fa-file-pdf" aria-hidden="true"></i>';
+        actionsCell.append(viewButton, pdfButton);
+        tr.appendChild(actionsCell);
+
+        viewButton.addEventListener('click', () => openModal(a));
+        pdfButton.addEventListener('click', () => generateArchivePDF(a));
 
         return tr;
     };
@@ -259,8 +314,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         archiveTableBody.innerHTML = '';
 
         if (!data.length) {
-            archiveTableBody.innerHTML =
-                `<tr><td colspan="6">Aucune archive disponible</td></tr>`;
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.className = 'archive-empty-cell';
+            cell.colSpan = 5;
+            cell.textContent = t('archive_empty');
+            row.appendChild(cell);
+            archiveTableBody.replaceChildren(row);
             return;
         }
 
@@ -295,10 +355,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row = document.createElement('tr');
             const cell = document.createElement('td');
             cell.colSpan = 5;
-            cell.textContent = 'Erreur lors du chargement des archives. ';
+            cell.className = 'archive-error-cell';
+            cell.textContent = `${t('archive_load_error')} `;
             const retryButton = document.createElement('button');
             retryButton.type = 'button';
-            retryButton.textContent = 'Réessayer';
+            retryButton.textContent = t('archive_retry');
             retryButton.addEventListener('click', () => loadArchives(monthValue));
             cell.appendChild(retryButton);
             row.appendChild(cell);
@@ -319,8 +380,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pageData = data.slice(start, end);
     
             if (!pageData.length) {
-                archiveTableBody.innerHTML =
-                    `<tr><td colspan="5">Aucune archive disponible</td></tr>`;
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.className = 'archive-empty-cell';
+                cell.colSpan = 5;
+                cell.textContent = t('archive_empty');
+                row.appendChild(cell);
+                archiveTableBody.replaceChildren(row);
                 return;
             }
     
@@ -360,7 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const openModal = (a) => {
         currentArchive = a;
-        modalTitle.textContent = a.type;
+        modalTitle.textContent = localizeArchiveType(a.type);
         modalContent.innerHTML = renderArchiveDetails(a);
         
         // CORRECTION : Utilisez 'open' pour correspondre au CSS du Side Panel
@@ -378,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             e.stopPropagation(); 
             
-            if (!currentArchive) return alert('Aucune archive sélectionnée');
+            if (!currentArchive) return alert(t('archive_no_selection'));
             generateArchivePDF(currentArchive);
             return; 
         }
@@ -393,29 +459,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     const renderArchiveDetails = (a) => `
         <div class="modal-section">
-            <h4>Informations générales</h4>
-            <div class="modal-row"><span>Type</span><span>${a.type}</span></div>
-            <div class="modal-row"><span>Date</span><span>${formatDate(a.date_cloture)}</span></div>
-            <div class="modal-row"><span>Administrateur</span><span>${a.admin_nom || '-'}</span></div>
+            <h4>${t('archive_general_info')}</h4>
+            <div class="modal-row"><span>${t('archive_type')}</span><span>${localizeArchiveType(a.type)}</span></div>
+            <div class="modal-row"><span>${t('archive_date')}</span><span>${formatDate(a.date_cloture)}</span></div>
+            <div class="modal-row"><span>${t('archive_administrator')}</span><span>${a.admin_nom || '-'}</span></div>
         </div>
 
         ${a.compagnie_nom ? `
         <div class="modal-section">
-            <h4>Compagnie</h4>
-            <div class="modal-row"><span>Nom</span><span>${a.compagnie_nom}</span></div>
+            <h4>${t('archive_company')}</h4>
+            <div class="modal-row"><span>${t('archive_name')}</span><span>${a.compagnie_nom}</span></div>
         </div>` : ''}
 
         ${a.ref ? `
         <div class="modal-section">
-            <h4>Facture</h4>
-            <div class="modal-row"><span>Référence</span><span>${a.ref}</span></div>
-            <div class="modal-row"><span>Montant</span><span>${formatAmount(a.montant)}</span></div>
-            <div class="modal-row"><span>Statut</span><span>${a.statut}</span></div>
+            <h4>${t('archive_invoice')}</h4>
+            <div class="modal-row"><span>${t('archive_reference')}</span><span>${a.ref}</span></div>
+            <div class="modal-row"><span>${t('archive_amount')}</span><span>${formatAmount(a.montant)}</span></div>
+            <div class="modal-row"><span>${t('archive_status')}</span><span>${localizeArchiveStatus(a.statut)}</span></div>
         </div>` : ''}
 
         <div class="modal-footer">
             <button class="btn-primary btn-pdf">
-                <i class="fas fa-file-pdf"></i> Télécharger PDF
+                <i class="fas fa-file-pdf"></i> ${t('archive_download_pdf_button')}
             </button>
         </div>
     `;
@@ -450,14 +516,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             y += 6;
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            doc.text(
-                "Agence de Supervision de la Sécurité de l’Aviation Civile",
-                marginLeft,
-                y
-            );
+            doc.text(t('archive_pdf_agency'), marginLeft, y);
     
             y += 5;
-            doc.text("République du Congo", marginLeft, y);
+            doc.text(t('archive_pdf_country'), marginLeft, y);
     
             y += 6;
             doc.line(marginLeft, y, 190, y);
@@ -468,7 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             y += 15;
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            doc.text("RAPPORT D’ARCHIVE", 105, y, { align: 'center' });
+            doc.text(t('archive_pdf_title'), 105, y, { align: 'center' });
     
             y += 15;
     
@@ -490,13 +552,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 y += 8;
             };
     
-            drawRow("Type :", a.type);
-            drawRow("Date :", formatDate(a.date_cloture));
-            drawRow("Administrateur :", a.admin_nom);
-            drawRow("Compagnie :", a.compagnie_nom);
-            drawRow("Référence :", a.ref || '-');
-            drawRow("Montant :", a.montant ? formatAmount(a.montant) : '-');
-            drawRow("Statut :", a.statut || '-');
+            drawRow(`${t('archive_type')} :`, localizeArchiveType(a.type));
+            drawRow(`${t('archive_date')} :`, formatDate(a.date_cloture));
+            drawRow(`${t('archive_administrator')} :`, a.admin_nom);
+            drawRow(`${t('archive_company')} :`, a.compagnie_nom);
+            drawRow(`${t('archive_reference')} :`, a.ref || '-');
+            drawRow(`${t('archive_amount')} :`, a.montant ? formatAmount(a.montant) : '-');
+            drawRow(`${t('archive_status')} :`, localizeArchiveStatus(a.statut));
     
             /* =========================
                FOOTER
@@ -507,7 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             y += 8;
             doc.setFontSize(9);
             doc.text(
-                `Document officiel – Usage interne | Généré le ${new Date().toLocaleDateString('fr-FR')}`,
+                t('archive_pdf_footer').replace('{date}', new Date().toLocaleDateString(getLocale())),
                 105,
                 y,
                 { align: 'center' }
@@ -520,7 +582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     
         logo.onerror = () => {
-            alert("Logo introuvable : /assets/logo-assaac.png");
+            alert(t('archive_pdf_error'));
         };
     };
     
@@ -530,9 +592,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.getElementById("csv-btn").addEventListener("click", downloadArchiveCSV);
 
+window.addEventListener('app-language-change', () => {
+    populateMonthSelect(archivesData, selectMonth.value || 'current');
+    paginateArchives(archivesData, 6);
+    if (modal.classList.contains('open') && currentArchive) {
+        modalTitle.textContent = localizeArchiveType(currentArchive.type);
+        modalContent.innerHTML = renderArchiveDetails(currentArchive);
+    }
+});
+
 function downloadArchiveCSV() {
     if (!archivesData.length) {
-        alert("Aucune donnée à exporter");
+        alert(t('archive_no_data_export'));
         return;
     }
 
@@ -566,29 +637,29 @@ function downloadArchiveCSV() {
     });
 
     if (!filtered.length) {
-        alert("Aucune archive pour ce mois");
+        alert(t('archive_no_month_export'));
         return;
     }
 
     // 🔥 Génération CSV
     const headers = [
-        "Type",
-        "Administrateur",
-        "Compagnie",
-        "Date",
-        "Référence",
-        "Montant",
-        "Statut"
+        t('archive_csv_type'),
+        t('archive_csv_administrator'),
+        t('archive_csv_company'),
+        t('archive_csv_date'),
+        t('archive_csv_reference'),
+        t('archive_csv_amount'),
+        t('archive_csv_status')
     ];
 
     const rows = filtered.map(a => [
-        a.type,
+        localizeArchiveType(a.type),
         a.admin_nom || "",
         a.compagnie_nom || "",
-        new Date(a.date_cloture).toLocaleDateString("fr-FR"),
+        new Date(a.date_cloture).toLocaleDateString(getLocale()),
         a.ref || "",
         a.montant || "",
-        a.statut || ""
+        localizeArchiveStatus(a.statut)
     ]);
 
     let csv = headers.join(";") + "\n";

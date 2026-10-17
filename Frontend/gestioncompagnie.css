@@ -114,6 +114,354 @@
     background: #f7f7f7;
 }
 
+.company-details-dialog {
+    width: min(54rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: min(88vh, 52rem);
+    padding: 0;
+    overflow: auto;
+    border: 1px solid #dce7f5;
+    border-radius: 0.875rem;
+    background: #fff;
+    color: #19324f;
+    box-shadow: 0 20px 56px rgba(20, 48, 81, 0.2);
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.99);
+    transition: opacity 160ms ease, transform 160ms ease, overlay 160ms ease, display 160ms allow-discrete;
+}
+
+.company-details-dialog[open] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+@starting-style {
+    .company-details-dialog[open] {
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.99);
+    }
+}
+
+.company-details-dialog::backdrop {
+    background: rgba(18, 35, 57, 0);
+    backdrop-filter: blur(0);
+    transition: background 160ms ease, backdrop-filter 160ms ease, overlay 160ms ease, display 160ms allow-discrete;
+}
+
+.company-details-dialog[open]::backdrop {
+    background: rgba(18, 35, 57, 0.5);
+    backdrop-filter: blur(1px);
+}
+
+@starting-style {
+    .company-details-dialog[open]::backdrop {
+        background: rgba(18, 35, 57, 0);
+        backdrop-filter: blur(0);
+    }
+}
+
+.company-details-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    min-height: 7rem;
+    padding: 1.25rem 1.5rem;
+    background: #eff6ff;
+}
+
+.company-details-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 1.1rem;
+}
+
+.company-details-heading {
+    min-width: 0;
+}
+
+.company-details-title-row {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.company-details-title-row h2 {
+    margin: 0;
+    color: #183b61;
+    font-size: 1.2rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.company-details-id {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.4rem 0 0;
+    color: #5b7089;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.company-details-id span:last-child {
+    color: #415b77;
+    user-select: text;
+    overflow-wrap: anywhere;
+}
+
+.company-details-logo,
+.company-details-logo > img,
+.company-details-logo > .company-logo-fallback {
+    display: inline-flex;
+    width: 4.25rem;
+    height: 4.25rem;
+    flex: 0 0 auto;
+}
+
+.company-details-logo {
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem;
+    border: 1px solid #e0eaf6;
+    border-radius: 0.8rem;
+    background: #fff;
+}
+
+.company-details-logo > img,
+.company-details-logo > .company-logo-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.5rem;
+    object-fit: contain;
+}
+
+.company-details-status {
+    display: inline-flex;
+    min-height: 1.45rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.12rem 0.55rem;
+    border: 1px solid #d8e2ef;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #52647a;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.company-details-status[hidden],
+.company-details-action[hidden] {
+    display: none;
+}
+
+.company-details-status.is-active {
+    border-color: #b9e7ce;
+    background: #ecfdf3;
+    color: #187343;
+}
+
+.company-details-status.is-inactive {
+    border-color: #d8e2ef;
+    background: #f1f5f9;
+    color: #52647a;
+}
+
+.company-details-status.is-pending {
+    border-color: #f5d9a7;
+    background: #fff8e8;
+    color: #9b6509;
+}
+
+.company-details-status.is-suspended {
+    border-color: #f4c6c6;
+    background: #fff0f0;
+    color: #a83a3a;
+}
+
+.company-details-close {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d9e4f1;
+    border-radius: 0.625rem;
+    background: rgba(255, 255, 255, 0.75);
+    color: #526a85;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.company-details-close:hover,
+.company-details-close:focus-visible {
+    border-color: #b7cce4;
+    background: #fff;
+    color: #183b61;
+}
+
+.company-details-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.company-details-column {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+}
+
+.company-details-card {
+    min-width: 0;
+    padding: 1rem 1.05rem;
+    border: 1px solid #dce7f5;
+    border-radius: 0.75rem;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(31, 70, 112, 0.035);
+}
+
+.company-details-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 0.8rem;
+    color: #1c436e;
+    font-size: 0.91rem;
+    font-weight: 750;
+}
+
+.company-details-card-heading i,
+.company-details-field-icon {
+    color: #4283c4;
+}
+
+.company-details-card-content {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.company-details-contact-item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.company-details-field-icon {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+    background: #f0f6fd;
+    font-size: 0.82rem;
+}
+
+.company-details-contact-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.12rem;
+}
+
+.company-details-field-label,
+.company-details-rows dt {
+    color: #6c7f96;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.company-details-field-value {
+    min-width: 0;
+    color: #243d59;
+    font-size: 0.83rem;
+    overflow-wrap: anywhere;
+}
+
+.company-details-rows {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.72fr) minmax(0, 1.28fr);
+    margin: 0;
+}
+
+.company-details-rows dt,
+.company-details-rows dd {
+    min-width: 0;
+    margin: 0;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #edf2f8;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.company-details-rows dt {
+    padding-right: 0.75rem;
+}
+
+.company-details-rows dd {
+    color: #243d59;
+    text-align: right;
+}
+
+.company-details-rows dt:last-of-type,
+.company-details-rows dd:last-of-type {
+    border-bottom: 0;
+}
+
+.company-details-actions {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.company-details-action {
+    display: inline-flex;
+    min-height: 2.55rem;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #d4e3f4;
+    border-radius: 0.6rem;
+    background: #fff;
+    color: #2b5e91;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 650;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.company-details-action:hover,
+.company-details-action:focus-visible {
+    border-color: #9fc1e5;
+    background: #f5f9fe;
+    color: #174c80;
+}
+
+.company-details-action-primary {
+    border-color: #2869a8;
+    background: #2869a8;
+    color: #fff;
+}
+
+.company-details-action-primary:hover,
+.company-details-action-primary:focus-visible {
+    border-color: #1e568d;
+    background: #1e568d;
+    color: #fff;
+}
+
 .company-management .page-header {
     display: flex;
     align-items: center;
@@ -190,22 +538,22 @@
 
 .company-table {
     width: 100%;
-    min-width: 1240px;
+    min-width: 0;
     table-layout: fixed;
     border-collapse: collapse;
     text-align: left;
 }
 
 .company-management .company-col-name {
-    width: 18%;
+    width: 16%;
 }
 
 .company-management .company-col-representative {
-    width: 13%;
+    width: 11%;
 }
 
 .company-management .company-col-email {
-    width: 16%;
+    width: 17%;
 }
 
 .company-management .company-col-phone {
@@ -213,7 +561,7 @@
 }
 
 .company-management .company-col-address {
-    width: 15%;
+    width: 14%;
 }
 
 .company-management .company-col-airport {
@@ -225,7 +573,7 @@
 }
 
 .company-management .company-col-actions {
-    width: 10%;
+    width: 14%;
 }
 
 .company-table th,
@@ -249,11 +597,41 @@
 }
 
 .company-table tbody tr {
+    cursor: pointer;
     transition: background-color 0.15s ease;
+}
+
+.company-table tbody tr:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.45);
+    outline-offset: -3px;
 }
 
 .company-table tbody tr:hover {
     background: #f5f7ff;
+}
+
+.company-table tbody tr.company-active-highlight {
+    background-color: #dbeafe;
+    box-shadow: inset 4px 0 #2563eb;
+}
+
+.company-table tbody tr.company-active-highlight.animate-active-highlight {
+    animation: active-company-row-highlight 1s ease-in-out 5;
+}
+
+@keyframes active-company-row-highlight {
+    0%, 100% {
+        background-color: #dbeafe;
+        box-shadow: inset 4px 0 #2563eb;
+    }
+    50% {
+        background-color: #93c5fd;
+        box-shadow: inset 4px 0 #1d4ed8, 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+}
+
+.company-table tbody tr.company-active-highlight:hover {
+    background-color: #bfdbfe;
 }
 
 .company-table tbody tr:last-child td {
@@ -341,7 +719,10 @@
     overflow-wrap: anywhere;
 }
 
-.company-table td:nth-child(4),
+.company-table td:nth-child(4) {
+    overflow-wrap: anywhere;
+}
+
 .company-table td:nth-child(6) {
     white-space: nowrap;
 }
@@ -387,6 +768,23 @@
 .company-management .company-actions button[title="Modifier"]:hover {
     border-color: #c7d2fe;
     background: #eef2ff;
+}
+
+@media (min-width: 768px) and (max-width: 1200px) {
+    .company-table th,
+    .company-table td {
+        padding-right: 0.4rem;
+        padding-left: 0.4rem;
+    }
+
+    .company-actions {
+        gap: 0.25rem;
+    }
+
+    .company-actions button {
+        width: 1.875rem;
+        height: 1.875rem;
+    }
 }
 
 .company-table .table-message {
@@ -438,6 +836,103 @@ body.dark-mode .company-form-dialog {
     background: #1f2937;
 }
 
+body.dark-mode .company-details-dialog {
+    border-color: #374151;
+    background: #1f2937;
+    color: #f3f4f6;
+}
+
+body.dark-mode .company-details-header {
+    background: #172b43;
+}
+
+body.dark-mode .company-details-title-row h2,
+body.dark-mode .company-details-field-value,
+body.dark-mode .company-details-rows dd {
+    color: #f3f4f6;
+}
+
+body.dark-mode .company-details-id,
+body.dark-mode .company-details-id span:last-child,
+body.dark-mode .company-details-field-label,
+body.dark-mode .company-details-rows dt {
+    color: #9ca3af;
+}
+
+body.dark-mode .company-details-card {
+    border-color: #374151;
+    background: #1f2937;
+}
+
+body.dark-mode .company-details-card-heading {
+    color: #c8ddf5;
+}
+
+body.dark-mode .company-details-field-icon {
+    background: #263b53;
+    color: #8bb8e7;
+}
+
+body.dark-mode .company-details-rows dt,
+body.dark-mode .company-details-rows dd {
+    border-bottom-color: #374151;
+}
+
+body.dark-mode .company-details-close {
+    border-color: #41556d;
+    background: #20344b;
+    color: #cbd5e1;
+}
+
+body.dark-mode .company-details-close:hover,
+body.dark-mode .company-details-close:focus-visible {
+    background: #30465e;
+    color: #fff;
+}
+
+body.dark-mode .company-details-action {
+    border-color: #405872;
+    background: #20344b;
+    color: #c6ddf5;
+}
+
+body.dark-mode .company-details-action:hover,
+body.dark-mode .company-details-action:focus-visible {
+    border-color: #6387ac;
+    background: #2b4560;
+    color: #fff;
+}
+
+body.dark-mode .company-details-action-primary {
+    border-color: #3574b3;
+    background: #3574b3;
+    color: #fff;
+}
+
+body.dark-mode .company-details-status {
+    border-color: #475569;
+    background: #334155;
+    color: #d1d5db;
+}
+
+body.dark-mode .company-details-status.is-active {
+    border-color: #276749;
+    background: #153b2b;
+    color: #9ae6b4;
+}
+
+body.dark-mode .company-details-status.is-pending {
+    border-color: #8a6421;
+    background: #483716;
+    color: #fbd38d;
+}
+
+body.dark-mode .company-details-status.is-suspended {
+    border-color: #883f3f;
+    background: #4b2525;
+    color: #feb2b2;
+}
+
 body.dark-mode .company-form-dialog-header {
     border-bottom-color: #374151;
 }
@@ -445,6 +940,49 @@ body.dark-mode .company-form-dialog-header {
 body.dark-mode .company-form-dialog-header h2,
 body.dark-mode .company-form-dialog-close:hover {
     color: #f9fafb;
+}
+
+@media (max-width: 760px) {
+    .company-details-layout {
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        gap: 0.75rem;
+        padding: 0.9rem;
+    }
+
+    .company-details-column {
+        gap: 0.75rem;
+    }
+
+    .company-details-card {
+        padding: 0.85rem;
+    }
+}
+
+@media (max-width: 620px) {
+    .company-details-dialog {
+        width: min(34rem, calc(100vw - 1rem));
+        max-height: calc(100dvh - 1rem);
+        border-radius: 0.8rem;
+    }
+
+    .company-details-header {
+        min-height: 0;
+        padding: 1rem;
+    }
+
+    .company-details-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .company-details-dialog,
+    .company-details-dialog::backdrop,
+    .company-details-action,
+    .company-table tbody tr.company-active-highlight.animate-active-highlight {
+        transition-duration: 0.01ms;
+        animation: none;
+    }
 }
 
 body.dark-mode .company-form-dialog-close {
@@ -475,6 +1013,30 @@ body.dark-mode .company-table td {
 
 body.dark-mode .company-table tbody tr:hover {
     background: rgba(79, 70, 229, 0.12);
+}
+
+body.dark-mode .company-table tbody tr.company-active-highlight {
+    background-color: #17365e;
+    box-shadow: inset 4px 0 #60a5fa;
+}
+
+body.dark-mode .company-table tbody tr.company-active-highlight.animate-active-highlight {
+    animation-name: active-company-row-highlight-dark;
+}
+
+@keyframes active-company-row-highlight-dark {
+    0%, 100% {
+        background-color: #17365e;
+        box-shadow: inset 4px 0 #60a5fa;
+    }
+    50% {
+        background-color: #1e4f86;
+        box-shadow: inset 4px 0 #93c5fd, 0 0 0 2px rgba(96, 165, 250, 0.24);
+    }
+}
+
+body.dark-mode .company-table tbody tr.company-active-highlight:hover {
+    background-color: #1e4f86;
 }
 
 body.dark-mode .company-name {
@@ -522,6 +1084,10 @@ body.dark-mode .company-table .table-error {
 }
 
 @media (max-width: 767px) {
+    .company-table {
+        min-width: 900px;
+    }
+
     .main-content > .header {
         gap: 0.5rem;
     }
@@ -562,5 +1128,34 @@ body.dark-mode .company-table .table-error {
 
     .company-form-dialog-header {
         padding: 0.75rem 1rem;
+    }
+
+    .company-details-header {
+        gap: 0.75rem;
+        padding: 0.85rem;
+    }
+
+    .company-details-logo {
+        width: 3.5rem;
+        height: 3.5rem;
+    }
+
+    .company-details-logo > img,
+    .company-details-logo > .company-logo-fallback {
+        width: 100%;
+        height: 100%;
+    }
+
+    .company-details-title-row h2 {
+        font-size: 1.05rem;
+    }
+
+    .company-details-layout {
+        gap: 0.65rem;
+        padding: 0.7rem;
+    }
+
+    .company-details-card {
+        padding: 0.8rem;
     }
 }

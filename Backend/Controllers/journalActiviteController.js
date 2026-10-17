@@ -4,47 +4,68 @@ import supabase from '../Config/db.js';
 
 // Helper async pour enrichir les activités
 const enrichActivites = async (activites) => {
+  const companyIds = [...new Set(activites.map(activity => activity.id_companie).filter(Boolean).map(String))];
+  const companiesById = new Map();
+  if (companyIds.length) {
+    const { data: companies, error } = await supabase
+      .from('companies')
+      .select('id, company_name')
+      .in('id', companyIds);
+    if (error) throw error;
+    (companies || []).forEach(company => companiesById.set(String(company.id), company));
+  }
+
   return await Promise.all(
     activites.map(async (act) => {
-      let utilisateur = '-';
+      const recordedName = typeof act.utilisateur_nom === 'string' ? act.utilisateur_nom.trim() : '';
+      const usableRecordedName = !['admin', 'administrateur', 'opérateur', 'operateur', 'agent', '-']
+        .includes(recordedName.toLocaleLowerCase('fr-FR')) ? recordedName : '';
+      let utilisateur = recordedName || act.utilisateur_email || '-';
+      let role = act.role || act.role_utilisateur || null;
 
-      // 1️⃣ Valeur déjà enregistrée
-      if (act.utilisateur_email) {
-        utilisateur = act.utilisateur_email;
-      }
-      if (act.utilisateur_nom) {
-        utilisateur = act.utilisateur_nom;
+      if (!act.id_admin && act.id_companie && act.categorie?.toLowerCase() === 'auth') {
+        role = role || 'Compagnie';
       }
 
-      // 2️⃣ Admin
       if (act.id_admin) {
-        const { data: admin } = await supabase
+        const { data: admin, error } = await supabase
           .from('admins')
-          .select('email, nom, prenom')
+          .select('nom_complet, email')
           .eq('id', act.id_admin)
-          .single();
+          .maybeSingle();
 
+        if (error) throw error;
         if (admin) {
-          utilisateur = admin.email || `${admin.nom} ${admin.prenom}`;
+          utilisateur = admin.nom_complet || usableRecordedName || admin.email || act.utilisateur_email || '-';
+          role = role || 'Administrateur';
         }
       }
 
-      // 3️⃣ Compagnie ✅ (CORRIGÉ)
-      if (act.id_company) {
-        const { data: company } = await supabase
-          .from('companies')
-          .select('company_name, email')
-          .eq('id', act.id_company)
-          .single();
+      if (!act.id_admin && act.utilisateur_email) {
+        const { data: operateur, error } = await supabase
+          .from('operateurs')
+          .select('nom, email')
+          .ilike('email', act.utilisateur_email)
+          .maybeSingle();
 
-        if (company) {
-          utilisateur = company.company_name || company.email;
+        if (error) throw error;
+        if (operateur) {
+          utilisateur = operateur.nom || usableRecordedName || operateur.email || '-';
+          role = role || 'Opérateur';
         }
       }
+
+      const action = String(act.type_activite || '').trim().toLowerCase();
+      const isLogin = action === 'login' || String(act.module || '').toLowerCase().includes('login');
+      const company = act.id_companie ? companiesById.get(String(act.id_companie)) : null;
+      const cible = act.reference || act.numero_facture || company?.company_name ||
+        (isLogin ? act.utilisateur_email || utilisateur : act.description || '-');
 
       return {
         ...act,
         utilisateur,
+        role_utilisateur: role,
+        cible,
         date_activite: act.date_activite ?? act.created_at ?? null
       };
     })

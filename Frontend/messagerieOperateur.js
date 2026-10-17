@@ -21,12 +21,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chatCompanyName = document.getElementById('chat-company-name');
     const chatCompanyAvatar = document.getElementById('chat-company-avatar');
     const searchInput = document.getElementById('searchInput');
+    const companySearchInput = document.getElementById('companySearchInput');
+    const companySearchEmpty = document.getElementById('company-search-empty');
     const messageInput = document.getElementById('messageInput');
     const attachBtn = document.getElementById('attachBtn');
     const attachmentInput = document.getElementById('attachmentInput');
     const sendBtn = document.getElementById('sendBtn');
+    const sendError = document.getElementById('send-error');
+    const sendSpinner = sendBtn?.querySelector('.send-spinner');
     const notifBadge = document.getElementById('notifCount');
     const notifBtn = document.querySelector('.notification-btn');
+    const messagingContainer = document.querySelector('.messaging-container');
+    const mobileChatBack = document.getElementById('mobile-chat-back');
+    const sidebar = document.getElementById('sidebar');
+    const openSidebarBtn = document.getElementById('open-sidebar-btn');
+    const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+    function setSidebarOpen(isOpen) {
+        document.body.classList.toggle('sidebar-open', isOpen);
+        openSidebarBtn?.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    openSidebarBtn?.addEventListener('click', () => setSidebarOpen(true));
+    closeSidebarBtn?.addEventListener('click', () => setSidebarOpen(false));
+    sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
+    sidebar?.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => setSidebarOpen(false));
+    });
+    mobileChatBack?.addEventListener('click', () => {
+        messagingContainer?.classList.remove('conversation-open');
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            setSidebarOpen(false);
+            messagingContainer?.classList.remove('conversation-open');
+        }
+    });
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', event => {
+        if (event.matches) setSidebarOpen(false);
+    });
 
 
     // Preview container
@@ -47,8 +81,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedFiles = [];
     let ws = null;
     let selectedIdCompanie = null;
+    let isSendingMessage = false;
     const tempMessageMap = new Map();
     const displayedMessages = new Set();
+
+    function updateComposerState() {
+        const hasSelection = Boolean(selectedIdCompanie);
+        const hasContent = Boolean(messageInput.value.trim() || selectedFiles.length);
+        messageInput.disabled = !hasSelection || isSendingMessage;
+        attachBtn.disabled = !hasSelection || isSendingMessage;
+        sendBtn.disabled = !hasSelection || !hasContent || isSendingMessage;
+        if (sendSpinner) sendSpinner.hidden = !isSendingMessage;
+        const sendIcon = sendBtn.querySelector('.fa-paper-plane');
+        if (sendIcon) sendIcon.hidden = isSendingMessage;
+    }
 
     // -----------------------
     // UTILITAIRES
@@ -133,12 +179,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const session = getSessionInfo();
             if (!session) return;
 
-            const url = session.role === 'admin'
-                ? `${API_BASE}/api/messages/unread/admin`
-                : `${API_BASE}/api/messages/unread/company`;
+            const unreadEndpoint = {
+                admin: 'admin',
+                operateur: 'operator',
+                company: 'company'
+            }[session.role];
+            if (!unreadEndpoint) return;
 
-            const res = await fetchWithAuth(url);
-            const count = res?.count ?? res ?? 0;
+            const res = await fetchWithAuth(`${API_BASE}/api/messages/unread/${unreadEndpoint}`);
+            const count = res?.unread ?? res?.count ?? 0;
             updateNotifBadge(count);
         } catch (e) {
             console.warn('Erreur récupération notifications', e);
@@ -177,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isOperateur = rawRole.includes('operat') || rawRole === 'operateur' || rawRole === 'operator';
             return {
                 token,
-                adminId: payload.id || payload.admin_id || localStorage.getItem('adminId'),
+                adminId: isAdmin ? payload.id || payload.admin_id || localStorage.getItem('adminId') : null,
                 id_companie: payload.id_companie || localStorage.getItem('id_companie'),
                 role: isAdmin ? 'admin' : (isOperateur ? 'operateur' : 'company'),
                 operateurId: payload.id || localStorage.getItem('operateurId')
@@ -212,7 +261,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // -----------------------
         // SENT / RECEIVED
         // -----------------------
-        const isSent = m.sender_role === 'admin';
+        const isSent = ['admin', 'administrateur', 'operateur', 'operator'].includes(
+            String(m.sender_role || '').toLowerCase()
+        );
 
         // -----------------------
         // RENDER
@@ -387,6 +438,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             removeBtn.addEventListener('click', () => {
                 selectedFiles = selectedFiles.filter((_, i) => i !== index);
                 updatePreview();
+                updateComposerState();
             });
             div.appendChild(removeBtn);
 
@@ -401,7 +453,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     attachmentInput.addEventListener('change', (e) => {
         selectedFiles = Array.from(e.target.files || []);
         updatePreview();
+        updateComposerState();
     });
+    messageInput.addEventListener('input', updateComposerState);
 
     // -----------------------
     // SEND MESSAGE
@@ -414,9 +468,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { role, adminId } = session;
 
         let id_companie;
-        if (role === "company" || role === "Company") {
+        if (role === "company") {
             id_companie = session.id_companie;
-        } else if (role === "admin") {
+        } else if (role === "admin" || role === "operateur") {
             id_companie = selectedIdCompanie;
             if (!id_companie) {
                 showModal("Erreur", "Veuillez sélectionner une compagnie");
@@ -518,15 +572,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tempMessageMap.delete(tempId);
             }
             displayedMessages.delete(tempId);
+            if (sendError) {
+                sendError.textContent = `Échec de l'envoi : ${err.message || err}`;
+                sendError.hidden = false;
+            }
             showModal('Erreur', `Échec de l'envoi: ${err.message || err}`);
         }
     }
 
-    sendBtn.addEventListener('click', async () => await sendMessage(messageInput.value.trim(), selectedFiles));
+    sendBtn.addEventListener('click', async () => {
+        if (isSendingMessage) return;
+        isSendingMessage = true;
+        if (sendError) {
+            sendError.hidden = true;
+            sendError.textContent = '';
+        }
+        updateComposerState();
+        try {
+            await sendMessage(messageInput.value.trim(), selectedFiles);
+        } finally {
+            isSendingMessage = false;
+            updateComposerState();
+        }
+    });
     messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendBtn.click();
+            if (!sendBtn.disabled) sendBtn.click();
         }
     });
 
@@ -540,8 +612,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const data = await fetchWithAuth(`${API_BASE}/api/companies/all`);
             const companies = Array.isArray(data) ? data : data.companies || [];
-            const activeCompanies = companies.filter(c => c.status === 'Actif');
+            const activeCompanies = companies.filter(company => {
+                const status = String(company.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+                return status === 'actif' || status === 'active';
+            });
             companyContainer.innerHTML = '';
+            if (companySearchEmpty) companySearchEmpty.hidden = true;
 
             if (!activeCompanies.length) { companyContainer.innerHTML = '<p>Aucune compagnie active trouvée.</p>'; return; }
 
@@ -568,17 +644,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.addEventListener('click', async () => {
                     document.querySelectorAll('.conversation-item').forEach(c => c.classList.remove('active'));
                     card.classList.add('active');
+                    messagingContainer?.classList.add('conversation-open');
                     selectedIdCompanie = company.id_companie || company.id;
                     localStorage.setItem('id_companie', selectedIdCompanie);
                     if (chatCompanyName) chatCompanyName.textContent = company.company_name || '';
                     if (chatCompanyAvatar) chatCompanyAvatar.src = createLogo(company);
+                    updateComposerState();
                     const sessionInfo = getSessionInfo();
-                    if (!sessionInfo || !sessionInfo.adminId) { showModal('Erreur', 'admin_id requis.'); return; }
+                    if (!sessionInfo || (sessionInfo.role === 'admin' && !sessionInfo.adminId)) {
+                        showModal('Erreur', 'admin_id requis.');
+                        return;
+                    }
                     await loadHistory(sessionInfo.adminId, selectedIdCompanie);
                 });
 
                 companyContainer.appendChild(card);
             });
+            applyCompanyFilter();
         } catch (err) {
             console.error('Erreur API compagnies:', err);
             companyContainer.innerHTML = '<p style="color:red;">Erreur serveur.</p>';
@@ -588,17 +670,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -----------------------
     // SEARCH
     // -----------------------
-    let searchTimer = null;
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
-            const term = (searchInput.value || '').toLowerCase();
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                const name = (item.querySelector('.conv-company')?.textContent || '').toLowerCase();
-                item.style.display = name.includes(term) ? 'flex' : 'none';
-            });
-        }, 180);
-    });
+    function applyCompanyFilter() {
+        const term = (companySearchInput?.value || searchInput?.value || '').trim().toLocaleLowerCase();
+        const cards = Array.from(companyContainer.querySelectorAll('.conversation-item'));
+        let visibleCount = 0;
+        cards.forEach(item => {
+            const name = (item.querySelector('.conv-company')?.textContent || '').toLocaleLowerCase();
+            const isVisible = name.includes(term);
+            item.style.display = isVisible ? 'flex' : 'none';
+            if (isVisible) visibleCount += 1;
+        });
+        if (companySearchEmpty) companySearchEmpty.hidden = !cards.length || visibleCount > 0;
+    }
+
+    function synchronizeCompanySearch(source, target) {
+        source.addEventListener('input', () => {
+            if (target && target.value !== source.value) target.value = source.value;
+            applyCompanyFilter();
+        });
+    }
+
+    synchronizeCompanySearch(searchInput, companySearchInput);
+    synchronizeCompanySearch(companySearchInput, searchInput);
 
     // -----------------------
     // INIT & THEME MANAGEMENT
@@ -653,6 +746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- INITIALISATION GENERALE ---
     (function init() {
         updatePreview();
+        updateComposerState();
         fetchCompaniesActive();
 
         // 🔔 Charger les notifications au démarrage

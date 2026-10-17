@@ -94,7 +94,7 @@ export const checkUserRole = async (req, res) => {
     }
 
     try {
-      superviseur = await safeLookup('superviseurs', 'id, email, password_hash, profile', 'superviseur');
+      superviseur = await safeLookup('superviseurs', 'id, email, password, profile', 'superviseur');
     } catch (err) {
       return res.status(503).json({
         role: 'unknown',
@@ -105,7 +105,7 @@ export const checkUserRole = async (req, res) => {
     if (superviseur) {
       return res.json({
         role: 'superviseur',
-        has_password: !!superviseur.password_hash,
+        has_password: !!superviseur.password,
         profile: superviseur.profile,
         id: superviseur.id
       });

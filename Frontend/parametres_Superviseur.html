@@ -3,18 +3,32 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Paramètres — ASSA-AC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paramètres — ASSA-AC Supervision</title>
+
+    <!-- Polices & Icônes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Stylesheets unifiées -->
+    <link rel="stylesheet" href="superviseurSidebar.css">
     <link rel="stylesheet" href="Acceuil_Superviseur.css">
     <link rel="stylesheet" href="parametres_Superviseur.css">
 </head>
 
-<body>
+<body class="supervisor-dashboard">
 
-    <aside class="sidebar" aria-label="Navigation principale">
+    <!-- Voile sombre pour menu mobile -->
+    <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Fermer le menu" data-i18n-aria-label="close_menu" hidden></button>
+
+    <!-- Sidebar fixe Superviseur (Bleu nuit moderne) -->
+    <aside class="sidebar" id="supervisorSidebar" aria-label="Navigation principale">
         <div class="brand">
-            <div class="logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-logo-container">
+                <img class="supervisor-brand-logo" src="assa-ac_LOGO.png" alt="ASSA-AC — Agence de Supervision de la Sécurité Aérienne en Afrique Centrale">
+            </div>
             <div class="brand-text">
                 <span class="brand-title">ASSA‑AC</span>
                 <span class="brand-sub">Supervision</span>
@@ -23,45 +37,112 @@
 
         <nav class="nav">
             <ul>
-                <li><a href="Acceuil_Superviseur.html"><i class="fa-solid fa-chart-line"></i><span data-i18n="dashboard">Tableau de
-                            Bord</span></a></li>
-                <li class="active"><a href="operations.html"><i class="fa-solid fa-user-shield"></i><span data-i18n="sensitive_ops">Opérations
-                            Sensibles</span></a></li>
-                <li><a href="messagerieSuperviseur.html"><i class="fa-solid fa-envelope"></i><span data-i18n="messaging">Messagerie</span></a></li>
-                <li><a href="parametres_Superviseur.html"><i class="fa-solid fa-gear"></i><span data-i18n="settings">Paramètres</span></a></li>
+                <li>
+                    <a href="Acceuil_Superviseur.html">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span data-i18n="dashboard">Tableau de Bord</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="operations.html">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span data-i18n="sensitive_ops">Opérations Sensibles</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="messagerieSuperviseur.html">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span data-i18n="messaging">Messagerie</span>
+                    </a>
+                </li>
+                <li class="active">
+                    <a href="parametres_Superviseur.html">
+                        <i class="fa-solid fa-gear"></i>
+                        <span data-i18n="settings">Paramètres</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 
         <div class="sidebar-footer">
-            <button id="toggleTheme" type="button" class="btn-ghost" aria-pressed="false"><i class="fa-solid fa-moon"></i><span data-i18n="mode">Mode</span></button>
             <button class="btn-danger" type="button" onclick="window.location.href='index.html'">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span data-i18n="logout">Déconnexion</span>
             </button>
+        </div>
     </aside>
 
+    <!-- Conteneur Principal -->
     <div class="main-wrapper">
+
+        <!-- En-tête / Topbar moderne unifiée -->
         <header class="topbar" role="banner">
             <div class="topbar-left">
-                <h2 class="page-title" data-i18n="account_settings">Configuration du Compte</h2>
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-controls="supervisorSidebar" aria-expanded="false" aria-label="Ouvrir le menu" data-i18n-aria-label="open_menu">
+                    <i class="fa-solid fa-bars" aria-hidden="true"></i>
+                </button>
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="globalSearchInput" placeholder="Rechercher une fonctionnalité, une opération..." data-i18n-placeholder="search_feature_placeholder">
+                </div>
             </div>
 
             <div class="topbar-right">
-                <div class="notif" title="Notifications">
-                    <button class="icon-btn" type="button"><i class="fa-solid fa-bell"></i><span class="notif-badge">3</span></button>
+                <!-- Bascule Mode Sombre / Clair -->
+                <button id="toggleTheme" type="button" class="icon-btn" aria-pressed="false" title="Passer au mode sombre" aria-label="Changer le thème">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- Notifications -->
+                <div class="notif-wrapper" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button" aria-label="Notifications" data-i18n-aria-label="notifications">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span class="notif-badge">3</span>
+                    </button>
                 </div>
 
-                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fa-solid fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
+                <!-- Sélecteur de Langue -->
+                <button id="toggleLang" type="button" class="lang-btn" aria-pressed="false" title="Changer la langue" data-i18n-title="change_language">
+                    <i class="fa-solid fa-language" aria-hidden="true"></i>
+                    <span id="langLabel">FR</span>
+                    <i class="fa-solid fa-chevron-down lang-chevron"></i>
+                </button>
 
-                <div class="avatar-wrapper" id="userMenu">
-                    <button class="avatar-btn" type="button"><span class="avatar" id="topbarAvatarInitials">SA</span></button>
+                <!-- Avatar & Menu Profil -->
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button" aria-label="Ouvrir le menu du profil" data-i18n-aria-label="profile_menu">
+                        <span class="avatar" id="supervisorAvatar">SA</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
+                        <button class="dropdown-item" type="button" data-action="profile">
+                            <i class="fa-solid fa-user"></i> Profil
+                        </button>
+                        <button class="dropdown-item" type="button" data-action="settings">
+                            <i class="fa-solid fa-gear"></i> Paramètres
+                        </button>
+                        <button class="dropdown-item text-danger" type="button" data-action="logout">
+                            <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
 
+        <!-- Contenu des paramètres -->
         <main class="dashboard">
+
+            <!-- En-tête de section -->
+            <div class="page-header-row" style="margin-bottom: 24px;">
+                <div class="page-title-group">
+                    <h2 class="page-title" data-i18n="account_settings">Configuration du Compte</h2>
+                    <p class="page-subtitle" data-i18n="admin_settings_description">Gérez les préférences et la sécurité de l’administration</p>
+                </div>
+            </div>
+
+            <!-- Grille des paramètres -->
             <div class="settings-grid">
                 
+                <!-- Carte 1 : Informations Personnelles -->
                 <section class="settings-card">
                     <div class="settings-header">
                         <i class="fa-solid fa-circle-user icon-accent"></i>
@@ -70,32 +151,33 @@
                     
                     <div class="profile-upload-section">
                         <div class="profile-preview-container">
-                            <img src="https://www.flaticon.com/free-icons/user-account" id="profileDisplay" alt="Photo de profil">
+                            <img src="assa-ac_LOGO.png" id="profileDisplay" alt="Photo de profil" style="background:#fff; object-fit:contain; padding:6px;">
                         </div>
                         <div class="profile-info">
-                            <h4>Super Administrateur</h4>
-                            <p>Dernière connexion : Aujourd'hui à 14:30</p>
+                            <h4 id="profileRoleTitle">Superviseur ASSA-AC</h4>
+                            <p>Espace de supervision administrative</p>
                         </div>
                     </div>
 
-                    <form>
+                    <form onsubmit="return false;">
                         <div class="form-group">
                             <label>Nom complet</label>
-                            <input id="fullName" type="text" class="form-control" value="Super Admin">
+                            <input id="fullName" type="text" class="form-control" value="Superviseur Général">
                         </div>
                         <div class="form-group">
                             <label>Numéro de téléphone</label>
-                            <input id="phone" type="text" class="form-control" value="+242067906900">
+                            <input id="phone" type="text" class="form-control" value="+242 06 790 6900">
                         </div>
 
                         <div class="form-group">
                             <label>Adresse Email</label>
-                            <input id="email" type="email" class="form-control" value="admin@assa-ac.com">
+                            <input id="email" type="email" class="form-control" value="superviseur@assa-ac.com">
                         </div>
-                        <button id="updateProfileBtn" type="button" class="table-btn validate w-full">Mettre à jour le profil</button>
+                        <button id="updateProfileBtn" type="button" class="btn-success w-full" style="width: 100%; height: 42px; font-weight: 650; margin-top: 10px; border-radius: 8px;">Mettre à jour le profil</button>
                     </form>
                 </section>
 
+                <!-- Carte 2 : Sécurité de l'accès -->
                 <section class="settings-card">
                     <div class="settings-header">
                         <i class="fa-solid fa-shield-halved icon-danger"></i>
@@ -128,7 +210,7 @@
                                 <i class="fa-solid fa-eye toggle-pass" data-target="confirmPass"></i>
                             </div>
                         </div>
-                        <button type="button" id="changePasswordBtn" class="btn-danger w-full">Changer le mot de passe</button>
+                        <button type="button" id="changePasswordBtn" class="btn-danger w-full" style="width: 100%; height: 42px; font-weight: 650; margin-top: 10px; border-radius: 8px;">Changer le mot de passe</button>
                     </div>
                 </section>
 
@@ -136,7 +218,9 @@
         </main>
     </div>
 
+    <!-- Scripts -->
     <script src="langSwitch.js"></script>
+    <script src="superviseurCommon.js"></script>
     <script src="parametres_Superviseur.js"></script>
 </body>
 

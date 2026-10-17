@@ -1,0 +1,53 @@
+.operator-company-table {
+    min-width: 920px;
+}
+
+.operator-company-table .company-col-name {
+    width: 22%;
+}
+
+.operator-company-table .company-col-representative {
+    width: 13%;
+}
+
+.operator-company-table .company-col-email {
+    width: 19%;
+}
+
+.operator-company-table .company-col-phone {
+    width: 13%;
+}
+
+.operator-company-table .company-col-address {
+    width: 15%;
+}
+
+.operator-company-table .company-col-airport {
+    width: 8%;
+}
+
+.operator-company-table .company-col-status {
+    width: 10%;
+}
+
+.operator-company-table .company-name-cell {
+    overflow: hidden;
+}
+
+.operator-company-message {
+    padding: 1.5rem !important;
+    color: #6b7280;
+    text-align: center;
+}
+
+.operator-company-message.table-error {
+    color: #dc2626;
+}
+
+body.dark-mode .operator-company-message {
+    color: #9ca3af;
+}
+
+body.dark-mode .operator-company-message.table-error {
+    color: #fca5a5;
+}

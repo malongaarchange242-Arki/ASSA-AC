@@ -129,8 +129,15 @@ CREATE TABLE IF NOT EXISTS public.lignes_facture (
 CREATE TABLE IF NOT EXISTS public.preuve_paiement (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     numero_facture TEXT NOT NULL,
-    file_url TEXT,
+    facture_id UUID,
+    id_companie UUID,
+    fichier_nom TEXT,
+    fichier_url TEXT,
     file_name TEXT,
+    file_url TEXT,
+    type_fichier TEXT,
+    commentaire TEXT,
+    date_envoi TIMESTAMPTZ NOT NULL DEFAULT now(),
     uploaded_by UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -143,6 +150,7 @@ CREATE TABLE IF NOT EXISTS public.contestation (
     id_companie UUID,
     numero_facture TEXT NOT NULL,
     explication TEXT,
+    fichiers JSONB NOT NULL DEFAULT '[]'::jsonb,
     status TEXT NOT NULL DEFAULT 'En attente',
     admin_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

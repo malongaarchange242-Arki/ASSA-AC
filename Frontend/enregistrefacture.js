@@ -1,5 +1,9 @@
 // ======================= CONSTANTES =======================
 const API_BASE = 'http://localhost:5002'; // Base URL pour tous les appels API
+const INVOICE_TOKEN_KEY = document.body.dataset.userRole === 'operateur'
+    ? 'jwtTokenOperateur'
+    : 'jwtTokenAdmin';
+const isOperatorInvoicePage = INVOICE_TOKEN_KEY === 'jwtTokenOperateur';
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;
@@ -54,8 +58,34 @@ function showMessage(msg, type = 'info') {
     setTimeout(() => formMessage.classList.add('hidden'), 5000);
 }
 
-function getAdminToken() {
-    const token = localStorage.getItem('jwtTokenAdmin');
+function resetInvoiceForm() {
+    invoiceIdInput.value = '';
+    clientSelect.value = '';
+    issueLocationInput.value = '';
+    airportInput.value = '';
+
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    document.getElementById('issue-date').value = today;
+    document.getElementById('period').value = getPreviousMonthPeriod();
+
+    itemsContainer.replaceChildren();
+    rowCounter = 0;
+    addItemRow();
+
+    formMessage.textContent = '';
+    formMessage.className = 'hidden';
+    const previewMessage = document.getElementById('preview-message');
+    if (previewMessage) {
+        previewMessage.textContent = '';
+        delete previewMessage.dataset.messageKey;
+        delete previewMessage.dataset.referenceId;
+        previewMessage.style.display = 'none';
+    }
+}
+
+function getInvoiceToken() {
+    const token = localStorage.getItem(INVOICE_TOKEN_KEY);
     if (!token) return null;
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -68,9 +98,76 @@ function getAdminToken() {
     }
 }
 
+function getInvoiceAuthHeaders(token, includeContentType = true) {
+    const headers = { Authorization: `Bearer ${token}` };
+    if (includeContentType) headers['Content-Type'] = 'application/json';
+    if (isOperatorInvoicePage) {
+        const operateurId = localStorage.getItem('operateurId');
+        if (operateurId) headers['X-Operateur-Id'] = operateurId;
+    }
+    return headers;
+}
+
 function formatNumber(number) {
     if (isNaN(number) || number === null) return '0';
-    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+    const locale = localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR';
+    return new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+}
+
+function formatCurrency(number) {
+    return `${formatNumber(number)} ${t('xaf_currency')}`;
+}
+
+function numberToWordsEnglish(number) {
+    const small = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+        'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+    function underThousand(value) {
+        if (value < 20) return small[value];
+        if (value < 100) return `${tens[Math.floor(value / 10)]}${value % 10 ? `-${small[value % 10]}` : ''}`;
+        return `${small[Math.floor(value / 100)]} hundred${value % 100 ? ` ${underThousand(value % 100)}` : ''}`;
+    }
+
+    if (number < 1000) return underThousand(number);
+    const scales = [[1_000_000_000, 'billion'], [1_000_000, 'million'], [1000, 'thousand']];
+    for (const [scale, label] of scales) {
+        if (number >= scale) {
+            const quotient = Math.floor(number / scale);
+            const remainder = number % scale;
+            return `${numberToWordsEnglish(quotient)} ${label}${remainder ? ` ${numberToWordsEnglish(remainder)}` : ''}`;
+        }
+    }
+    return underThousand(number);
+}
+
+function updateInvoiceTotalWords(total) {
+    const words = localStorage.getItem('lang') === 'en'
+        ? numberToWordsEnglish(total)
+        : numberToWords(total).replace(/-/g, ' ').toUpperCase();
+    totalInWords.textContent = t('invoice_amount_words')
+        .replace('{words}', words)
+        .replace('{amount}', formatNumber(total))
+        .replace('{currency}', t('xaf_currency'));
+}
+
+function getCanonicalAmountWords(total) {
+    return numberToWords(total).replace(/-/g, ' ').toUpperCase();
+}
+
+function formatInvoicePeriod(period) {
+    if (localStorage.getItem('lang') !== 'en') return period;
+    const match = period.match(/^Mois de (.+) (\d{4})$/i);
+    if (!match) return period;
+    const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    const monthIndex = monthNames.indexOf(match[1].toLocaleLowerCase('fr-FR'));
+    if (monthIndex < 0) return period;
+    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date(2020, monthIndex, 1));
+    return `${t('month_of')} ${monthName} ${match[2]}`;
+}
+
+function getCanonicalDesignation(input) {
+    return input.dataset.canonicalValue || input.value;
 }
 
 // Fonction améliorée pour la conversion de nombre en lettres
@@ -166,14 +263,13 @@ function calculateTotals() {
         grandTotal += lineTotal;
 
         const totalSpan = row.querySelector('span[name="line-total-value"]');
-        if (totalSpan) totalSpan.textContent = `${formatNumber(lineTotal)} ${CURRENCY}`;
+        if (totalSpan) totalSpan.textContent = formatCurrency(lineTotal);
     });
 
-    grandTotalSpan.textContent = `${formatNumber(grandTotal)} ${CURRENCY}`;
+    grandTotalSpan.textContent = formatCurrency(grandTotal);
     const totalNum = Math.round(grandTotal);
 
-    const totalWords = numberToWords(totalNum).replace(/-/g, ' ');
-    totalInWords.textContent = `Arrêtée la présente facture à la somme de ${totalWords.toUpperCase()} (${formatNumber(totalNum)}) ${CURRENCY}.`;
+    updateInvoiceTotalWords(totalNum);
 }
 
 function addItemRow() {
@@ -186,14 +282,14 @@ function addItemRow() {
             <span name="line-number">${itemsContainer.children.length + 1}</span>
         </td>
         <td class="px-3 py-2 border-r border-formal-border cell-designation">
-            <input type="text" name="designation" class="form-input bg-gray-100 text-xs" value="Redevance de Sécurité Aérienne" readonly required>
+            <input type="text" name="designation" class="form-input bg-gray-100 text-xs" value="${t('invoice_fee_designation')}" data-canonical-value="Redevance de Sécurité Aérienne" readonly required>
         </td>
         <td class="px-3 py-2 border-r border-formal-border">
             <input type="number" name="qty" class="form-input text-center text-sm" value="1" min="0" oninput="calculateTotals()" required>
         </td>
         <td class="px-3 py-2 border-r border-formal-border">
             <select name="zone" class="form-select text-sm p-1.5 w-full" onchange="calculateTotals()" required>
-                <option value="" selected disabled>Choisir la Zone</option>
+                <option value="" selected disabled>${t('choose_zone')}</option>
                 <option value="CEMAC">CEMAC</option>
                 <option value="HORS CEMAC">HORS CEMAC</option>
             </select>
@@ -203,7 +299,7 @@ function addItemRow() {
             <span name="line-total-value">0 ${CURRENCY}</span>
         </td>
         <td class="px-1 py-2 text-center">
-            <button type="button" onclick="removeItemRow(this)" class="text-red-500 hover:text-red-700 transition duration-150">
+            <button type="button" onclick="removeItemRow(this)" class="text-red-500 hover:text-red-700 transition duration-150" title="${t('delete')}" aria-label="${t('delete')}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -216,7 +312,7 @@ function addItemRow() {
 
 function removeItemRow(btn) {
     if (itemsContainer.children.length <= 1) {
-        showMessage("Vous devez conserver au moins une ligne de redevance.", 'error');
+        showMessage(t('invoice_minimum_row'), 'error');
         return;
     }
     btn.closest('tr').remove();
@@ -229,15 +325,20 @@ function removeItemRow(btn) {
 
 // ======================= CLIENTS =======================
 async function loadClients() {
-    const token = getAdminToken();
-    clientSelect.innerHTML = '<option value="" disabled selected>Veuillez sélectionner une compagnie</option>';
+    const token = getInvoiceToken();
+    clientSelect.innerHTML = `<option value="" disabled selected>${t('select_company')}</option>`;
 
     if (!token) {
         // Données de simulation si pas de token
         ['Asky', 'Camerco', 'Air France', 'Ethiopian Airlines', 'Autre'].forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
-            opt.textContent = name;
+            if (name === 'Autre') {
+                opt.dataset.i18n = 'other';
+                opt.textContent = t('other');
+            } else {
+                opt.textContent = name;
+            }
             clientSelect.appendChild(opt);
 
             companiesData[name] = { id: Math.floor(Math.random() * 100), airport: name === 'Asky' ? 'Lomé' : '', city: "Pointe-Noire" };
@@ -247,7 +348,7 @@ async function loadClients() {
 
     try {
         const response = await fetch(`${API_BASE}/api/companies/all`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: getInvoiceAuthHeaders(token, false)
         });
 
         if (!response.ok) throw new Error(`Erreur ${response.status} lors du chargement des compagnies.`);
@@ -255,7 +356,7 @@ async function loadClients() {
         const resData = await response.json();
         const companies = resData.companies || resData;
 
-        companies.filter(c => c.status === 'Actif').forEach(c => {
+        companies.filter(c => ['actif', 'active'].includes(String(c.status || '').trim().toLowerCase())).forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.company_name;
             opt.textContent = c.company_name;
@@ -269,7 +370,7 @@ async function loadClients() {
         });
     } catch (err) {
         console.error(err);
-        showMessage('Erreur: impossible de charger les compagnies. ' + err.message, 'error');
+        showMessage(t('invoice_companies_load_failed'), 'error');
     }
 }
 
@@ -284,8 +385,60 @@ clientSelect.addEventListener('change', e => {
     }
 });
 
+function updateInvoiceLanguage() {
+    document.title = `${t('invoice_create_title')} - ASSA-AC`;
+    clientSelect.querySelector('option[value=""]')?.replaceChildren(document.createTextNode(t('select_company')));
+    itemsContainer.querySelectorAll('tr').forEach(row => {
+        const designation = row.querySelector('input[name="designation"]');
+        if (designation) designation.value = t('invoice_fee_designation');
+        const zonePlaceholder = row.querySelector('select[name="zone"] option[value=""]');
+        if (zonePlaceholder) zonePlaceholder.textContent = t('choose_zone');
+        const deleteButton = row.querySelector('button');
+        if (deleteButton) {
+            deleteButton.title = t('delete');
+            deleteButton.setAttribute('aria-label', t('delete'));
+        }
+    });
+    calculateTotals();
+
+    const previewButton = document.getElementById('preview-button');
+    if (previewButton?.getAttribute('aria-busy') === 'true') {
+        previewButton.innerHTML = `<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i><span>${t('invoice_preparing_preview')}</span>`;
+    }
+    const previewMessage = document.getElementById('preview-message');
+    if (previewMessage?.dataset.messageKey) {
+        previewMessage.textContent = t(previewMessage.dataset.messageKey)
+            .replace('{reference}', previewMessage.dataset.referenceId
+                ? ` (${t('invoice_reference_label').replace('{reference}', previewMessage.dataset.referenceId)})`
+                : '');
+    }
+    const previewWords = previewContent.querySelector('.invoice-amount-words');
+    if (previewWords) previewWords.textContent = totalInWords.textContent;
+    const signatureDate = previewContent.querySelector('.invoice-signature-date');
+    if (signatureDate) {
+        const date = new Date(document.getElementById('issue-date').value);
+        const locale = localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR';
+        signatureDate.textContent = t('invoice_signature_date')
+            .replace('{location}', issueLocationInput.value || 'Pointe-Noire')
+            .replace('{date}', date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase());
+    }
+    const periodValue = previewContent.querySelector('.invoice-period-value');
+    if (periodValue) periodValue.textContent = formatInvoicePeriod(document.getElementById('period').value);
+    previewContent.querySelectorAll('.invoice-currency-value').forEach(value => {
+        value.textContent = formatCurrency(Number(value.dataset.amount));
+    });
+    const fullscreenButton = document.getElementById('preview-fullscreen-button');
+    if (fullscreenButton) {
+        fullscreenButton.textContent = modalWrapper.classList.contains('is-fullscreen')
+            ? t('invoice_exit_fullscreen')
+            : t('invoice_fullscreen');
+    }
+}
+
+window.addEventListener('app-language-change', updateInvoiceLanguage);
+
 async function fetchNextInvoiceId() {
-    let token = getAdminToken();
+    let token = getInvoiceToken();
     if (!token) {
         invoiceIdInput.value = "REF-TEST-0001";
         return;
@@ -297,11 +450,11 @@ async function fetchNextInvoiceId() {
         const periodVal = document.getElementById('period')?.value || '';
 
         if (!airportVal) {
-            showMessage('Veuillez sélectionner une compagnie avec code d\'aéroport avant de générer la référence.', 'error');
+            showMessage(t('invoice_airport_required'), 'error');
             return;
         }
         if (!periodVal) {
-            showMessage('Veuillez sélectionner la période avant de générer la référence.', 'error');
+            showMessage(t('invoice_period_required'), 'error');
             return;
         }
 
@@ -311,7 +464,7 @@ async function fetchNextInvoiceId() {
         const url = `${API_BASE}/api/factures/generate-ref?airport=${airport}&period=${period}&id_companie=${encodeURIComponent(companyId)}`;
         const response = await fetch(url, {
             method: "GET",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+            headers: getInvoiceAuthHeaders(token)
         });
 
         if (!response.ok) {
@@ -322,8 +475,8 @@ async function fetchNextInvoiceId() {
                 } catch (e) {}
 
                 // Clear local token and prompt re-login to avoid repeated 401s
-                localStorage.removeItem('jwtTokenAdmin');
-                showMessage('Session expirée ou non autorisée. Veuillez vous reconnecter.', 'error');
+                localStorage.removeItem(INVOICE_TOKEN_KEY);
+                showMessage(t('invoice_session_expired'), 'error');
 
                 // Optional: redirect to login page after short delay if a login page exists
                 setTimeout(() => {
@@ -343,7 +496,7 @@ async function fetchNextInvoiceId() {
 
     } catch (error) {
         console.error(error);
-        showMessage("Erreur génération référence: " + error.message, 'error');
+        showMessage(t('invoice_reference_error').replace('{error}', error.message), 'error');
     }
 }
 
@@ -352,7 +505,7 @@ function validateForm() {
     const requiredInputs = document.querySelectorAll('#invoice-form [required]');
     for (const input of requiredInputs) {
         if (!input.value || (input.tagName === 'SELECT' && input.value === '') || (input.type === 'number' && parseFloat(input.value) < 0)) {
-            showMessage(`Veuillez remplir correctement le champ requis.`, 'error');
+            showMessage(t('invoice_field_required'), 'error');
             input.focus();
             return false;
         }
@@ -364,7 +517,7 @@ function validateForm() {
     });
 
     if (!lineValidation) {
-        showMessage("Assurez-vous que toutes les lignes de redevance ont une Quantité > 0 et une Zone sélectionnée.", 'error');
+        showMessage(t('invoice_line_required'), 'error');
         return false;
     }
     return true;
@@ -374,7 +527,7 @@ function validateForm() {
 function buildInvoicePayload() {
     const items = Array.from(itemsContainer.querySelectorAll('tr')).map((row, idx) => ({
         numero_ligne: idx + 1,
-        designation: row.querySelector('input[name="designation"]').value,
+        designation: getCanonicalDesignation(row.querySelector('input[name="designation"]')),
         destination: row.querySelector('select[name="zone"]')?.value || '',
         nombre_passagers: parseFloat(row.querySelector('input[name="qty"]')?.value) || 0,
         cout_unitaire: parseFloat(row.querySelector('input[name="price_value"]')?.value) || 0,
@@ -393,7 +546,7 @@ function buildInvoicePayload() {
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
-        montant_en_lettres: totalInWords.textContent || '',
+        montant_en_lettres: getCanonicalAmountWords(totalNumeric),
         lignes: items,
         id_companie: compagnie?.id || 1
     };
@@ -404,7 +557,7 @@ async function createInvoiceDraft() {
     if (!validateForm()) return null;
 
     const payload = buildInvoicePayload();
-    const token = getAdminToken();
+    const token = getInvoiceToken();
 
     if (!token) {
         // Simulation mode: return a realistic example reference
@@ -414,7 +567,7 @@ async function createInvoiceDraft() {
         const airportCode = (String(airportInput.value || (companiesData[clientSelect.value]?.airport) || 'NDJ').trim().substring(0, 3)).toUpperCase();
         const sampleRef = `${airportCode}-012/${month}/${year}/ASSA-AC/DAF`;
         invoiceIdInput.value = sampleRef;
-        showMessage('Simulation : facture non enregistrée (token manquant). Aperçu affichera une référence exemple.', 'info');
+        showMessage(t('invoice_simulation_reference'), 'info');
         return sampleRef;
     }
 
@@ -423,10 +576,7 @@ async function createInvoiceDraft() {
             // update existing
             const resp = await fetch(`${API_BASE}/api/factures/${encodeURIComponent(invoiceIdInput.value)}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: getInvoiceAuthHeaders(token),
                 body: JSON.stringify(payload)
             });
 
@@ -442,10 +592,7 @@ async function createInvoiceDraft() {
             // create new
             const resp = await fetch(`${API_BASE}/api/factures`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: getInvoiceAuthHeaders(token),
                 body: JSON.stringify(payload)
             });
 
@@ -460,7 +607,7 @@ async function createInvoiceDraft() {
         }
     } catch (err) {
         console.error('Erreur enregistrement facture :', err);
-        showMessage('Erreur enregistrement facture: ' + err.message, 'error');
+        showMessage(t('invoice_save_error').replace('{error}', err.message), 'error');
         return null;
     }
 }
@@ -477,7 +624,7 @@ function setPreviewButtonLoading(isLoading) {
         previewBtn.classList.add('btn-disabled', 'is-loading');
         previewBtn.setAttribute('aria-disabled', 'true');
         previewBtn.setAttribute('aria-busy', 'true');
-        previewBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i><span>Préparation de l’aperçu...</span>';
+        previewBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i><span>${t('invoice_preparing_preview')}</span>`;
         return;
     }
 
@@ -486,7 +633,7 @@ function setPreviewButtonLoading(isLoading) {
     previewBtn.removeAttribute('aria-disabled');
     previewBtn.removeAttribute('aria-busy');
     if (previewBtn.dataset.idleContent) {
-        previewBtn.innerHTML = previewBtn.dataset.idleContent;
+        previewBtn.innerHTML = `<span data-i18n="invoice_preview">${t('invoice_preview')}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>`;
         delete previewBtn.dataset.idleContent;
     }
 }
@@ -500,14 +647,16 @@ async function showPreview() {
         // Save (create or update) the invoice first, then use the returned reference
         const ref = await createInvoiceDraft();
         if (!ref) {
-            showMessage('Impossible d\'enregistrer la facture avant aperçu.', 'error');
+            showMessage(t('invoice_draft_failed'), 'error');
             return;
         }
         // 1. Génération des lignes du tableau de détails
         const itemsHTML = Array.from(itemsContainer.querySelectorAll('tr')).map((row, idx) => {
-            const designation = row.querySelector('input[name="designation"]').value === "Redevance de Sécurité Aérienne" ? "RSAR" : row.querySelector('input[name="designation"]').value;
+            const designation = getCanonicalDesignation(row.querySelector('input[name="designation"]')) === "Redevance de Sécurité Aérienne"
+                ? "RSAR"
+                : getCanonicalDesignation(row.querySelector('input[name="designation"]'));
             const qty = row.querySelector('input[name="qty"]').value;
-            const total = row.querySelector('span[name="line-total-value"]').textContent;
+            const lineTotal = (parseFloat(qty) || 0) * (parseFloat(row.querySelector('input[name="price_value"]').value) || 0);
             const price = row.querySelector('input[name="price_value"]').value;
 
             // 5 colonnes pour l'aperçu
@@ -515,52 +664,48 @@ async function showPreview() {
                 <td class="text-center">${idx + 1}</td>
                 <td class="text-left">${designation}</td>
                 <td class="text-center">${formatNumber(qty)}</td>
-                <td class="text-right">${formatNumber(price)}</td>
-                <td class="text-right font-bold">${total.split(' ')[0]}</td>
+                <td class="text-right invoice-currency-value" data-amount="${Number(price)}">${formatCurrency(Number(price))}</td>
+                <td class="text-right font-bold invoice-currency-value" data-amount="${lineTotal}">${formatCurrency(lineTotal)}</td>
             </tr>`;
         }).join('');
 
         // 2. Variables
-        const clientName = clientSelect.value || "Non spécifié";
-        const airport = airportInput.value || "Non spécifié";
+        const clientName = clientSelect.value || t('unspecified');
+        const airport = airportInput.value || t('unspecified');
         const issueLocation = issueLocationInput.value || "Pointe-Noire";
         const issueDate = document.getElementById('issue-date').value;
         const period = document.getElementById('period').value;
         const invoiceNumber = invoiceIdInput.value;
-        const totalText = grandTotalSpan.textContent;
-        const formattedDate = new Date(issueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const formattedDate = new Date(issueDate).toLocaleDateString(
+            localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR',
+            { day: 'numeric', month: 'long', year: 'numeric' }
+        );
 
         // 3. EN-TÊTE (CODE CORRIGÉ : Largeurs ajustées et Logo centré)
         const headerHTML = `
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
                 <tr>
                     <td style="width: 45%; vertical-align: top; text-align: center; font-size: 8pt; line-height: 1.2;">
-                        <div style="font-weight: bold; margin-bottom: 2px;">COMMUNAUTÉ ÉCONOMIQUE ET MONÉTAIRE DE<br>L'AFRIQUE CENTRALE</div>
+                        <div style="font-weight: bold; margin-bottom: 2px;" data-i18n="invoice_cemac_name">COMMUNAUTÉ ÉCONOMIQUE ET MONÉTAIRE DE L’AFRIQUE CENTRALE</div>
                         <div style="border-bottom: 1px dashed #000; width: 60%; margin: 2px auto;"></div>
                         
-                        <div style="font-weight: bold; margin: 2px 0;">UNION ÉCONOMIQUE DE L'AFRIQUE CENTRALE</div>
+                        <div style="font-weight: bold; margin: 2px 0;" data-i18n="invoice_cemac_union">UNION ÉCONOMIQUE DE L'AFRIQUE CENTRALE</div>
                         <div style="border-bottom: 1px dashed #000; width: 60%; margin: 2px auto;"></div>
 
-                        <div style="margin: 2px 0;">AGENCE DE SUPERVISION DE LA SECURITE<br>AERIENNE EN AFRIQUE CENTRALE<br><span style="font-weight: bold;">ASSA-AC</span></div>
+                        <div style="margin: 2px 0;"><span data-i18n="invoice_agency_name">AGENCE DE SUPERVISION DE LA SÉCURITÉ AÉRIENNE EN AFRIQUE CENTRALE</span><br><span style="font-weight: bold;">ASSA-AC</span></div>
                         <div style="border-bottom: 1px dashed #000; width: 60%; margin: 2px auto;"></div>
 
-                        <div style="font-family: 'Brush Script MT', cursive; font-size: 14pt; font-weight: bold; margin-top: 5px;">La Direction Générale</div>
+                        <div style="font-family: 'Brush Script MT', cursive; font-size: 14pt; font-weight: bold; margin-top: 5px;" data-i18n="invoice_general_management">La Direction Générale</div>
                         <div style="border-bottom: 1px dashed #000; width: 40%; margin: 2px auto;"></div>
                     </td>
 
                     <td style="width: 20%; vertical-align: top; text-align: center; padding-top: 10px;">
-                        <img src="${LOGO_URL}" alt="Logo CEMAC ASSA-AC" style="max-width: 90px; height: auto; margin: 0 auto; display: block;">
+                        <img src="${LOGO_URL}" alt="Logo CEMAC ASSA-AC" data-i18n-alt="invoice_logo_alt" style="max-width: 90px; height: auto; margin: 0 auto; display: block;">
                     </td>
 
                     <td style="width: 35%; vertical-align: top; text-align: center; padding-top: 5px;">
                         <div style="border: 1px solid #000; padding: 5px; font-size: 7pt; font-style: italic; text-align: center; border-radius: 2px; line-height: 1.2;">
-                            Vision CEMAC 2025 : « Faire de<br>
-                            la CEMAC en 2025 un espace<br>
-                            économique intégré et émergent,<br>
-                            où règnent la sécurité, la<br>
-                            solidarité et la bonne<br>
-                            gouvernance, au service du<br>
-                            développement humain ».
+                            <span data-i18n="invoice_cemac_vision">Vision CEMAC 2025 : « Faire de la CEMAC en 2025 un espace économique intégré et émergent, où règnent la sécurité, la solidarité et la bonne gouvernance, au service du développement humain ».</span>
                         </div>
                     </td>
                 </tr>
@@ -571,25 +716,25 @@ async function showPreview() {
         const previewHTML = `
             <div class="preview-toolbar print-controls">
                 <div class="preview-heading">
-                    <h2 id="preview-title">Aperçu de la facture</h2>
-                    <p id="preview-description">Vérifiez le document avant de l’envoyer ou de l’imprimer.</p>
+                    <h2 id="preview-title" data-i18n="invoice_preview_title">Aperçu de la facture</h2>
+                    <p id="preview-description" data-i18n="invoice_preview_description">Vérifiez le document avant de l’envoyer ou de l’imprimer.</p>
                 </div>
-                <div class="preview-tools" aria-label="Outils d’affichage">
-                    <div class="preview-zoom-controls" aria-label="Zoom du document">
-                        <button type="button" onclick="adjustPreviewZoom(-10)" aria-label="Réduire le zoom">−</button>
+                <div class="preview-tools" aria-label="Outils d’affichage" data-i18n-aria-label="invoice_preview_tools">
+                    <div class="preview-zoom-controls" aria-label="Zoom du document" data-i18n-aria-label="invoice_zoom">
+                        <button type="button" onclick="adjustPreviewZoom(-10)" aria-label="Réduire le zoom" data-i18n-aria-label="invoice_zoom_out">−</button>
                         <output id="preview-zoom-level" aria-live="polite">100%</output>
-                        <button type="button" onclick="adjustPreviewZoom(10)" aria-label="Augmenter le zoom">+</button>
+                        <button type="button" onclick="adjustPreviewZoom(10)" aria-label="Augmenter le zoom" data-i18n-aria-label="invoice_zoom_in">+</button>
                     </div>
-                    <button type="button" id="preview-fullscreen-button" class="preview-tool-button" onclick="togglePreviewFullscreen()" aria-pressed="false">Plein écran</button>
-                    <button type="button" onclick="closePreview()" class="preview-close-button" aria-label="Fermer l’aperçu" title="Fermer l’aperçu">×</button>
+                    <button type="button" id="preview-fullscreen-button" class="preview-tool-button" onclick="togglePreviewFullscreen()" aria-pressed="false" data-i18n="invoice_fullscreen">Plein écran</button>
+                    <button type="button" onclick="closePreview()" class="preview-close-button" aria-label="Fermer l’aperçu" title="Fermer l’aperçu" data-i18n-aria-label="invoice_close_preview" data-i18n-title="invoice_close_preview">×</button>
                 </div>
                 <div class="preview-actions">
-                    <button type="button" onclick="closePreview()" class="preview-action-button preview-back-button">Modifier / Retour</button>
-                    <button type="button" onclick="sendInvoice(this)" id="send-invoice-button" class="preview-action-button preview-send-button">Envoyer & Enregistrer</button>
-                    <button type="button" onclick="printPreview()" class="preview-action-button preview-print-button">Imprimer</button>
+                    <button type="button" onclick="closePreview()" class="preview-action-button preview-back-button" data-i18n="invoice_edit_back">Modifier / Retour</button>
+                    <button type="button" onclick="sendInvoice(this)" id="send-invoice-button" class="preview-action-button preview-send-button" data-i18n="invoice_send_save">Envoyer & Enregistrer</button>
+                    <button type="button" onclick="printPreview()" class="preview-action-button preview-print-button" data-i18n="print">Imprimer</button>
                 </div>
             </div>
-            <div class="invoice-viewer" id="invoice-viewer" tabindex="0" aria-label="Zone de lecture de la facture">
+            <div class="invoice-viewer" id="invoice-viewer" tabindex="0" aria-label="Zone de lecture de la facture" data-i18n-aria-label="invoice_viewer">
                 <div class="invoice-sheet-viewport">
                     <div class="invoice-document">
                 ${headerHTML}
@@ -597,25 +742,25 @@ async function showPreview() {
                 <div id="preview-message" style="display:none; margin-bottom:8px; padding:8px; border-radius:6px; font-weight:600;"></div>
 
             <div class="invoice-title" style="margin-top: 10px; font-size: 14pt; font-weight: bold; text-align: center;">
-                FACTURE ${invoiceNumber}
+                <span data-i18n="invoice_label">FACTURE</span> ${invoiceNumber}
             </div>
 
             <div class="client-details" style="margin-top: 20px; font-size: 10pt;">
                 <table style="border: none;">
                     <tr>
-                        <td style="width: 80px; font-weight: bold; border: none; text-align: left;">Client</td>
+                        <td style="width: 80px; font-weight: bold; border: none; text-align: left;" data-i18n="client">Client</td>
                         <td style="border: none; text-align: left;">: ${clientName}</td>
                     </tr>
                     <tr>
-                        <td style="font-weight: bold; border: none; text-align: left;">Pour</td>
-                        <td style="border: none; text-align: left;">: Redevance de Sécurité Aérienne Régionale (RSAR)</td>
+                        <td style="font-weight: bold; border: none; text-align: left;" data-i18n="invoice_for">Pour</td>
+                        <td style="border: none; text-align: left;">: <span data-i18n="invoice_purpose">Redevance de Sécurité Aérienne Régionale (RSAR)</span></td>
                     </tr>
                     <tr>
-                        <td style="font-weight: bold; border: none; text-align: left;">Période</td>
-                        <td style="border: none; text-align: left;">: ${period}</td>
+                        <td style="font-weight: bold; border: none; text-align: left;" data-i18n="invoice_period">Période</td>
+                        <td style="border: none; text-align: left;">: <span class="invoice-period-value">${formatInvoicePeriod(period)}</span></td>
                     </tr>
                     <tr>
-                        <td style="font-weight: bold; border: none; text-align: left;">Aéroport</td>
+                        <td style="font-weight: bold; border: none; text-align: left;" data-i18n="airport">Aéroport</td>
                         <td style="border: none; text-align: left;">: ${airport}</td>
                     </tr>
                 </table>
@@ -625,40 +770,40 @@ async function showPreview() {
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="background-color: #e0e0e0;">
-                            <th style="border: 1px solid #000; padding: 5px;">N°</th>
-                            <th style="border: 1px solid #000; padding: 5px; text-align: left;">Désignation</th>
-                            <th style="border: 1px solid #000; padding: 5px;">Nbre de Passagers</th>
-                            <th style="border: 1px solid #000; padding: 5px;">Cout Unitaire</th>
-                            <th style="border: 1px solid #000; padding: 5px;">Cout Total</th>
+                            <th style="border: 1px solid #000; padding: 5px;" data-i18n="number">N°</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left;" data-i18n="designation">Désignation</th>
+                            <th style="border: 1px solid #000; padding: 5px;" data-i18n="invoice_passengers">Nbre de Passagers</th>
+                            <th style="border: 1px solid #000; padding: 5px;" data-i18n="invoice_unit_cost">Coût unitaire</th>
+                            <th style="border: 1px solid #000; padding: 5px;" data-i18n="invoice_total_cost">Coût total</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${itemsHTML}
                         <tr>
-                            <td colspan="4" style="border: 1px solid #000; padding: 5px; text-align: right; font-weight: bold; background-color: #e0e0e0;">TOTAL</td>
-                            <td style="border: 1px solid #000; padding: 5px; text-align: right; font-weight: bold; background-color: #e0e0e0;">${totalText.split(' ')[0]}</td>
+                            <td colspan="4" style="border: 1px solid #000; padding: 5px; text-align: right; font-weight: bold; background-color: #e0e0e0;" data-i18n="total">TOTAL</td>
+                            <td class="invoice-currency-value" data-amount="${Array.from(itemsContainer.querySelectorAll('tr')).reduce((sum, row) => sum + (parseFloat(row.querySelector('input[name="qty"]').value) || 0) * (parseFloat(row.querySelector('input[name="price_value"]').value) || 0), 0)}" style="border: 1px solid #000; padding: 5px; text-align: right; font-weight: bold; background-color: #e0e0e0;">${formatCurrency(Array.from(itemsContainer.querySelectorAll('tr')).reduce((sum, row) => sum + (parseFloat(row.querySelector('input[name="qty"]').value) || 0) * (parseFloat(row.querySelector('input[name="price_value"]').value) || 0), 0))}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div style="margin-top: 15px; font-size: 10pt; font-weight: bold;">
+            <div class="invoice-amount-words" style="margin-top: 15px; font-size: 10pt; font-weight: bold;">
                 ${totalInWords.textContent}
             </div>
 
             <div class="signature-block" style="margin-top: 30px; text-align: right; margin-right: 50px; font-size: 10pt;">
                 <div style="display: inline-block; text-align: center;">
-                    <div style="font-weight: bold; margin-bottom: 50px;">Fait à ${issueLocation}, le ${formattedDate.toUpperCase()}</div>
-                    <div style="margin-bottom: 40px; text-decoration: underline;">La Direction Générale</div>
+                    <div class="invoice-signature-date" style="font-weight: bold; margin-bottom: 50px;">${t('invoice_signature_date').replace('{location}', issueLocation).replace('{date}', formattedDate.toUpperCase())}</div>
+                    <div style="margin-bottom: 40px; text-decoration: underline;" data-i18n="invoice_general_management">La Direction Générale</div>
                 </div>
             </div>
 
             <div class="payment-conditions" style="margin-top: 40px; font-size: 9pt; border-top: none;">
-                <u style="font-weight: bold;">Conditions de paiement :</u>
+                <u style="font-weight: bold;" data-i18n="invoice_payment_terms">Conditions de paiement :</u>
                 <ul style="list-style-type: disc; padding-left: 20px; margin-top: 5px;">
-                    <li>Par virement bancaire suivant RIB joint en annexe, à trente jours échus ;</li>
-                    <li>Au-delà des trente jours une pénalité de 5% est facturée par tranche de 15 jours de retard ;</li>
-                    <li>Chaque quinzaine entamée est due.</li>
+                    <li data-i18n="invoice_payment_transfer">Par virement bancaire suivant le RIB joint en annexe, à trente jours échus ;</li>
+                    <li data-i18n="invoice_payment_penalty">Au-delà de trente jours, une pénalité de 5 % est facturée par tranche de 15 jours de retard ;</li>
+                    <li data-i18n="invoice_payment_fortnight">Chaque quinzaine entamée est due.</li>
                 </ul>
             </div>
 
@@ -668,6 +813,7 @@ async function showPreview() {
         `;
 
         previewContent.innerHTML = previewHTML;
+        window.setLanguage(localStorage.getItem('lang') || 'fr');
         document.getElementById('form-area').classList.add('hidden');
         previewZoom = 100;
         updatePreviewZoomLabel();
@@ -680,7 +826,7 @@ async function showPreview() {
         });
 
     } catch (error) {
-        showMessage(`Erreur de validation: ${error.message}`, 'error');
+        showMessage(t('invoice_validation_error').replace('{error}', error.message), 'error');
         console.error(error);
     } finally {
         if (modalWrapper.classList.contains('hidden')) {
@@ -730,7 +876,7 @@ function togglePreviewFullscreen() {
     const isFullscreen = modalWrapper.classList.toggle('is-fullscreen');
     modalContainer.classList.toggle('is-fullscreen', isFullscreen);
     if (fullscreenButton) {
-        fullscreenButton.textContent = isFullscreen ? 'Quitter le plein écran' : 'Plein écran';
+        fullscreenButton.textContent = isFullscreen ? t('invoice_exit_fullscreen') : t('invoice_fullscreen');
         fullscreenButton.setAttribute('aria-pressed', String(isFullscreen));
     }
     requestAnimationFrame(updateInvoiceSheetScale);
@@ -759,7 +905,7 @@ function printPreview() {
         const contentToPrint = document.getElementById('preview-content').innerHTML;
 
         if (!contentToPrint.trim()) {
-            return alert("Aucune facture à imprimer.");
+            return alert(t('invoice_print_empty'));
         }
 
         let iframe = document.createElement('iframe');
@@ -819,7 +965,7 @@ function printPreview() {
 
     } catch (err) {
         console.error(err);
-        alert("Erreur lors de la tentative d'impression.");
+        alert(t('invoice_print_error'));
     }
 }
 
@@ -850,7 +996,7 @@ async function sendInvoice(buttonElement) {
     // --- LOGIQUE ANTI-DOUBLE CLIC (Ajout) ---
     if (buttonElement) {
         buttonElement.disabled = true;
-        buttonElement.textContent = 'Enregistrement...'; // Message de chargement
+        buttonElement.textContent = t('invoice_saving');
         buttonElement.classList.remove('bg-blue-600', 'hover:bg-blue-700');
         buttonElement.classList.add('bg-gray-400', 'cursor-not-allowed');
     }
@@ -858,7 +1004,7 @@ async function sendInvoice(buttonElement) {
 
     const items = Array.from(itemsContainer.querySelectorAll('tr')).map((row, idx) => ({
         numero_ligne: idx + 1,
-        designation: row.querySelector('input[name="designation"]').value,
+        designation: getCanonicalDesignation(row.querySelector('input[name="designation"]')),
         destination: row.querySelector('select[name="zone"]').value,
         nombre_passagers: parseFloat(row.querySelector('input[name="qty"]').value),
         cout_unitaire: parseFloat(row.querySelector('input[name="price_value"]').value),
@@ -878,28 +1024,32 @@ async function sendInvoice(buttonElement) {
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
-        montant_en_lettres: totalInWords.textContent || '',
+        montant_en_lettres: getCanonicalAmountWords(totalNumeric),
         lignes: items,
         id_companie: compagnie?.id || 1
     };
 
     try {
-        const token = getAdminToken();
+        const token = getInvoiceToken();
         if (!token) {
             console.log("Facture à enregistrer (SIMULATION):", invoiceData);
             // show message inside preview modal if present
             const previewMsg = document.getElementById('preview-message');
             if (previewMsg) {
-                previewMsg.textContent = 'Simulation : Facture enregistrée sans API (Token Admin manquant).';
+                previewMsg.dataset.messageKey = 'invoice_simulation_saved_short';
+                previewMsg.textContent = t('invoice_simulation_saved_short');
                 previewMsg.style.display = 'block';
                 previewMsg.style.background = '#ecfdf5';
                 previewMsg.style.color = '#065f46';
                 previewMsg.style.border = '1px solid #34d399';
                 setTimeout(() => { previewMsg.style.display = 'none'; }, 4500);
             } else {
-                showMessage('Simulation : Facture enregistrée sans API (Token Admin manquant).', 'success');
+                showMessage(t('invoice_simulation_saved'), 'success');
             }
-            setTimeout(() => closePreview(), 700);
+            setTimeout(() => {
+                closePreview();
+                resetInvoiceForm();
+            }, 700);
             return;
         }
 
@@ -908,71 +1058,70 @@ async function sendInvoice(buttonElement) {
             // If invoice reference exists, update the existing invoice to avoid duplicates
             response = await fetch(`${API_BASE}/api/factures/${encodeURIComponent(invoiceIdInput.value)}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: getInvoiceAuthHeaders(token),
                 body: JSON.stringify(invoiceData)
             });
         } else {
             // Create new invoice
             response = await fetch(`${API_BASE}/api/factures`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: getInvoiceAuthHeaders(token),
                 body: JSON.stringify(invoiceData)
             });
         }
 
-        // Read response body (if any) without throwing on non-OK. Treat non-OK as warning
+        // Read the response body once and only show success when the server confirms the save.
         const resData = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            console.warn('API responded with non-OK status while saving facture:', response.status, resData);
-            // don't surface API error to user here; we still show success message per requirement
-        } else {
-            if (resData && resData.numero_facture) {
-                invoiceIdInput.value = resData.numero_facture;
-            }
+            throw new Error(resData.message || `Erreur API ${response.status}`);
+        }
+        if (resData && resData.numero_facture) {
+            invoiceIdInput.value = resData.numero_facture;
         }
 
-        const refShown = invoiceIdInput.value ? ` (Réf: ${invoiceIdInput.value})` : '';
+        const refShown = invoiceIdInput.value
+            ? ` (${t('invoice_reference_label').replace('{reference}', invoiceIdInput.value)})`
+            : '';
         // Show message inside preview modal (always show success per request)
         const previewMsg = document.getElementById('preview-message');
         if (previewMsg) {
-            previewMsg.textContent = `Facture enregistrée et envoyée avec succès${refShown}!`;
+            previewMsg.dataset.messageKey = 'invoice_saved_success';
+            previewMsg.dataset.referenceId = invoiceIdInput.value || '';
+            previewMsg.textContent = t('invoice_saved_success').replace('{reference}', refShown);
             previewMsg.style.display = 'block';
             previewMsg.style.background = '#ecfdf5';
             previewMsg.style.color = '#065f46';
             previewMsg.style.border = '1px solid #34d399';
             setTimeout(() => { previewMsg.style.display = 'none'; }, 4500);
         } else {
-            showMessage(`Facture enregistrée et envoyée avec succès${refShown}!`, 'success');
+            showMessage(t('invoice_saved_success').replace('{reference}', refShown), 'success');
         }
-        // Close preview shortly after so user sees message
-        setTimeout(() => closePreview(), 800);
+        // Close the preview after the confirmation is visible, then prepare a blank invoice.
+        setTimeout(() => {
+            closePreview();
+            resetInvoiceForm();
+        }, 800);
 
     } catch (err) {
         console.error('Erreur lors de l’envoi de la facture:', err);
         const previewMsgErr = document.getElementById('preview-message');
         if (previewMsgErr) {
-            previewMsgErr.textContent = 'Erreur lors de l\'envoi de la facture: ' + err.message;
+            previewMsgErr.textContent = t('invoice_send_error').replace('{error}', err.message);
             previewMsgErr.style.display = 'block';
             previewMsgErr.style.background = '#fff1f2';
             previewMsgErr.style.color = '#9f1239';
             previewMsgErr.style.border = '1px solid #fca5a5';
             setTimeout(() => { previewMsgErr.style.display = 'none'; }, 6000);
         } else {
-            showMessage('Erreur lors de l’envoi de la facture: ' + err.message, 'error');
+            showMessage(t('invoice_send_error').replace('{error}', err.message), 'error');
         }
 
     } finally {
         // --- LOGIQUE ANTI-DOUBLE CLIC (Ajout - Réactivation) ---
         if (buttonElement) {
             buttonElement.disabled = false;
-            buttonElement.textContent = 'Envoyer & Enregistrer';
+            buttonElement.textContent = t('invoice_send_save');
             buttonElement.classList.remove('bg-gray-400', 'cursor-not-allowed');
             buttonElement.classList.add('bg-blue-600', 'hover:bg-blue-700');
         }
@@ -982,8 +1131,38 @@ async function sendInvoice(buttonElement) {
 
 
 // ======================= INITIALISATION (inchangé) =======================
+function initialiserMenuOperateur() {
+    if (!isOperatorInvoicePage) return;
+
+    const sidebar = document.getElementById('sidebar');
+    const openButton = document.getElementById('open-sidebar-btn');
+    const closeButton = document.getElementById('close-sidebar-btn');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (!sidebar || !openButton || !closeButton || !backdrop) return;
+
+    function setSidebarOpen(isOpen) {
+        document.body.classList.toggle('sidebar-open', isOpen);
+        openButton.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    openButton.addEventListener('click', () => setSidebarOpen(true));
+    closeButton.addEventListener('click', () => setSidebarOpen(false));
+    backdrop.addEventListener('click', () => setSidebarOpen(false));
+    sidebar.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => setSidebarOpen(false));
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') setSidebarOpen(false);
+    });
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', event => {
+        if (event.matches) setSidebarOpen(false);
+    });
+}
+
 window.onload = () => {
     try {
+        initialiserMenuOperateur();
+        updateInvoiceLanguage();
         const today = new Date();
         document.getElementById('issue-date').value = today.toISOString().split('T')[0];
         document.getElementById('period').value = getPreviousMonthPeriod();
@@ -997,7 +1176,7 @@ window.onload = () => {
         modalWrapper.classList.add('hidden');
     } catch (err) {
         console.error(err);
-        showMessage('Erreur d\'initialisation: ' + err.message, 'error');
+        showMessage(t('invoice_validation_error').replace('{error}', err.message), 'error');
     }
 };
 
@@ -1015,7 +1194,19 @@ if (localStorage.getItem('theme') === 'dark') {
 
 // Bascule et sauvegarde
 const toggle = document.getElementById('theme-toggle');
-toggle.addEventListener('click', () => {
+function updateThemeToggleLabel() {
+    if (!toggle) return;
+    const label = document.body.classList.contains('dark-mode')
+        ? t('theme_toggle_light')
+        : t('theme_toggle_dark');
+    toggle.title = label;
+    toggle.setAttribute('aria-label', label);
+}
+
+toggle?.addEventListener('click', () => {
     const isDark = document.body.classList.toggle('dark-mode');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    updateThemeToggleLabel();
 });
+window.addEventListener('app-language-change', updateThemeToggleLabel);
+updateThemeToggleLabel();

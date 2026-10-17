@@ -1,0 +1,448 @@
+/* ==========================================================================
+   ASSA-AC - SUPERVISOR SIDEBAR (MODERNE, ÉLÉGANTE, BLUE NUIT SAAS)
+   ========================================================================== */
+
+:root {
+    --sidebar-width: 260px;
+    --sidebar-bg: #070e20;
+    --sidebar-bg-gradient: linear-gradient(180deg, #09132b 0%, #060b18 100%);
+    --sidebar-text: #94a3b8;
+    --sidebar-text-hover: #ffffff;
+    --sidebar-item-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-item-active: #1d68f6;
+    --sidebar-item-active-shadow: 0 4px 14px rgba(29, 104, 246, 0.35);
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+}
+
+/* Sidebar structure */
+.sidebar {
+    width: var(--sidebar-width);
+    flex: 0 0 var(--sidebar-width);
+    height: 100vh;
+    height: 100dvh;
+    background: var(--sidebar-bg);
+    background-image: var(--sidebar-bg-gradient);
+    color: #ffffff;
+    padding: 24px 18px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    border-right: 1px solid var(--sidebar-border);
+    box-shadow: 4px 0 24px rgba(3, 7, 18, 0.28);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Brand / Logo section */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 6px 14px 6px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.brand-logo-container,
+.supervisor-brand-logo-box {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    background: #ffffff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-sizing: border-box;
+}
+
+.supervisor-brand-logo {
+    display: block;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.brand-title {
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+}
+
+.brand-sub {
+    color: #94a3b8;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Navigation items */
+.nav {
+    flex: 1;
+    margin-top: 8px;
+}
+
+.nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nav li {
+    margin: 0;
+    padding: 0;
+}
+
+.nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    min-height: 46px;
+    border-radius: 10px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.nav a:hover {
+    background: var(--sidebar-item-hover);
+    color: var(--sidebar-text-hover);
+    transform: translateX(2px);
+}
+
+.nav li.active a,
+.nav a.active {
+    background: var(--sidebar-item-active);
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: var(--sidebar-item-active-shadow);
+}
+
+.nav li.active a:hover,
+.nav a.active:hover {
+    transform: none;
+}
+
+.nav a i {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex: 0 0 20px;
+}
+
+.nav a span {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Badge dans la sidebar (ex: Messagerie "3") */
+.nav-badge,
+.sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-left: auto;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+}
+
+/* Footer & Actions */
+.sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.sidebar-footer button,
+.sidebar-footer a {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 650;
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.sidebar-footer .btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--sidebar-text);
+    border: 1px solid var(--sidebar-border);
+}
+
+.sidebar-footer .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.sidebar-footer .btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.sidebar-footer .btn-danger:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
+.sidebar-footer i {
+    width: 20px;
+    font-size: 1.05rem;
+    text-align: center;
+}
+
+/* Accessibilité Focus */
+.sidebar a:focus-visible,
+.sidebar button:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+
+/* Backdrop pour tiroir mobile */
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    background: rgba(7, 14, 32, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+body.sidebar-open .sidebar-backdrop,
+.sidebar-backdrop:not([hidden]) {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ==========================================================================
+   RESPONSIVE SIDEBAR
+   ========================================================================== */
+
+@media (max-width: 992px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.sidebar-open .sidebar {
+        transform: translateX(0);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.45);
+    }
+}
+
+/* Shared supervisor topbar sizing and typography across all supervisor pages. */
+body.supervisor-dashboard .topbar {
+    height: 70px;
+    min-height: 70px;
+    flex: 0 0 70px;
+    padding: 0 28px;
+    gap: 20px;
+    font-family: var(--font-sans, 'Inter', sans-serif);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+body.supervisor-dashboard .topbar button,
+body.supervisor-dashboard .topbar input {
+    font-family: inherit;
+}
+
+body.supervisor-dashboard .topbar-search input {
+    height: 42px;
+    font-size: 0.88rem;
+}
+
+body.supervisor-dashboard .mobile-menu-toggle,
+body.supervisor-dashboard .topbar .icon-btn,
+body.supervisor-dashboard .topbar .lang-btn,
+body.supervisor-dashboard .topbar .avatar-btn {
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    body.supervisor-dashboard .topbar {
+        height: 64px;
+        min-height: 64px;
+        flex-basis: 64px;
+        padding: 0 16px;
+        gap: 12px;
+    }
+}
+
+/* Keep the shared supervisor sidebar consistent when page styles define generic selectors. */
+body.supervisor-dashboard .sidebar {
+    width: 260px;
+    flex: 0 0 260px;
+    height: 100vh;
+    height: 100dvh;
+    padding: 24px 18px 20px;
+    gap: 20px;
+    background: var(--sidebar-bg);
+    background-image: var(--sidebar-bg-gradient);
+    color: #fff;
+    border-right: 1px solid var(--sidebar-border);
+    box-shadow: 4px 0 24px rgba(3, 7, 18, 0.28);
+    z-index: 100;
+}
+
+body.supervisor-dashboard .brand {
+    gap: 12px;
+    align-items: center;
+    padding: 4px 6px 14px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+body.supervisor-dashboard .brand-title {
+    font-family: var(--font-sans);
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+}
+
+body.supervisor-dashboard .brand-sub {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+body.supervisor-dashboard .nav {
+    flex: 1;
+    margin-top: 8px;
+}
+
+body.supervisor-dashboard .nav ul {
+    margin: 0;
+    padding: 0;
+    gap: 6px;
+}
+
+body.supervisor-dashboard .nav a {
+    gap: 12px;
+    min-height: 46px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    color: var(--sidebar-text);
+    font-family: var(--font-sans);
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+body.supervisor-dashboard .nav li.active a,
+body.supervisor-dashboard .nav a.active {
+    background: var(--sidebar-item-active);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: var(--sidebar-item-active-shadow);
+}
+
+body.supervisor-dashboard .nav a i {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    font-size: 1.05rem;
+}
+
+body.supervisor-dashboard .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+body.supervisor-dashboard .sidebar-footer .btn-danger {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 11px 14px;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+@media (max-width: 992px) {
+    body.supervisor-dashboard:not(.sidebar-open) .sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.supervisor-dashboard.sidebar-open .sidebar {
+        transform: translateX(0);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.45);
+    }
+}
+
+body.supervisor-dashboard .nav a:hover {
+    background: var(--sidebar-item-hover);
+    color: var(--sidebar-text-hover);
+    transform: translateX(2px);
+}
+
+body.supervisor-dashboard .nav li.active a:hover,
+body.supervisor-dashboard .nav a.active:hover {
+    transform: none;
+}

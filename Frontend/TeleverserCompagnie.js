@@ -270,10 +270,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const paiementForm = document.getElementById('paiements-form');
     const fileInputPaiement = document.getElementById('file-upload-paiement');
     const fileDisplayPaiement = document.getElementById('file-upload-display-paiement');
+    const submitButton = document.getElementById('upload-proof-submit');
+    const submitButtonLabel = document.getElementById('upload-proof-submit-label');
+    const submitButtonSpinner = document.getElementById('upload-proof-spinner');
 
     if (paiementForm) {
         paiementForm.addEventListener('submit', async e => {
             e.preventDefault();
+            if (submitButton?.disabled) return;
 
             const invoiceSelectEl = document.getElementById('invoice-select-paiement');
             if (!invoiceSelectEl) {
@@ -301,6 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 showModal('Authentification requise', 'Veuillez vous reconnecter pour envoyer la preuve.');
                 return;
             }
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.setAttribute('aria-busy', 'true');
+            }
+            if (submitButtonLabel) submitButtonLabel.textContent = window.t('uploading');
+            submitButtonSpinner?.classList.remove('hidden');
 
             try {
                 const formData = new FormData();
@@ -354,6 +365,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error('Erreur upload preuve:', err);
                 showModal('Erreur', 'Une erreur est survenue lors de l’envoi de la preuve.');
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.removeAttribute('aria-busy');
+                }
+                if (submitButtonLabel) submitButtonLabel.textContent = window.t('upload_confirmation');
+                submitButtonSpinner?.classList.add('hidden');
             }
         });
     }

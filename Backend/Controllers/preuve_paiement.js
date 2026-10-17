@@ -99,13 +99,17 @@ export const uploadPreuvesPaiement = async (req, res) => {
         const { data: preuveData, error: preuveError } = await supabase
             .from("preuve_paiement")
             .insert([{
+                numero_facture,
                 facture_id,
                 id_companie,
                 fichier_nom: file.originalname,
                 fichier_url: publicUrl.publicUrl,
+                file_name: file.originalname,
+                file_url: publicUrl.publicUrl,
                 type_fichier: ext,
                 commentaire,
-                date_envoi: new Date()
+                date_envoi: new Date(),
+                uploaded_by: req.user?.id || null
             }])
             .select()
             .single();
@@ -113,7 +117,15 @@ export const uploadPreuvesPaiement = async (req, res) => {
         console.log("📥 INSERT PREUVE =", preuveData);
         console.log("🟥 ERREUR INSERT PREUVE =", preuveError);
 
-        if (preuveError) throw preuveError;
+        if (preuveError) {
+            const { error: cleanupError } = await supabase.storage
+                .from(bucketName)
+                .remove([filename]);
+            if (cleanupError) {
+                console.error("Impossible de supprimer le fichier téléversé après l'échec de l'insertion :", cleanupError);
+            }
+            throw preuveError;
+        }
 
         // ==========================
         // 5️⃣ UPDATE STATUT FACTURE

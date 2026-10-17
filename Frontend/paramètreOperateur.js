@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function applyTheme(theme) {
         const body = document.body;
+        const themeToggle = document.getElementById('theme-toggle');
         
         // Retirer la classe dark-mode par précaution
         body.classList.remove('dark-mode');
@@ -62,10 +63,23 @@ document.addEventListener('DOMContentLoaded', function () {
         // Sauvegarde
         localStorage.setItem('theme', theme);
 
+        if (themeToggle) {
+            const isDark = body.classList.contains('dark-mode');
+            themeToggle.innerHTML = `<i class="fas fa-${isDark ? 'sun' : 'moon'}" aria-hidden="true"></i>`;
+            themeToggle.title = isDark ? 'Passer au mode clair' : 'Passer au mode sombre';
+            themeToggle.setAttribute('aria-label', themeToggle.title);
+        }
+
         // Mise à jour visuelle des boutons de sélection
-        themeOptions.forEach(option => option.classList.remove('selected'));
+        themeOptions.forEach(option => {
+            option.classList.remove('selected');
+            option.setAttribute('aria-pressed', 'false');
+        });
         const selectedBtn = document.querySelector(`.theme-option[data-theme="${theme}"]`);
-        if (selectedBtn) selectedBtn.classList.add('selected');
+        if (selectedBtn) {
+            selectedBtn.classList.add('selected');
+            selectedBtn.setAttribute('aria-pressed', 'true');
+        }
     }
 
     // Écouteur sur les boutons de thème
@@ -73,6 +87,10 @@ document.addEventListener('DOMContentLoaded', function () {
         option.addEventListener('click', function () {
             applyTheme(this.dataset.theme);
         });
+    });
+
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
     });
 
     // Initialisation au chargement de la page

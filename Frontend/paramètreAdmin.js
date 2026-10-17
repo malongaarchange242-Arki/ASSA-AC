@@ -10,7 +10,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // 1. Mettre à jour la classe active sur le lien
         navLinks.forEach(link => link.classList.remove('settings-active'));
         const activeLink = document.querySelector(`.settings-nav a[href="${targetId}"]`);
-        if (activeLink) activeLink.classList.add('settings-active');
+        if (activeLink) {
+            activeLink.classList.add('settings-active');
+            activeLink.setAttribute('aria-current', 'page');
+        }
+        navLinks.forEach(link => {
+            if (link !== activeLink) link.removeAttribute('aria-current');
+        });
 
         // 2. Masquer toutes les sections
         sections.forEach(section => (section.style.display = 'none'));
@@ -66,14 +72,33 @@ document.addEventListener('DOMContentLoaded', function () {
         if (themeToggle) {
             const isDark = body.classList.contains('dark-mode');
             themeToggle.innerHTML = `<i class="fas fa-${isDark ? 'sun' : 'moon'}" aria-hidden="true"></i>`;
-            themeToggle.title = isDark ? 'Passer au mode clair' : 'Passer au mode sombre';
+            themeToggle.title = isDark ? t('theme_toggle_light') : t('theme_toggle_dark');
+            themeToggle.setAttribute('aria-label', themeToggle.title);
         }
 
         // Mise à jour visuelle des boutons de sélection
-        themeOptions.forEach(option => option.classList.remove('selected'));
+        themeOptions.forEach(option => {
+            option.classList.remove('selected');
+            option.setAttribute('aria-pressed', 'false');
+        });
         const selectedBtn = document.querySelector(`.theme-option[data-theme="${theme}"]`);
-        if (selectedBtn) selectedBtn.classList.add('selected');
+        if (selectedBtn) {
+            selectedBtn.classList.add('selected');
+            selectedBtn.setAttribute('aria-pressed', 'true');
+        }
     }
+
+    function updateThemeToggleLabel() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (!themeToggle) return;
+        const label = document.body.classList.contains('dark-mode')
+            ? t('theme_toggle_light')
+            : t('theme_toggle_dark');
+        themeToggle.title = label;
+        themeToggle.setAttribute('aria-label', label);
+    }
+
+    window.addEventListener('app-language-change', updateThemeToggleLabel);
 
     document.getElementById('theme-toggle')?.addEventListener('click', () => {
         applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
@@ -105,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const token = localStorage.getItem('jwtTokenAdmin');
         
         if (!token) {
-            alert('Session expirée ou invalide. Veuillez vous reconnecter.');
+            alert(t('settings_session_invalid'));
             window.location.href = 'Index.html'; // Redirection vers login
             throw new Error('Token manquant');
         }
@@ -119,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Gestion des erreurs d'authentification
             if (res.status === 401 || res.status === 403) {
-                alert('Session expirée. Veuillez vous reconnecter.');
+                alert(res.status === 401 ? t('settings_session_expired') : t('settings_unauthorized'));
                 window.location.href = 'Index.html';
                 throw new Error('Non autorisé');
             }
@@ -164,13 +189,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Validation locale
             if (!currentPassword || !newPassword || !confirmPassword) {
-                messageBox.textContent = 'Tous les champs sont requis.';
+                messageBox.textContent = t('settings_required_fields');
                 messageBox.style.color = 'var(--alert-red)';
                 return;
             }
 
             if (newPassword !== confirmPassword) {
-                messageBox.textContent = 'Le nouveau mot de passe et la confirmation ne correspondent pas.';
+                messageBox.textContent = t('settings_password_mismatch');
                 messageBox.style.color = 'var(--alert-red)';
                 return;
             }
@@ -182,11 +207,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
                 });
 
-                messageBox.textContent = 'Mot de passe mis à jour avec succès.';
+                messageBox.textContent = t('settings_password_updated');
                 messageBox.style.color = '#34A853'; // Vert
                 passwordForm.reset();
             } catch (err) {
-                messageBox.textContent = err.message || "Erreur lors de la mise à jour.";
+                console.error('Password update failed:', err);
+                messageBox.textContent = t('settings_password_update_failed');
                 messageBox.style.color = 'var(--alert-red)';
             }
         });
@@ -214,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
             generalMsg.textContent = '';
 
             if (!companyName || !address || !email) {
-                generalMsg.textContent = 'Tous les champs sont requis.';
+                generalMsg.textContent = t('settings_required_fields');
                 generalMsg.style.color = 'var(--alert-red)';
                 return;
             }
@@ -226,10 +252,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify({ companyName, address, email })
                 });
 
-                generalMsg.textContent = 'Paramètres généraux sauvegardés avec succès.';
+                generalMsg.textContent = t('settings_general_saved');
                 generalMsg.style.color = '#34A853'; // Vert
             } catch (err) {
-                generalMsg.textContent = err.message || "Erreur lors de la sauvegarde.";
+                console.error('Saving general settings failed:', err);
+                generalMsg.textContent = t('settings_general_save_failed');
                 generalMsg.style.color = 'var(--alert-red)';
             }
         });

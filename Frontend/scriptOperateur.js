@@ -86,8 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (Array.isArray(data.companies)) {
                 const activeCompanies = data.companies.filter(c =>
-                    typeof c.status === 'string' &&
-                    c.status.trim().toLowerCase() === 'actif'
+                    ['actif', 'active'].includes(
+                        String(c.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+                    )
                 );
 
                 statCards.companies.textContent = activeCompanies.length;

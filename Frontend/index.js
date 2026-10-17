@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================
     const emailSection = document.getElementById('emailSection');
     const otpSection = document.getElementById('otpSection');
+    const loginForm = document.getElementById('loginForm');
     const allSections = [emailSection, otpSection];
     
     
@@ -442,7 +443,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    mainButton.addEventListener('click', loginStandard);
+    loginForm.addEventListener('submit', event => {
+        event.preventDefault();
+        clearTimeout(typingTimer);
+
+        if (otpSection.classList.contains('visible')) {
+            validateOtp();
+        } else if (passwordField.classList.contains('visible')) {
+            loginStandard();
+        } else {
+            const email = emailInput.value.trim();
+            if (emailRegex.test(email)) verifyEmailOnServer(email);
+        }
+    });
     document.getElementById('validateOtpButton').addEventListener('click', validateOtp);
     resendOtpLink.addEventListener('click', e => { e.preventDefault(); if (currentEmail) requestOtp(); });
     backToEmail2.addEventListener('click', e => { e.preventDefault(); resetToInitialView(); });

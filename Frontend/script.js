@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let token = localStorage.getItem(TOKEN_KEY);
 
     if (!token) {
-        alert(t ? t('not_connected') : "Vous n'êtes pas connecté !");
+        alert(t('dashboard_not_connected'));
         window.location.href = 'Index.html';
         return;
     }
@@ -39,26 +39,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dashboardError = document.getElementById('dashboard-load-error');
     const dashboardFailures = new Map();
 
-    function updateDashboardFailure(key, message) {
+    function renderDashboardFailure() {
         if (!dashboardError) return;
-        if (message) dashboardFailures.set(key, message);
-        else dashboardFailures.delete(key);
-
         dashboardError.hidden = dashboardFailures.size === 0;
         dashboardError.replaceChildren();
         if (dashboardError.hidden) return;
 
+        const items = [...dashboardFailures.values()].map(message => t(message)).join(' ; ');
         dashboardError.append(document.createTextNode(
-            `Certaines statistiques n’ont pas pu être chargées (${[...dashboardFailures.values()].join(' ; ')}). `
+            t('dashboard_load_partial').replace('{items}', items) + ' '
         ));
         const retryButton = document.createElement('button');
         retryButton.type = 'button';
-        retryButton.textContent = 'Réessayer';
+        retryButton.textContent = t('dashboard_retry');
         retryButton.addEventListener('click', async () => {
             dashboardError.hidden = true;
             await Promise.all([chargerCompanies(), chargerFactures()]);
         });
         dashboardError.appendChild(retryButton);
+    }
+
+    function updateDashboardFailure(key, message) {
+        if (message) dashboardFailures.set(key, message);
+        else dashboardFailures.delete(key);
+        renderDashboardFailure();
     }
 
     // ================== Refresh Token ==================
@@ -111,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!refreshed) {
                 localStorage.removeItem(TOKEN_KEY);
                 localStorage.removeItem(REFRESH_KEY);
-                alert('Session expirée. Veuillez vous reconnecter.');
+                alert(t('dashboard_session_expired'));
                 window.location.href = 'login.html';
                 throw new Error('Token expiré');
             }
@@ -146,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!refreshed) {
                 localStorage.removeItem(TOKEN_KEY);
                 localStorage.removeItem(REFRESH_KEY);
-                alert('Session expirée. Veuillez vous reconnecter.');
+                alert(t('dashboard_session_expired'));
                 window.location.href = 'login.html';
                 throw new Error('Token expiré');
             }
@@ -184,6 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             statCards.companies.classList.remove('admin-skeleton');
             statCards.companies.removeAttribute('title');
             statCards.companies.removeAttribute('aria-label');
+            delete statCards.companies.dataset.errorI18n;
             updateDashboardFailure('companies', null);
 
         } catch (err) {
@@ -191,11 +196,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (statCards.companies) {
                 statCards.companies.textContent = '—';
                 statCards.companies.classList.remove('admin-skeleton');
-                statCards.companies.title = 'Erreur lors du chargement des compagnies';
-                statCards.companies.setAttribute('aria-label', 'Erreur lors du chargement des compagnies');
+                statCards.companies.dataset.errorI18n = 'dashboard_error_company_load';
+                statCards.companies.title = t('dashboard_error_company_load');
+                statCards.companies.setAttribute('aria-label', t('dashboard_error_company_load'));
                 if (!dashboardError) statCards.companies.textContent = '0';
             }
-            updateDashboardFailure('companies', 'compagnies');
+            updateDashboardFailure('companies', 'dashboard_error_companies');
         }
     }
 
@@ -241,6 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             statCards.factures.classList.remove('admin-skeleton');
             statCards.factures.removeAttribute('title');
             statCards.factures.removeAttribute('aria-label');
+            delete statCards.factures.dataset.errorI18n;
             // Check if something overwrites the value shortly after
             setTimeout(() => console.log('After 1s statCards.factures.textContent:', statCards.factures ? statCards.factures.textContent : 'no-element'), 1000);
             setTimeout(() => console.log('After 3s statCards.factures.textContent:', statCards.factures ? statCards.factures.textContent : 'no-element'), 3000);
@@ -264,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 statCards.contestees.classList.remove('admin-skeleton');
                 statCards.contestees.removeAttribute('title');
                 statCards.contestees.removeAttribute('aria-label');
+                delete statCards.contestees.dataset.errorI18n;
             }
             updateDashboardFailure('factures', null);
 
@@ -274,20 +282,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (statCards.factures) {
                 statCards.factures.textContent = '—';
                 statCards.factures.classList.remove('admin-skeleton');
-                statCards.factures.title = 'Erreur lors du chargement des factures';
-                statCards.factures.setAttribute('aria-label', 'Erreur lors du chargement des factures');
+                statCards.factures.dataset.errorI18n = 'dashboard_error_invoice_load';
+                statCards.factures.title = t('dashboard_error_invoice_load');
+                statCards.factures.setAttribute('aria-label', t('dashboard_error_invoice_load'));
                 if (!dashboardError) statCards.factures.textContent = '0';
             }
             if (statCards.contestees) {
                 statCards.contestees.textContent = '—';
                 statCards.contestees.classList.remove('admin-skeleton');
-                statCards.contestees.title = 'Erreur lors du chargement des factures contestées';
-                statCards.contestees.setAttribute('aria-label', 'Erreur lors du chargement des factures contestées');
+                statCards.contestees.dataset.errorI18n = 'dashboard_error_disputed_load';
+                statCards.contestees.title = t('dashboard_error_disputed_load');
+                statCards.contestees.setAttribute('aria-label', t('dashboard_error_disputed_load'));
                 if (!dashboardError) statCards.contestees.textContent = '0';
             }
-            updateDashboardFailure('factures', 'factures');
+            updateDashboardFailure('factures', 'dashboard_error_invoices');
         }
     }
+
+    window.addEventListener('app-language-change', () => {
+        renderDashboardFailure();
+        document.querySelectorAll('[data-error-i18n]').forEach(element => {
+            const message = t(element.dataset.errorI18n);
+            element.title = message;
+            element.setAttribute('aria-label', message);
+        });
+    });
     
     // ================== Initialisation ==================
     await chargerCompanies();

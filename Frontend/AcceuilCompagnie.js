@@ -10,6 +10,7 @@ let currentSortDirection = 'asc';
 let CURRENT_PAGE = 1;
 const ITEMS_PER_PAGE = 5;
 let FILTERED_INVOICES = []; // invoices after search / filter / sort
+let INVOICE_STATUS_FILTER = null;
 
 
 
@@ -31,7 +32,7 @@ function getCompanyIdFromToken() {
 }
 
 function getPaginatedInvoices() {
-    const source = (Array.isArray(FILTERED_INVOICES) && FILTERED_INVOICES.length > 0) ? FILTERED_INVOICES : ALL_INVOICES;
+    const source = Array.isArray(FILTERED_INVOICES) ? FILTERED_INVOICES : ALL_INVOICES;
     const start = (CURRENT_PAGE - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
     return source.slice(start, end);
@@ -41,7 +42,7 @@ function renderPaginationControls() {
     const container = document.getElementById('pagination-controls');
     if (!container) return;
 
-    const source = (Array.isArray(FILTERED_INVOICES) && FILTERED_INVOICES.length > 0) ? FILTERED_INVOICES : ALL_INVOICES;
+    const source = Array.isArray(FILTERED_INVOICES) ? FILTERED_INVOICES : ALL_INVOICES;
     const totalPages = Math.max(1, Math.ceil(source.length / ITEMS_PER_PAGE));
 
     // Build page number buttons (show up to 7 pages centered)
@@ -67,7 +68,7 @@ function renderPaginationControls() {
 }
 
 function changePage(page) {
-    const totalPages = Math.ceil(ALL_INVOICES.length / ITEMS_PER_PAGE);
+    const totalPages = Math.max(1, Math.ceil(FILTERED_INVOICES.length / ITEMS_PER_PAGE));
     if (page < 1 || page > totalPages) return;
 
     CURRENT_PAGE = page;
@@ -200,17 +201,30 @@ async function loadInvoices() {
     }
 }
 
+function normalizeInvoiceStatus(status) {
+    return String(status || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
 function applySearch() {
     const searchValue = document.getElementById("search-input").value.trim().toLowerCase();
 
     const source = ALL_INVOICES || [];
     FILTERED_INVOICES = source.filter(inv => {
-        return (
+        const matchesSearch = (
             (String(inv.id || inv.numero_facture || '')).toLowerCase().includes(searchValue) ||
             (String(inv.date || '')).toLowerCase().includes(searchValue) ||
             (String(inv.amount || '')).toLowerCase().includes(searchValue) ||
             (String(inv.status || '')).toLowerCase().includes(searchValue)
         );
+        const normalizedStatus = normalizeInvoiceStatus(inv.status);
+        const matchesStatusFilter = !INVOICE_STATUS_FILTER ||
+            (INVOICE_STATUS_FILTER === 'valid' && normalizedStatus === 'payee') ||
+            (INVOICE_STATUS_FILTER === 'disputed' && normalizedStatus.includes('contest'));
+        return matchesSearch && matchesStatusFilter;
     });
 
     // Apply sort if active
@@ -265,12 +279,8 @@ function renderInvoices(INVOICES = []) {
     if (!tableBody) return;
 
     let rowsHTML = '';
-    let totalInvoices = 0;
-    let disputeCount = 0;
 
     INVOICES.forEach(inv => {
-        totalInvoices++;
-
         const montant = Number(inv.amount) || 0;
         const formattedXAF = montant.toLocaleString('fr-FR', {
             style: 'currency',
@@ -295,7 +305,6 @@ function renderInvoices(INVOICES = []) {
 
             case 'contestée':
             case 'conteste':
-                disputeCount++;
                 statusClass = 'bg-orange-100 text-orange-800';
                 break;
 
@@ -320,7 +329,7 @@ function renderInvoices(INVOICES = []) {
         }
 
         rowsHTML += `
-<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${INVOICE_STATUS_FILTER ? 'highlighted-invoice-row' : ''}">
     <td class="px-6 py-4 text-sm font-medium">
         ${inv.numero_facture || '-'}
     </td>
@@ -367,18 +376,31 @@ function renderInvoices(INVOICES = []) {
 </tr>`;
     });
 
-    tableBody.innerHTML = rowsHTML;
+    tableBody.innerHTML = rowsHTML || `
+        <tr>
+            <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                ${INVOICE_STATUS_FILTER === 'valid'
+                    ? t('no_valid_invoices')
+                    : INVOICE_STATUS_FILTER === 'disputed'
+                        ? t('no_disputed_invoices')
+                        : t('company_search_empty')}
+            </td>
+        </tr>`;
 
     // ======================
     // KPI
     // ======================
-    const paidInvoices = INVOICES.filter(inv =>
-        inv.status && ['payée', 'payee'].includes(inv.status.toLowerCase())
-    ).length;
+    const paidInvoices = ALL_INVOICES.filter(inv => normalizeInvoiceStatus(inv.status) === 'payee').length;
+    const disputeCount = ALL_INVOICES.filter(inv => normalizeInvoiceStatus(inv.status).includes('contest')).length;
 
     document.getElementById('kpi-total-unpaid').textContent = paidInvoices;
-    document.getElementById('kpi-overdue-count').textContent = totalInvoices;
+    document.getElementById('kpi-overdue-count').textContent = ALL_INVOICES.length;
     document.getElementById('kpi-dispute-count').textContent = disputeCount;
+
+    document.getElementById('valid-invoices-filter')
+        ?.setAttribute('aria-pressed', String(INVOICE_STATUS_FILTER === 'valid'));
+    document.getElementById('disputed-invoices-filter')
+        ?.setAttribute('aria-pressed', String(INVOICE_STATUS_FILTER === 'disputed'));
 }
 
 
@@ -502,6 +524,22 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(localStorage.getItem('theme') || 'light');
 
     document.getElementById("search-input").addEventListener("input", applySearch);
+    const setInvoiceStatusFilter = status => {
+        INVOICE_STATUS_FILTER = INVOICE_STATUS_FILTER === status ? null : status;
+        document.getElementById('valid-invoices-filter')
+            ?.setAttribute('aria-pressed', String(INVOICE_STATUS_FILTER === 'valid'));
+        document.getElementById('disputed-invoices-filter')
+            ?.setAttribute('aria-pressed', String(INVOICE_STATUS_FILTER === 'disputed'));
+        applySearch();
+        document.getElementById('invoices-table-body')?.closest('.invoice-list-card')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    };
+    document.getElementById('valid-invoices-filter')
+        ?.addEventListener('click', () => setInvoiceStatusFilter('valid'));
+    document.getElementById('disputed-invoices-filter')
+        ?.addEventListener('click', () => setInvoiceStatusFilter('disputed'));
 
 
     loadCompanyInfo();  // ⬅️ ICI AJOUTÉ

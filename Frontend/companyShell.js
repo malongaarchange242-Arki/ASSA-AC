@@ -1,4 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-company-logout]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            [
+                'jwtTokenCompany',
+                'userRoleCompany',
+                'userEmailCompany',
+                'id_companie',
+                'lastProofAttachment'
+            ].forEach((key) => localStorage.removeItem(key));
+            window.location.assign('Index.html');
+        });
+    });
+
     const sidebar = document.getElementById('sidebar');
     const openButton = document.getElementById('open-sidebar-btn');
     const closeButton = document.getElementById('close-sidebar-btn');

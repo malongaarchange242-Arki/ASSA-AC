@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASSA-AC Admin Dashboard (Archive - Finalisé)</title>
+    <title>ASSA-AC Admin - Archives</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="ArchiveAdmin.css">
     <link rel="stylesheet" href="AccueilAdmin.css">
@@ -13,7 +13,7 @@
 
 </head>
 
-<body>
+<body class="archive-page">
     <script>
         try {
             const theme = localStorage.getItem('theme');
@@ -26,60 +26,58 @@
     </script>
     <div id="admin-sidebar-root"></div>
 
-    <main class="main-content">
-        <div class="header">
-            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+    <main class="main-content archive-main">
+        <header class="header">
+            <button class="icon-btn menu-toggle" id="open-sidebar-btn" type="button" aria-label="Ouvrir le menu" data-i18n-aria-label="open_menu" aria-expanded="false" aria-controls="sidebar">
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
-            <div class="header-actions">
-                <h1 class="page-title" data-i18n="registry_operations">Régistre des opérations</h1>
-                <div class="user-interaction-group">
-                    <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i
-                            class="fas fa-moon"></i></button>
-                    <button class="icon-btn" title="Notifications"><i class="fas fa-bell"></i></button>
-
-                    <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer la langue"><i class="fas fa-language"></i><span id="langLabel" style="font-size: 12px; margin-left: 4px;">FR</span></button>
-
-                    <div class="user-info">
-                        <img src="Icône profile.png" alt="Avatar" class="user-avatar">
-                    </div>
+            <div class="page-heading">
+                <h1 data-i18n="registry_operations">Registre des opérations</h1>
+                <p data-i18n="archive_page_description">Historique des opérations clôturées</p>
+            </div>
+            <div class="user-interaction-group">
+                <button class="icon-btn" title="Passer au mode sombre" data-i18n-title="theme_toggle_dark" id="theme-toggle" type="button" aria-label="Passer au mode sombre" data-i18n-aria-label="theme_toggle_dark">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+                <button class="icon-btn notification-btn" title="Notifications" data-i18n-title="notifications" type="button" aria-label="Notifications" data-i18n-aria-label="notifications">
+                    <i class="fas fa-bell" aria-hidden="true"></i>
+                </button>
+                <button id="toggleLang" type="button" class="icon-btn" aria-pressed="false" title="Changer de langue" data-i18n-title="change_language" aria-label="Changer de langue" data-i18n-aria-label="change_language">
+                    <i class="fas fa-language" aria-hidden="true"></i><span id="langLabel">FR</span>
+                </button>
+                <div class="user-info">
+                    <img src="Icône profile.png" alt="Avatar" data-i18n-alt="profile_avatar" class="user-avatar">
                 </div>
             </div>
-        </div>
+        </header>
 
-        <div class="archive-management">
-            <div class="page-header">
-                <!-- <div class="action-buttons">
-                    <button><i class="fas fa-filter"></i> Filtrer (Type/Année)</button>
-                    <button><i class="fas fa-undo"></i> Restaurer Élément</button>
-                </div> -->
-            </div>
+        <section class="content-area archive-content-area">
+          <div class="archive-management">
 
             <div class="print-selector-group">
-                <label for="select-month" data-i18n="archive_report"><i class="fas fa-print"></i> Rapport d'Archive :</label>
-                <select id="select-month">
+                <label for="select-month"><i class="fas fa-print" aria-hidden="true"></i><span data-i18n="archive_report">Rapport d'Archive</span></label>
+                <select id="select-month" aria-label="Période du rapport d'archive" data-i18n-aria-label="archive_period_accessible">
                     <option value="current" data-i18n="current_month">Mois en cours</option>
                     <option value="last" data-i18n="last_month">Mois dernier</option>
                 </select>
 
-                <button id="csv-btn" data-i18n="download_summary">
-                    <i class="fas fa-file-csv"></i>
-                    Télécharger le Récapitulatif (.CSV)
+                <button id="csv-btn" type="button">
+                    <i class="fas fa-file-csv" aria-hidden="true"></i>
+                    <span data-i18n="download_summary">Télécharger le Récapitulatif (.CSV)</span>
                 </button>
-
-
             </div>
 
-
             <div class="card-table-container">
-                <h3 data-i18n="closed_docs">Factures et Documents Clôturés</h3>
-                <table class="archive-table">
+                <h2 data-i18n="closed_docs">Factures et Documents Clôturés</h2>
+                <div class="archive-table-scroll">
+                  <table class="archive-table">
+                    <caption class="visually-hidden" data-i18n="closed_docs">Factures et Documents Clôturés</caption>
                     <thead>
                         <tr>
                             <th data-i18n="type_col">Type</th>
                             <th data-i18n="ref_col">N° Réf.</th>
                             <th data-i18n="companies">Compagnie</th>
-                            <th data-i18n="amount_col">Montant (XAF)</th>
+                            <th data-i18n="archive_date_col">Date de clôture</th>
                             <th data-i18n="actions_col">Actions</th>
                         </tr>
                     </thead>
@@ -106,12 +104,14 @@
                             <td><span class="admin-skeleton admin-skeleton-block"></span></td>
                         </tr>
                     </tbody>
-                </table>
+                  </table>
+                </div>
 
                 <div id="pagination" class="pagination"></div>
 
             </div>
-        </div>
+          </div>
+        </section>
     </main>
 
     <!-- MODAL ARCHIVE -->
@@ -119,7 +119,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h3 id="modalTitle" data-i18n="archive_details">Détails de l'archive</h3>
-                <button class="close-btn">&times;</button>
+                <button class="close-btn" type="button" aria-label="Fermer les détails" data-i18n-aria-label="archive_close_details">&times;</button>
             </div>
 
             <div class="modal-body" id="modalContent">

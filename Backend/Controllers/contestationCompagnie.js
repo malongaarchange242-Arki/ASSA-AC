@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 const storage = multer.memoryStorage();
 export const uploadContestationFiles = multer({ storage }).array('files', 5);
 
-const BUCKET = "Attachement_message";
+const BUCKET = "preuves-paiement";
 
 // ================= EMAIL =================
 const sendContestationEmail = async ({
@@ -146,6 +146,7 @@ export const uploadContestation = async (req, res) => {
 
     // ================= Upload fichiers =================
     const uploadedFiles = [];
+    const uploadedPaths = [];
 
     console.log("📎 Nombre de fichiers :", req.files?.length || 0);
 
@@ -163,9 +164,14 @@ export const uploadContestation = async (req, res) => {
 
       if (uploadErr) {
         console.error("❌ Erreur upload fichier :", uploadErr);
+        if (uploadedPaths.length) {
+          const { error: cleanupErr } = await supabase.storage.from(BUCKET).remove(uploadedPaths);
+          if (cleanupErr) console.error("❌ Erreur nettoyage fichiers de contestation :", cleanupErr);
+        }
         return res.status(500).json({ message: "Erreur upload fichier" });
       }
 
+      uploadedPaths.push(filename);
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
 
       uploadedFiles.push({
@@ -180,17 +186,22 @@ export const uploadContestation = async (req, res) => {
     const { data: contestation, error: contestErr } = await supabase
       .from("contestation")
       .insert([{
-        facture_id: facture.id,
-        id_companie: companyId,
+        numero_facture,
+        id_companie: facture.id_companie,
         explication: explication.trim(),
+        status: "En attente",
+        admin_id: facture.id_admin,
         fichiers: uploadedFiles,
-        date_contestation: new Date()
       }])
       .select()
       .single();
 
     if (contestErr) {
       console.error("❌ Erreur insertion contestation :", contestErr);
+      if (uploadedPaths.length) {
+        const { error: cleanupErr } = await supabase.storage.from(BUCKET).remove(uploadedPaths);
+        if (cleanupErr) console.error("❌ Erreur nettoyage fichiers de contestation :", cleanupErr);
+      }
       return res.status(500).json({ message: "Erreur enregistrement contestation" });
     }
 

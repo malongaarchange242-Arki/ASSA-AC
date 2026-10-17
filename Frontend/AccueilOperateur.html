@@ -19,6 +19,7 @@
         </div>
         <nav class="nav-menu">
             <a href="AccueilOperateur.html"><i class="fas fa-th-large"></i> Tableau de Bord</a>
+            <a href="compagniesActivesOperateur.html"><i class="fas fa-building"></i> Compagnies Actives</a>
             <a href="factureOperateur.html"><i class="fas fa-file-invoice-dollar"></i> Facturation</a>
             <a href="enregistrefactureOperateur.html" class="toggleAside"><i class="fas fa-file-circle-plus"></i> Créer une facture</a>
             <a href="messagerieOperateur.html"><i class="fas fa-comments"></i> Messagerie</a>
@@ -32,7 +33,7 @@
 
     <!-- Main Content (réutilise le contenu de AccueilAdmin) -->
     <div class="main-content">
-        <div class="header">
+        <div class="header operator-dashboard-header">
             <div class="user-interaction-group">
                 <button class="icon-btn" title="Mode Sombre/Clair" id="theme-toggle"><i class="fas fa-moon"></i></button>
                 <button class="icon-btn notification-btn" title="Notifications">
@@ -46,24 +47,24 @@
         </div>
 
         <div class="dashboard-grid">
-            <div class="card stat-card">
+            <a href="compagniesActivesOperateur.html" class="card stat-card companies-card-link" aria-label="Compagnies Actives">
                 <div class="stat-icon"><i class="fas fa-building"></i></div>
                 <div class="stat-title">Compagnies Actives</div>
                 <div class="stat-value" id="companies-value">0</div>
-            </div>
+            </a>
 
-            <div class="card stat-card">
+            <a href="factureOperateur.html" class="card stat-card invoice-count-link" aria-label="Nombre total de factures">
                 <div class="stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
                 <div class="stat-title">Nombre total de factures</div>
                 <div class="stat-value">0</div>
-            </div>
+            </a>
 
-            <div class="card stat-card alert-card">
+            <a href="factureOperateur.html?highlight=disputed" class="card stat-card alert-card disputed-invoices-link" aria-label="Factures Contestées">
                 <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="stat-title">Factures Contestées</div>
                 <div class="stat-value" id="facturesContesteesValue">0</div>
                 <div class="stat-extra">Nécessite une action</div>
-            </div>
+            </a>
 
             <a href="enregistrefacture.html" class="toggleAside" style="text-decoration: none;">
                 <div class="card stat-card" style="cursor: pointer;">

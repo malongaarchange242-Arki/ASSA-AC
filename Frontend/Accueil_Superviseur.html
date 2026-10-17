@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tableau de bord — ASSA-AC Supervision</title>
+    
+    <!-- Polices & Icônes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="superviseurSidebar.css">
+    <link rel="stylesheet" href="Acceuil_Superviseur.css">
+</head>
+
+<body class="supervisor-dashboard">
+
+    <!-- Voile sombre pour menu mobile -->
+    <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Fermer le menu" data-i18n-aria-label="close_menu" hidden></button>
+
+    <!-- Sidebar fixe Superviseur (Bleu nuit moderne) -->
+    <aside class="sidebar" id="supervisorSidebar" aria-label="Navigation principale">
+        <div class="brand">
+            <div class="brand-logo-container">
+                <img class="supervisor-brand-logo" src="assa-ac_LOGO.png" alt="ASSA-AC — Agence de Supervision de la Sécurité Aérienne en Afrique Centrale">
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">ASSA‑AC</span>
+                <span class="brand-sub">Supervision</span>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li class="active">
+                    <a href="Acceuil_Superviseur.html">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span data-i18n="dashboard">Tableau de Bord</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="operations.html">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span data-i18n="sensitive_ops">Opérations Sensibles</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="messagerieSuperviseur.html">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span data-i18n="messaging">Messagerie</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="parametres_Superviseur.html">
+                        <i class="fa-solid fa-gear"></i>
+                        <span data-i18n="settings">Paramètres</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="btn-danger" type="button" onclick="window.location.href='index.html'">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span data-i18n="logout">Déconnexion</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Conteneur Principal -->
+    <div class="main-wrapper">
+        
+        <!-- En-tête / Topbar moderne -->
+        <header class="topbar" role="banner">
+            <div class="topbar-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-controls="supervisorSidebar" aria-expanded="false" aria-label="Ouvrir le menu" data-i18n-aria-label="open_menu">
+                    <i class="fa-solid fa-bars" aria-hidden="true"></i>
+                </button>
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="globalSearchInput" placeholder="Rechercher une fonctionnalité, une opération..." data-i18n-placeholder="search_feature_placeholder">
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <!-- Bascule Mode Sombre / Clair -->
+                <button id="toggleTheme" type="button" class="icon-btn" aria-pressed="false" title="Passer au mode sombre" aria-label="Changer le thème">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- Notifications -->
+                <div class="notif-wrapper" title="Notifications" aria-live="polite">
+                    <button class="icon-btn" type="button" aria-label="Notifications" data-i18n-aria-label="notifications">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span class="notif-badge">3</span>
+                    </button>
+                </div>
+
+                <!-- Sélecteur de Langue -->
+                <button id="toggleLang" type="button" class="lang-btn" aria-pressed="false" title="Changer la langue" data-i18n-title="change_language">
+                    <i class="fa-solid fa-language" aria-hidden="true"></i>
+                    <span id="langLabel">FR</span>
+                    <i class="fa-solid fa-chevron-down lang-chevron"></i>
+                </button>
+
+                <!-- Avatar & Menu Profil -->
+                <div class="avatar-wrapper" id="userMenu" aria-haspopup="true">
+                    <button class="avatar-btn" aria-expanded="false" type="button" aria-label="Ouvrir le menu du profil" data-i18n-aria-label="profile_menu">
+                        <span class="avatar" id="supervisorAvatar">SA</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown" role="menu" aria-hidden="true">
+                        <button class="dropdown-item" type="button" data-action="profile">
+                            <i class="fa-solid fa-user"></i> Profil
+                        </button>
+                        <button class="dropdown-item" type="button" data-action="settings">
+                            <i class="fa-solid fa-gear"></i> Paramètres
+                        </button>
+                        <button class="dropdown-item text-danger" type="button" data-action="logout">
+                            <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Contenu du tableau de bord -->
+        <main class="dashboard">
+            
+            <!-- Titre de la page et widget de date -->
+            <div class="page-header-row">
+                <div class="page-title-group">
+                    <h2 class="page-title" data-i18n="global_stats">Statistiques Globales</h2>
+                    <p class="page-subtitle" data-i18n="global_stats_desc">Vue d’ensemble des activités et des opérations de supervision.</p>
+                </div>
+                <div class="date-badge" id="currentDateBadge">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span id="currentDateText">16 oct. 2026</span>
+                    <i class="fa-solid fa-chevron-down date-chevron"></i>
+                </div>
+            </div>
+
+            <!-- Grille des 4 cartes de statistiques -->
+            <section class="stats-grid" aria-label="Statistiques globales de la plateforme">
+                <!-- Carte 1 : Compagnies -->
+                <div class="stat-card stat-card-companies" aria-busy="true">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label" data-i18n="companies">Compagnies</span>
+                        <span class="stat-value" data-stat="companies" aria-live="polite">...</span>
+                    </div>
+                </div>
+
+                <!-- Carte 2 : Factures -->
+                <div class="stat-card stat-card-invoices" aria-busy="true">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-file-invoice"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label" data-i18n="invoices">Factures</span>
+                        <span class="stat-value" data-stat="invoices" aria-live="polite">...</span>
+                    </div>
+                </div>
+
+                <!-- Carte 3 : Contestations -->
+                <div class="stat-card stat-card-disputes" aria-busy="true">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-file-circle-exclamation"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label" data-i18n="disputes">Contestations</span>
+                        <span class="stat-value" data-stat="disputes" aria-live="polite">...</span>
+                    </div>
+                </div>
+
+                <!-- Carte 4 : Validées -->
+                <div class="stat-card stat-card-validated" aria-busy="true">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label" data-i18n="validated">Validées</span>
+                        <span class="stat-value" data-stat="validated" aria-live="polite">...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Message d'alerte en cas de chargement partiel -->
+            <p id="statsLoadStatus" class="stats-load-status" role="status" aria-live="polite" hidden></p>
+
+            <!-- Section "Dernières Activités" -->
+            <section class="table-wrap" aria-labelledby="activitySectionTitle">
+                <div class="table-header">
+                    <div class="table-title-group">
+                        <div class="table-icon-badge">
+                            <i class="fa-regular fa-clock"></i>
+                        </div>
+                        <div>
+                            <h3 id="activitySectionTitle" data-i18n="recent_activities">Dernières Activités</h3>
+                            <p class="activity-subtitle" data-i18n="recent_activities_description">Liste des actions récentes sur la plateforme.</p>
+                        </div>
+                    </div>
+                    <div class="table-actions">
+                        <button id="toggleFilterBtn" class="filter-toggle-btn" type="button">
+                            <i class="fa-solid fa-filter"></i>
+                            <span data-i18n="filter">Filtrer</span>
+                            <i class="fa-solid fa-chevron-down filter-chevron"></i>
+                        </button>
+                        <button id="refreshActivitiesBtn" class="btn-refresh" type="button" title="Actualiser les données" data-i18n-title="refresh">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Barre d'outils filtrage rétractable -->
+                <div class="table-toolbar" id="tableToolbar" hidden>
+                    <div class="toolbar-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="activitySearchInput" type="text" placeholder="Rechercher par agent, action, cible..." data-i18n-placeholder="search_activity">
+                    </div>
+                    <select id="activityActionSelect" class="toolbar-select" aria-label="Filtrer par action">
+                        <option value="all" data-i18n="all_actions">Toutes les actions</option>
+                        <option value="connexion" data-i18n="action_login">Connexion</option>
+                        <option value="creation" data-i18n="action_created">Création</option>
+                        <option value="modification" data-i18n="action_updated">Modification</option>
+                        <option value="suppression" data-i18n="action_deleted">Suppression</option>
+                        <option value="validation" data-i18n="action_validated">Validation</option>
+                        <option value="rejet" data-i18n="action_rejected">Rejet</option>
+                    </select>
+                    <span id="activityCount" class="toolbar-count"></span>
+                </div>
+
+                <!-- Tableau lisible avec défilement fluide -->
+                <div class="activity-table-scroll">
+                    <table class="ops-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" data-i18n="activity_agent">Admin / Agent</th>
+                                <th scope="col" data-i18n="activity_action">Action</th>
+                                <th scope="col" data-i18n="activity_target">Cible</th>
+                                <th scope="col" data-i18n="activity_date">Date</th>
+                                <th scope="col" style="width: 44px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody aria-busy="true">
+                            <tr class="activity-skeleton-row"><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td><td></td></tr>
+                            <tr class="activity-skeleton-row"><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td><td></td></tr>
+                            <tr class="activity-skeleton-row"><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td><td></td></tr>
+                            <tr class="activity-skeleton-row"><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td><td></td></tr>
+                            <tr class="activity-skeleton-row"><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td><td></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Volet latéral des détails d'une activité -->
+    <aside id="detailPanel" class="detail-panel" aria-label="Détails de l'activité">
+        <div class="detail-head">
+            <h3>Détails de l'activité</h3>
+            <button id="closeDetail" class="icon-btn" type="button" aria-label="Fermer les détails" data-i18n-aria-label="close_details">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="detail-body">
+            <dl>
+                <dt>Agent :</dt>
+                <dd id="det-agent">—</dd>
+                <dt>Action :</dt>
+                <dd id="det-action">—</dd>
+                <dt>ID Cible :</dt>
+                <dd id="det-id">—</dd>
+                <dt>Date :</dt>
+                <dd id="det-date">—</dd>
+            </dl>
+            <div class="detail-card">
+                <strong>Commentaire :</strong>
+                <p style="margin-top: 6px;">Action enregistrée et sécurisée dans le journal d'audit de la plateforme ASSA-AC.</p>
+            </div>
+        </div>
+        <div class="detail-actions">
+            <button class="btn-outline" type="button" data-close-detail data-i18n="close">Fermer</button>
+        </div>
+    </aside>
+
+    <!-- Scripts -->
+    <script src="langSwitch.js"></script>
+    <script src="superviseurCommon.js"></script>
+    <script src="Acceuil_Superviseur.js"></script>
+</body>
+
+</html>

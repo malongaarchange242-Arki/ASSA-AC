@@ -4,6 +4,30 @@ import { v4 as uuidv4 } from 'uuid';
 const ATTACH_BUCKET = 'Attachement_message';
 const getRoomKey = (adminId, companyId) => `${adminId}:${companyId}`;
 const getCompanyRoomKey = (companyId) => `company:${companyId}`;
+const isOperator = user => user?.role === 'operateur';
+
+async function getActiveCompanyIds() {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('id, status');
+  if (error) throw error;
+
+  return (data || [])
+    .filter(company => ['actif', 'active'].includes(
+      String(company.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+    ))
+    .map(company => String(company.id));
+}
+
+async function ensureOperatorCompanyAccess(user, companyId) {
+  if (!isOperator(user)) return;
+  const activeCompanyIds = await getActiveCompanyIds();
+  if (!activeCompanyIds.includes(String(companyId))) {
+    const error = new Error('Accès autorisé uniquement aux conversations des compagnies actives');
+    error.statusCode = 403;
+    throw error;
+  }
+}
 
 // ---------------------------
 // Utils
@@ -39,6 +63,7 @@ export const getMessagesHistory = async (req, res) => {
 
     const companyId = req.query.id_companie || user.id_companie || user.company_id;
     if (!companyId) return res.status(400).json({ message: 'id_companie requis' });
+    await ensureOperatorCompanyAccess(user, companyId);
 
     const { data: messages, error } = await supabase
       .from('messages')
@@ -70,7 +95,7 @@ export const getMessagesHistory = async (req, res) => {
 
   } catch (err) {
     console.error('getMessagesHistory error:', err);
-    res.status(500).json({ message: 'Erreur historique', erreur: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message || 'Erreur historique' });
   }
 };
 
@@ -89,18 +114,27 @@ export const markMessagesAsRead = async (req, res) => {
       return res.status(400).json({ message: 'companyId requis' });
     }
 
-    // ADMIN uniquement
-    if (!['Admin', 'admin'].includes(user.role)) {
+    const role = String(user.role || '').toLowerCase();
+    const isAdmin = ['admin', 'administrateur'].includes(role);
+    const isOperatorUser = isOperator(user);
+    if (!isAdmin && !isOperatorUser) {
       return res.status(403).json({ message: 'Accès refusé' });
     }
 
-    const { error } = await supabase
+    let query = supabase
       .from('messages')
       .update({ is_read: true })
       .eq('id_companie', companyId)
-      .eq('admin_id', user.id)
       .eq('sender_role', 'company')
       .eq('is_read', false);
+
+    if (isAdmin) {
+      query = query.eq('admin_id', user.id);
+    } else {
+      await ensureOperatorCompanyAccess(user, companyId);
+    }
+
+    const { error } = await query;
 
     if (error) throw error;
 
@@ -108,7 +142,7 @@ export const markMessagesAsRead = async (req, res) => {
 
   } catch (err) {
     console.error('markMessagesAsRead error:', err);
-    res.status(500).json({ message: 'Erreur marquage messages' });
+    res.status(err.statusCode || 500).json({ message: err.message || 'Erreur marquage messages' });
   }
 };
 
@@ -123,7 +157,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       return res.status(401).json({ message: "Token invalide ou expiré" });
     }
 
-    // Vérification rôle
+    const isOperatorUser = isOperator(user);
     const isCompany = user.role === 'company';
     console.log('👤 User role:', user.role, '| isCompany:', isCompany);
 
@@ -133,13 +167,16 @@ export const postMessage = async (req, res, broadcastToRoom) => {
     if (!companyId) {
       return res.status(400).json({ message: "id_companie requis" });
     }
+    await ensureOperatorCompanyAccess(user, companyId);
 
     // Contenu texte
     const content = req.body.content ? req.body.content.trim() : "";
 
     // Trouver l'admin si c’est une compagnie
-    const adminId = isCompany ? await findAdminForCompany(companyId) : user.id;
-    if (isCompany && !adminId) {
+    const adminId = isCompany || isOperatorUser
+      ? await findAdminForCompany(companyId)
+      : user.id;
+    if ((isCompany || isOperatorUser) && !adminId) {
       return res.status(400).json({ message: "Aucun admin trouvé pour cette compagnie" });
     }
 
@@ -151,7 +188,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
     // Insertion DB
     const insertObj = {
       id_companie: companyId,
-      sender_role: isCompany ? "company" : "admin",
+      sender_role: isCompany ? "company" : isOperatorUser ? "operateur" : "admin",
       content,
       admin_id: adminId,
       is_read: false // 🔥 IMPORTANT
@@ -180,7 +217,8 @@ export const postMessage = async (req, res, broadcastToRoom) => {
         try {
           const ext = file.originalname.split(".").pop() || "bin";
           const filename = `${uuidv4()}.${ext}`;
-          const storagePath = `${isCompany ? "companies" : "admins"}/${companyId}/${msg.id}/${filename}`;
+          const senderFolder = isCompany ? 'companies' : isOperatorUser ? 'operators' : 'admins';
+          const storagePath = `${senderFolder}/${companyId}/${msg.id}/${filename}`;
           console.log('📤 Uploading file:', filename, 'path:', storagePath);
 
           // Upload storage
@@ -262,7 +300,7 @@ export const postMessage = async (req, res, broadcastToRoom) => {
 
   } catch (err) {
     console.error("❌ postMessage error:", err.message, err);
-    res.status(500).json({
+    res.status(err.statusCode || 500).json({
       message: "Erreur envoi message",
       erreur: err.message,
       details: err.details || err.hint || 'No additional details'
@@ -359,7 +397,7 @@ export const countUnreadMessagesAdmin = async (req, res) => {
       .from('messages')
       .select('*', { count: 'exact', head: true })
       .eq('admin_id', adminId)
-      .eq('sender_role', 'company')
+      .in('sender_role', ['company', 'operateur'])
       .eq('is_read', false);
 
     if (error) throw error;
@@ -367,7 +405,8 @@ export const countUnreadMessagesAdmin = async (req, res) => {
     res.json({ unread: count || 0 });
 
   } catch (err) {
-    res.status(500).json({ unread: 0 });
+    console.error('countUnreadMessagesAdmin error:', err);
+    res.status(500).json({ message: 'Erreur récupération des messages non lus' });
   }
 };
 
@@ -379,7 +418,7 @@ export const countUnreadMessagesCompany = async (req, res) => {
       .from('messages')
       .select('*', { count: 'exact', head: true })
       .eq('id_companie', companyId)
-      .eq('sender_role', 'admin')
+      .in('sender_role', ['admin', 'operateur'])
       .eq('is_read', false);
 
     if (error) throw error;
@@ -387,6 +426,27 @@ export const countUnreadMessagesCompany = async (req, res) => {
     res.json({ unread: count || 0 });
 
   } catch (err) {
-    res.status(500).json({ unread: 0 });
+    console.error('countUnreadMessagesCompany error:', err);
+    res.status(500).json({ message: 'Erreur récupération des messages non lus' });
+  }
+};
+
+export const countUnreadMessagesOperator = async (req, res) => {
+  try {
+    const activeCompanyIds = await getActiveCompanyIds();
+    if (activeCompanyIds.length === 0) return res.json({ unread: 0 });
+
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .in('id_companie', activeCompanyIds)
+      .eq('sender_role', 'company')
+      .eq('is_read', false);
+
+    if (error) throw error;
+    res.json({ unread: count || 0 });
+  } catch (err) {
+    console.error('countUnreadMessagesOperator error:', err);
+    res.status(500).json({ message: 'Erreur récupération des messages non lus' });
   }
 };

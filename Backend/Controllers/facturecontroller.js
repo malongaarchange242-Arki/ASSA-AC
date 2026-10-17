@@ -105,10 +105,13 @@ export const generateNumeroFacture = async (compagnieId, dateStr) => {
 // ===============================================================
 // Helper : Envoyer un email de facture
 // ===============================================================
-const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
+const sendInvoiceEmail = async (to, numero_facture, montant_total, invoicePdf) => {
   const port = Number(process.env.SMTP_PORT);
   if (!process.env.SMTP_HOST || !port || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error('Configuration SMTP incomplète');
+  }
+  if (!Buffer.isBuffer(invoicePdf) || invoicePdf.length === 0) {
+    throw new Error('Le PDF de la facture est vide ou invalide');
   }
 
   const transporter = nodemailer.createTransport({
@@ -125,14 +128,20 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total) => {
     from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
     to,
     subject: `Nouvelle facture : ${numero_facture}`,
-    text: `Bonjour, une nouvelle facture ${numero_facture} a été générée pour un montant total de ${montant_total}.`,
+    text: `Bonjour,\n\nVeuillez trouver en pièce jointe la facture ${numero_facture}, d'un montant total de ${montant_total} XAF.\n\nCordialement,\nASSA-AC`,
     html: `
       <p>Bonjour,</p>
       <p>Une nouvelle facture <strong>${numero_facture}</strong> a été générée.</p>
       <p>Montant : <strong>${montant_total}</strong> XAF</p>
+      <p>La facture est jointe à ce courriel au format PDF.</p>
       <br>
       <p>Cordialement,<br><strong>ASSA-AC</strong></p>
-    `
+    `,
+    attachments: [{
+      filename: `facture-${String(numero_facture).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`,
+      content: invoicePdf,
+      contentType: 'application/pdf'
+    }]
   };
 
   const info = await transporter.sendMail(mailOptions);
@@ -325,7 +334,8 @@ export const createFacture = async (req, res) => {
     let emailNotificationStatus = 'not_sent';
     try {
       if (company?.email) {
-        const emailInfo = await sendInvoiceEmail(company.email, numero_facture, montant_total);
+        const invoicePdf = await generateInvoicePdf(factureData, lignes || []);
+        const emailInfo = await sendInvoiceEmail(company.email, numero_facture, montant_total, invoicePdf);
         emailNotificationStatus = 'smtp_accepted';
         console.info('SMTP a accepté la notification de facture', {
           to: company.email,
@@ -379,8 +389,8 @@ export const createFacture = async (req, res) => {
 // ===============================================================
 export const submitFactureForValidation = async (req, res) => {
   try {
-    const role = req.user?.role;
-    if (!['Operateur', 'Operator'].includes(role)) return res.status(403).json({ message: 'Action réservée aux opérateurs' });
+    const role = String(req.user?.role || '').trim().toLowerCase();
+    if (!['operateur', 'operator'].includes(role)) return res.status(403).json({ message: 'Action réservée aux opérateurs' });
 
     const numero = req.params.numero_facture;
     if (!numero) return res.status(400).json({ message: 'numero_facture requis' });
@@ -395,13 +405,29 @@ export const submitFactureForValidation = async (req, res) => {
     if (fErr) throw fErr;
     if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
 
+    const submittedAt = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from('factures')
+      .update({ daf_status: 'pending', submitted_to_daf_at: submittedAt })
+      .eq('numero_facture', numero);
+
+    if (updateError) throw updateError;
+
     // Journaliser la soumission
     await logActivite({
       module: 'Factures', type_activite: 'submit', categorie: 'Facture', reference: numero,
-      description: `Soumission de la facture ${numero} au DAF pour validation`, id_admin: req.user?.id, id_companie: facture.id_companie
+      description: `Soumission de la facture ${numero} au DAF pour validation`,
+      id_companie: facture.id_companie,
+      utilisateur_nom: req.user?.nom_complet || req.user?.name || 'Opérateur',
+      utilisateur_email: req.user?.email || null
     });
 
-    res.status(200).json({ success: true, message: 'Facture soumise au DAF' });
+    res.status(200).json({
+      success: true,
+      message: 'Facture soumise au DAF',
+      daf_status: 'pending',
+      submitted_to_daf_at: submittedAt
+    });
   } catch (err) {
     console.error('submitFactureForValidation error:', err);
     res.status(500).json({ message: 'Erreur soumission facture', error: err.message });
@@ -413,16 +439,20 @@ export const submitFactureForValidation = async (req, res) => {
 // ===============================================================
 export const validateFacture = async (req, res) => {
   try {
-    const role = req.user?.role;
-    if (!['Superviseur', 'DAF'].includes(role)) return res.status(403).json({ message: 'Action réservée au DAF' });
+    const role = String(req.user?.role || '').trim().toLowerCase();
+    if (!['superviseur', 'daf', 'super_directeur'].includes(role)) return res.status(403).json({ message: 'Action réservée au DAF' });
 
     const numero = req.params.numero_facture;
     if (!numero) return res.status(400).json({ message: 'numero_facture requis' });
 
-    // Update validated_by and validated_at
+    // Update the DAF workflow status separately from the payment status.
     const { data, error } = await supabase
       .from('factures')
-      .update({ validated_by: req.user?.id, validated_at: new Date().toISOString() })
+      .update({
+        validated_by: req.user?.id,
+        validated_at: new Date().toISOString(),
+        daf_status: 'validated'
+      })
       .eq('numero_facture', numero)
       .select()
       .single();
@@ -446,17 +476,27 @@ export const validateFacture = async (req, res) => {
 // ===============================================================
 export const rejectFacture = async (req, res) => {
   try {
-    const role = req.user?.role;
-    if (!['Superviseur', 'DAF'].includes(role)) return res.status(403).json({ message: 'Action réservée au DAF' });
+    const role = String(req.user?.role || '').trim().toLowerCase();
+    if (!['superviseur', 'daf', 'super_directeur'].includes(role)) return res.status(403).json({ message: 'Action réservée au DAF' });
 
     const numero = req.params.numero_facture;
     const { reason } = req.body;
     if (!numero) return res.status(400).json({ message: 'numero_facture requis' });
 
+    const { data: facture, error: updateError } = await supabase
+      .from('factures')
+      .update({ daf_status: 'rejected' })
+      .eq('numero_facture', numero)
+      .select('id_companie')
+      .maybeSingle();
+
+    if (updateError) throw updateError;
+    if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
+
     // Journaliser le rejet
     await logActivite({
       module: 'Factures', type_activite: 'reject', categorie: 'Facture', reference: numero,
-      description: `Rejet de la facture ${numero} par DAF. Motif: ${reason || 'non précisé'}`, id_admin: req.user?.id
+      description: `Rejet de la facture ${numero} par DAF. Motif: ${reason || 'non précisé'}`, id_admin: req.user?.id, id_companie: facture.id_companie
     });
 
     res.status(200).json({ success: true, message: 'Facture rejetée' });
@@ -574,13 +614,16 @@ export const getInvoicesByCompany = async (req, res) => {
       .select("*");
 
     const contestMap = {};
+    const invoiceIdByNumber = new Map(invoices.map(f => [f.numero_facture, f.id]));
     contestations?.forEach(c => {
       const fichiers = Array.isArray(c.fichiers) ? c.fichiers : [];
 
-      contestMap[c.facture_id] = {
+      contestMap[c.numero_facture] = {
+        facture_id: invoiceIdByNumber.get(c.numero_facture) || null,
+        numero_facture: c.numero_facture,
         explication: c.explication,
-        statut: c.statut,
-        date_contestation: c.date_contestation,
+        statut: c.status,
+        date_contestation: c.created_at,
         fichiers,
         fichier_url: fichiers.length ? fichiers[0].file_url : null,
         file_name: fichiers.length ? fichiers[0].file_name : null
@@ -592,14 +635,18 @@ export const getInvoicesByCompany = async (req, res) => {
     ======================================================== */
     const result = invoices.map(f => ({
       id: f.id,
+      id_companie: f.id_companie,
       numero_facture: f.numero_facture,
       date: f.date_emission || "",
       amount: Number(f.montant_total || 0),
       status: f.statut || "Impayée",
+      daf_status: f.daf_status || 'not_submitted',
+      submitted_to_daf_at: f.submitted_to_daf_at || null,
+      validated_at: f.validated_at || null,
       due_date: f.date_limite || "",
       client: f.nom_client,
       preuve_paiement_url: proofMap[f.numero_facture] || null,
-      contestation: contestMap[f.id] || null
+      contestation: contestMap[f.numero_facture] || null
     }));
 
     return res.status(200).json(result);
@@ -887,16 +934,18 @@ const sendPaymentConfirmationEmail = async (
   montant_total,
   company_name
 ) => {
+  const port = Number(process.env.SMTP_PORT);
+  if (!process.env.SMTP_HOST || !port || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('Configuration SMTP incomplète');
+  }
+
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: false,
+    port,
+    secure: port === 465,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
-    },
-    tls: {
-      rejectUnauthorized: false
     }
   });
 
@@ -935,7 +984,21 @@ ASSA-AC
     `
   };
 
-  return transporter.sendMail(mailOptions);
+  const info = await transporter.sendMail(mailOptions);
+  const recipientAccepted = (info.accepted || []).some(
+    recipient => String(recipient).trim().toLowerCase() === to.trim().toLowerCase()
+  );
+
+  if (!recipientAccepted) {
+    const rejection = (info.rejected || []).map(String).join(', ');
+    throw new Error(`Le serveur SMTP n'a pas accepté le destinataire${rejection ? ` : ${rejection}` : ''}`);
+  }
+
+  return {
+    messageId: info.messageId,
+    response: info.response,
+    accepted: info.accepted
+  };
 };
 
 
@@ -985,13 +1048,25 @@ export const confirmerFacture = async (req, res) => {
     ======================================================== */
     const { data: company, error: companyError } = await supabase
       .from("companies")
-      .select("company_name, email")
+      .select("company_name, email, id_admin")
       .eq("id", facture.id_companie)
       .single();
 
     if (companyError) {
       console.warn("⚠ Erreur récupération compagnie :", companyError.message);
     }
+
+    const { data: actorAdmin, error: actorAdminError } = await supabase
+      .from("admins")
+      .select("id")
+      .eq("id", req.user?.id)
+      .maybeSingle();
+
+    if (actorAdminError) {
+      console.warn("⚠ Erreur vérification de l'administrateur exécutant :", actorAdminError.message);
+    }
+
+    const auditAdminId = actorAdmin?.id || company?.id_admin || null;
 
     /* =======================================================
        5️⃣ JOURNAL D’ACTIVITÉ
@@ -1002,7 +1077,7 @@ export const confirmerFacture = async (req, res) => {
       categorie: "Facture",
       reference: numero_facture,
       description: `Confirmation du paiement de la facture ${numero_facture}`,
-      id_admin: req.user.id,
+      id_admin: auditAdminId,
       id_companie: facture.id_companie,
       utilisateur_nom:
         req.user.nom_complet ||
@@ -1024,7 +1099,7 @@ export const confirmerFacture = async (req, res) => {
       compagnie_nom: company?.company_name || null,
       montant: facture.montant_total,
       statut: "Payée",
-      admin_id: req.user.id,
+      admin_id: auditAdminId,
       admin_nom:
         req.user.nom_complet ||
         req.user.nom ||
@@ -1038,17 +1113,30 @@ export const confirmerFacture = async (req, res) => {
     /* =======================================================
        7️⃣ ENVOI EMAIL (NON BLOQUANT)
     ======================================================== */
+    let emailStatus = "not_sent";
+    let emailMessage = "Le paiement est confirmé, mais aucun e-mail de confirmation n'a été envoyé.";
     try {
       if (company?.email) {
-        await sendPaymentConfirmationEmail(
+        const mailInfo = await sendPaymentConfirmationEmail(
           company.email,
           numero_facture,
           facture.montant_total,
           company.company_name
         );
-        console.log("📧 Email confirmation paiement envoyé à", company.email);
+        emailStatus = "accepted_by_smtp";
+        emailMessage = "Le serveur SMTP a accepté l'e-mail. Sa livraison dans la boîte de réception n'est pas confirmée; vérifiez aussi les courriers indésirables.";
+        console.info("📨 Confirmation de paiement acceptée par SMTP :", {
+          destinataire: company.email,
+          messageId: mailInfo.messageId,
+          response: mailInfo.response
+        });
+      } else {
+        emailStatus = "missing_recipient";
+        emailMessage = "Le paiement est confirmé, mais la compagnie n'a pas d'adresse e-mail configurée.";
       }
     } catch (mailErr) {
+      emailStatus = "failed";
+      emailMessage = "Le paiement est confirmé, mais l'envoi de l'e-mail a échoué. Consultez les journaux du serveur.";
       console.error("❌ Erreur envoi email confirmation :", mailErr.message);
     }
 
@@ -1057,7 +1145,9 @@ export const confirmerFacture = async (req, res) => {
     ======================================================== */
     return res.status(200).json({
       success: true,
-      message: "Facture confirmée et notification envoyée",
+      message: "Paiement confirmé.",
+      email_status: emailStatus,
+      email_message: emailMessage,
       facture: updatedFacture
     });
 

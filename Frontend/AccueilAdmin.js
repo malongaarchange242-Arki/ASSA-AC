@@ -3,6 +3,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
 
+    function updateThemeToggleLabel() {
+        if (!themeToggle) return;
+        const label = body.classList.contains('dark-mode')
+            ? t('theme_toggle_light')
+            : t('theme_toggle_dark');
+        themeToggle.title = label;
+        themeToggle.setAttribute('aria-label', label);
+    }
+
     // 2. Fonction pour appliquer le thème
     function applyTheme(theme) {
         if (theme === 'dark') {
@@ -11,7 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (themeToggle) {
                 // Icône Soleil pour passer au mode clair
                 themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                themeToggle.title = "Passer au Mode Clair";
             }
         } else {
             body.classList.remove('dark-mode');
@@ -19,9 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (themeToggle) {
                 // Icône Lune pour passer au mode sombre
                 themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-                themeToggle.title = "Passer au Mode Sombre";
             }
         }
+        updateThemeToggleLabel();
     }
 
     // 3. Détecter et appliquer le thème au chargement
@@ -43,6 +51,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             applyTheme(newTheme);
         });
     }
+
+    window.addEventListener('app-language-change', updateThemeToggleLabel);
 
 });
 

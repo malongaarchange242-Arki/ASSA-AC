@@ -21,3 +21,50 @@ body {
     color: #10b981; /* secondary (Emerald) */
     font-weight: 600;
 }
+
+.contestation-submit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+}
+
+.contestation-submit-button:disabled {
+    cursor: wait;
+    background-color: #9ca3af;
+    box-shadow: none;
+    opacity: 0.8;
+    transform: none;
+}
+
+.contestation-submit-button:disabled:hover {
+    background-color: #9ca3af;
+    box-shadow: none;
+    transform: none;
+}
+
+.contestation-submit-spinner {
+    width: 0.9rem;
+    height: 0.9rem;
+    flex: 0 0 auto;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: contestation-spinner-rotate 0.7s linear infinite;
+}
+
+.contestation-submit-spinner[hidden] {
+    display: none;
+}
+
+@keyframes contestation-spinner-rotate {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .contestation-submit-spinner {
+        animation-duration: 1.5s;
+    }
+}
