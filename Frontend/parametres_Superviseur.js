@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // try to discover an existing upload URL for identifiers like "superviseur:1"
     async function findExistingUploadForIdentifier(idString) {
         if (!idString) return null;
-        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
+        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'https://assa-ac-api.onrender.com'; } return 'https://assa-ac-api.onrender.com'; })();
         const m = String(idString).trim().match(/^([^:\/]+):(\d+)$/);
         if (!m) return null;
         const entity = m[1];
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadSuperviseur() {
         // try token-based API fetch
         const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
-        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
+        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'https://assa-ac-api.onrender.com'; } return 'https://assa-ac-api.onrender.com'; })();
 
         if (token) {
             try {
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBtn.innerText = 'Mise à jour en cours...';
 
             const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
-            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
+            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'https://assa-ac-api.onrender.com'; } return 'https://assa-ac-api.onrender.com'; })();
 
             const payload = {
                 nom_complet: fullNameInput ? fullNameInput.value.trim() : undefined,
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             changeBtn.setAttribute('aria-busy', 'true');
 
             const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
-            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
+            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'https://assa-ac-api.onrender.com'; } return 'https://assa-ac-api.onrender.com'; })();
 
             const res = await fetch(`${API_BASE}/api/superviseurs/me`, {
                 method: 'PUT',

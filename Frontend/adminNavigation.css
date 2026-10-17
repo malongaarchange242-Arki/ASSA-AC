@@ -2,16 +2,6 @@ html {
     background: var(--page);
 }
 
-::view-transition-old(root),
-::view-transition-new(root),
-::view-transition-group(admin-sidebar) {
-    animation: none;
-}
-
-.sidebar {
-    view-transition-name: admin-sidebar;
-}
-
 body.admin-navigating::before {
     position: fixed;
     z-index: 1000;
@@ -40,34 +30,5 @@ body.admin-navigating::before {
     .sidebar.sidebar-ready {
         animation: none;
         transition: none;
-    }
-}
-
-/* Seamless same-origin navigation between Admin documents (supported browsers). */
-@view-transition {
-    navigation: auto;
-}
-
-::view-transition-old(root) {
-    animation: admin-page-out 140ms ease-in both;
-}
-
-::view-transition-new(root) {
-    animation: admin-page-in 220ms ease-out both;
-}
-
-@keyframes admin-page-out {
-    to { opacity: 0.72; }
-}
-
-@keyframes admin-page-in {
-    from { opacity: 0.72; }
-    to { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-        animation: none;
     }
 }

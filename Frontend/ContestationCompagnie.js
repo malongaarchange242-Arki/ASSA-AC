@@ -1,9 +1,9 @@
 const API_BASE = (() => {
     const origin = window.location.origin;
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return 'http://localhost:5002';
+        return 'https://assa-ac-api.onrender.com';
     }
-    return 'http://localhost:5002';
+    return 'https://assa-ac-api.onrender.com';
 })();
 let SERVER_INVOICES = [];
 
@@ -114,7 +114,7 @@ async function renderContestationsView() {
         });
     } catch (e) {
         // 🔁 fallback local
-        base = 'http://localhost:5002';
+        base = 'https://assa-ac-api.onrender.com';
         url = `${base}/api/factures/company`;
         resp = await fetch(url, {
             headers: { Authorization: `Bearer ${token}` }
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: fd 
                     });
                 } catch (e) {
-                    resp = await fetch(`http://localhost:5002/api/contestations/upload_contestation`, { 
+                    resp = await fetch(`https://assa-ac-api.onrender.com/api/contestations/upload_contestation`, { 
                         method: 'POST', 
                         headers: { 'Authorization': `Bearer ${token}` }, 
                         body: fd 

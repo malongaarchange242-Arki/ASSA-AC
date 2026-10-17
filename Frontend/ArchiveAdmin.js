@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const TOKEN_KEY = 'jwtTokenAdmin';
     const REFRESH_KEY = 'refreshTokenAdmin';
-    const API_BASE = 'http://localhost:5002';
+    const API_BASE = 'https://assa-ac-api.onrender.com';
 
     /* =====================================================
        AUTH

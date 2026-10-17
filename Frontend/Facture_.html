@@ -2,6 +2,7 @@
 <html lang="fr">
 
 <head>
+    <link rel="icon" type="image/png" href="assa-ac_LOGO.png">
     <meta charset="UTF-8">
     <title>MKC Invoice - Original Design</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -409,7 +410,7 @@
             if (params.invoice_id) {
                 (async () => {
                     try {
-                        const API_BASE = (window && window.__API_BASE__) || 'http://localhost:5002';
+                        const API_BASE = (window && window.__API_BASE__) || 'https://assa-ac-api.onrender.com';
                         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                         const res = await fetch(`${API_BASE}/api/client/invoices/${encodeURIComponent(params.invoice_id)}`, { headers });

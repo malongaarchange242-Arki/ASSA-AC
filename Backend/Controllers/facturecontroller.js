@@ -1,9 +1,9 @@
 // controllers/factureController.js
 import supabase from '../Config/db.js';
-import nodemailer from 'nodemailer';
 import { createArchive } from '../Services/archiveService.js';
 import { logActivite } from '../Services/journalService.js'; // ✅ AJOUT ICI
 import { generateInvoicePdf } from '../Services/invoicePdfService.js';
+import { sendEmail } from '../Services/emailService.js';
 
 
 
@@ -106,26 +106,11 @@ export const generateNumeroFacture = async (compagnieId, dateStr) => {
 // Helper : Envoyer un email de facture
 // ===============================================================
 const sendInvoiceEmail = async (to, numero_facture, montant_total, invoicePdf) => {
-  const port = Number(process.env.SMTP_PORT);
-  if (!process.env.SMTP_HOST || !port || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error('Configuration SMTP incomplète');
-  }
   if (!Buffer.isBuffer(invoicePdf) || invoicePdf.length === 0) {
     throw new Error('Le PDF de la facture est vide ou invalide');
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
-
-  const mailOptions = {
-    from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
+  const info = await sendEmail({
     to,
     subject: `Nouvelle facture : ${numero_facture}`,
     text: `Bonjour,\n\nVeuillez trouver en pièce jointe la facture ${numero_facture}, d'un montant total de ${montant_total} XAF.\n\nCordialement,\nASSA-AC`,
@@ -142,15 +127,13 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total, invoicePdf) =
       content: invoicePdf,
       contentType: 'application/pdf'
     }]
-  };
-
-  const info = await transporter.sendMail(mailOptions);
-  const recipientAccepted = info.accepted.some(
+  });
+  const recipientAccepted = (info.accepted || []).some(
     recipient => String(recipient).toLowerCase() === to.trim().toLowerCase()
   );
 
   if (!recipientAccepted) {
-    throw new Error(`Le serveur SMTP n'a pas accepté le destinataire ${to}`);
+    throw new Error(`Le fournisseur e-mail n'a pas accepté le destinataire ${to}`);
   }
 
   return info;
@@ -336,8 +319,9 @@ export const createFacture = async (req, res) => {
       if (company?.email) {
         const invoicePdf = await generateInvoicePdf(factureData, lignes || []);
         const emailInfo = await sendInvoiceEmail(company.email, numero_facture, montant_total, invoicePdf);
-        emailNotificationStatus = 'smtp_accepted';
-        console.info('SMTP a accepté la notification de facture', {
+        emailNotificationStatus = 'accepted_by_provider';
+        console.info('Fournisseur e-mail a accepté la notification de facture', {
+          provider: emailInfo.provider,
           to: company.email,
           messageId: emailInfo.messageId,
           response: emailInfo.response
@@ -934,23 +918,7 @@ const sendPaymentConfirmationEmail = async (
   montant_total,
   company_name
 ) => {
-  const port = Number(process.env.SMTP_PORT);
-  if (!process.env.SMTP_HOST || !port || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error('Configuration SMTP incomplète');
-  }
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
-
-  const mailOptions = {
-    from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
+  const info = await sendEmail({
     to,
     subject: `Confirmation de paiement – Facture ${numero_facture}`,
     text: `
@@ -982,19 +950,18 @@ ASSA-AC
         <strong>ASSA-AC</strong>
       </p>
     `
-  };
-
-  const info = await transporter.sendMail(mailOptions);
+  });
   const recipientAccepted = (info.accepted || []).some(
     recipient => String(recipient).trim().toLowerCase() === to.trim().toLowerCase()
   );
 
   if (!recipientAccepted) {
     const rejection = (info.rejected || []).map(String).join(', ');
-    throw new Error(`Le serveur SMTP n'a pas accepté le destinataire${rejection ? ` : ${rejection}` : ''}`);
+    throw new Error(`Le fournisseur e-mail n'a pas accepté le destinataire${rejection ? ` : ${rejection}` : ''}`);
   }
 
   return {
+    provider: info.provider,
     messageId: info.messageId,
     response: info.response,
     accepted: info.accepted
@@ -1123,9 +1090,10 @@ export const confirmerFacture = async (req, res) => {
           facture.montant_total,
           company.company_name
         );
-        emailStatus = "accepted_by_smtp";
-        emailMessage = "Le serveur SMTP a accepté l'e-mail. Sa livraison dans la boîte de réception n'est pas confirmée; vérifiez aussi les courriers indésirables.";
-        console.info("📨 Confirmation de paiement acceptée par SMTP :", {
+        emailStatus = "accepted_by_provider";
+        emailMessage = "Le fournisseur e-mail a accepté le message. Sa livraison dans la boîte de réception n'est pas confirmée; vérifiez aussi les courriers indésirables.";
+        console.info("📨 Confirmation de paiement acceptée par le fournisseur e-mail :", {
+          provider: mailInfo.provider,
           destinataire: company.email,
           messageId: mailInfo.messageId,
           response: mailInfo.response

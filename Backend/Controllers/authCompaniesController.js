@@ -2,10 +2,10 @@
 import jwt from 'jsonwebtoken';
 import supabase from '../Config/db.js';
 import bcrypt from 'bcryptjs';
-import nodemailer from 'nodemailer';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { isEmailConfigured, sendEmail } from '../Services/emailService.js';
 import {
   archiveCompanyService,
   restoreCompanyService,
@@ -26,45 +26,28 @@ const uploadLogo = multer({
 }).single('logo_url');
 
 
-// ----------------- Configuration Nodemailer -----------------
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: process.env.SMTP_SECURE === 'true', // true pour SSL (465), false pour STARTTLS (587)
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-const isSmtpConfigured = () => !!(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS);
-
-// Vérification SMTP au démarrage
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("SMTP non fonctionnel :", err.message);
-  } else {
-    console.log(" SMTP prêt : connexion réussie");
-  }
-});
-
 // ----------------- Génération OTP / mot de passe -----------------
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 const generateTempPassword = () => Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
 
 const sendFirstLoginEmail = async (to, otp, tempPassword) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"UniverseSearch" <${process.env.SMTP_USER}>`,
+    const info = await sendEmail({
+      from: process.env.EMAIL_FROM || `"ASSA-AC" <${process.env.SMTP_USER}>`,
       to,
       subject: 'Première connexion - ASSA-AC',
       text: `Bonjour,\n\nVotre code OTP : ${otp}\nMot de passe temporaire : ${tempPassword}\nValable 10 minutes.\n\nMerci.`
     });
 
-    console.log("📧 Email envoyé avec succès :", info);
+    console.info("📧 E-mail de première connexion accepté :", {
+      provider: info.provider,
+      messageId: info.messageId,
+      to
+    });
     return { success: true, info };
 
   } catch (err) {
-    console.error("❌ ERREUR SMTP :");
+    console.error("❌ ERREUR FOURNISSEUR E-MAIL :");
     console.error("Message :", err.message);
     console.error("Code :", err.code);
     console.error("Complet :", err);
@@ -130,14 +113,15 @@ export const requestFirstLoginOtp = async (req, res) => {
     // Envoi de l'email
     let emailSent = false;
 
-    if (isSmtpConfigured()) {
+    if (isEmailConfigured()) {
       try {
-        emailSent = await sendFirstLoginEmail(email, otp, tempPassword);
+        const emailResult = await sendFirstLoginEmail(email, otp, tempPassword);
+        emailSent = emailResult.success;
       } catch (mailErr) {
         console.error("❌ Erreur d'envoi email :", mailErr.message);
       }
     } else {
-      console.warn("⚠️ SMTP non configuré, email non envoyé.");
+      console.warn("⚠️ Fournisseur e-mail non configuré, e-mail non envoyé.");
     }
 
     // Log activité

@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         activityList.setAttribute('aria-busy', 'true');
         try {
             const response = await fetch(
-                'http://localhost:5002/api/journal/recent?limit=50',
+                'https://assa-ac-api.onrender.com/api/journal/recent?limit=50',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 

@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = (() => {
         const origin = window.location.origin;
         if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-            return 'http://localhost:5002';
+            return 'https://assa-ac-api.onrender.com';
         }
-        return 'http://localhost:5002';
+        return 'https://assa-ac-api.onrender.com';
     })();
 
     // ==========================
@@ -40,9 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEmail = '';
     let currentRole = '';
     let isChecking = false;
+    let isLoggingIn = false;
     let typingTimer;
     const doneTypingInterval = 300;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+    function setLoginLoading(isLoading) {
+        mainButton.disabled = isLoading;
+        mainButton.setAttribute('aria-busy', String(isLoading));
+        mainButton.classList.toggle('is-loading', isLoading);
+        if (isLoading) {
+            mainButton.innerHTML = '<span class="login-spinner" aria-hidden="true"></span><span>Connexion en cours...</span>';
+        } else {
+            mainButton.textContent = 'Se Connecter';
+        }
+    }
     
     // ==========================
     // GESTION DU MODE RÉINITIALISATION ET SIMULATION
@@ -316,12 +328,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 8. Connexion standard (Code original conservé)
     // ==========================
     async function loginStandard() {
+    if (isLoggingIn) return;
     const password = passwordInput.value.trim();
     if (!password) {
         alert('Veuillez entrer votre mot de passe.');
         return;
     }
 
+    isLoggingIn = true;
+    setLoginLoading(true);
     try {
         let url = '';
         let isCompany = false;
@@ -421,6 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
         console.error('❌ Erreur login :', err);
         alert(`Erreur login : ${err.message || 'Serveur indisponible'}`);
+    } finally {
+        isLoggingIn = false;
+        setLoginLoading(false);
     }
 }
 

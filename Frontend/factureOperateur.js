@@ -1,5 +1,5 @@
 // Simple operator-specific facture frontend script
-const API_URL = "http://localhost:5002";
+const API_URL = "https://assa-ac-api.onrender.com";
 const token = localStorage.getItem('jwtTokenOperateur');
 
 const role = (

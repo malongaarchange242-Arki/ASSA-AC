@@ -13,9 +13,9 @@ const ROUTE_MAP = {
 const API_BASE = (() => {
     const origin = window.location.origin;
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return 'http://localhost:5002';
+        return 'https://assa-ac-api.onrender.com';
     }
-    return 'http://localhost:5002';
+    return 'https://assa-ac-api.onrender.com';
 })();
 
 const WS_URL = (API_BASE.startsWith('https') ? 'wss://' : 'ws://') +

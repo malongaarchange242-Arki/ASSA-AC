@@ -1,23 +1,12 @@
 import supabase from '../Config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
-import nodemailer from 'nodemailer';
+import { sendEmail } from '../Services/emailService.js';
 
 // ================= Multer =================
 const storage = multer.memoryStorage();
 export const uploadMiddleware = multer({ storage }).single('file');
 
-
-// =============== SMTP Email ===============
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    }
-});
 
 // =============== Upload Preuve Paiement ===============
 
@@ -165,8 +154,7 @@ export const uploadPreuvesPaiement = async (req, res) => {
 
         if (adminData?.email) {
             try {
-                await transporter.sendMail({
-                    from: process.env.SMTP_USER,
+                const mailInfo = await sendEmail({
                     to: adminData.email,
                     subject: "Nouvelle preuve de paiement reçue",
                     html: `
@@ -176,9 +164,13 @@ export const uploadPreuvesPaiement = async (req, res) => {
                         <p>Veuillez vous connecter pour la valider.</p>
                     `
                 });
-                console.log("📨 Email envoyé !");
+                console.info("📨 E-mail de preuve de paiement accepté :", {
+                    provider: mailInfo.provider,
+                    messageId: mailInfo.messageId,
+                    to: adminData.email
+                });
             } catch (e) {
-                console.error("❌ ERREUR SMTP :", e);
+                console.error("❌ Échec de l’e-mail de preuve de paiement :", e);
             }
         } else {
             console.warn("⚠️ Aucun email admin trouvé !");

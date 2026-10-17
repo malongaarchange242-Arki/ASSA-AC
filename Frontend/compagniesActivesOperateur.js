@@ -1,4 +1,4 @@
-const OPERATOR_COMPANIES_API = 'http://localhost:5002/api/companies/all';
+const OPERATOR_COMPANIES_API = 'https://assa-ac-api.onrender.com/api/companies/all';
 
 document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');

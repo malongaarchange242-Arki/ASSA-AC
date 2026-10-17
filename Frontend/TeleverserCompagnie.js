@@ -2,9 +2,9 @@
 const API_BASE = (() => {
     const origin = window.location.origin;
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return 'http://localhost:5002';
+        return 'https://assa-ac-api.onrender.com';
     }
-    return 'http://localhost:5002';
+    return 'https://assa-ac-api.onrender.com';
 })();
 let SERVER_INVOICES = [];
 
@@ -33,7 +33,7 @@ async function loadCompanyInvoices() {
         try {
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         } catch (e) {
-            base = 'http://localhost:5002';
+            base = 'https://assa-ac-api.onrender.com';
             url = `${base}/api/factures/company`;
             resp = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
         }

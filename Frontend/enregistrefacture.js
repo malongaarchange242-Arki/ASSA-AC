@@ -1,5 +1,5 @@
 // ======================= CONSTANTES =======================
-const API_BASE = 'http://localhost:5002'; // Base URL pour tous les appels API
+const API_BASE = 'https://assa-ac-api.onrender.com'; // Base URL pour tous les appels API
 const INVOICE_TOKEN_KEY = document.body.dataset.userRole === 'operateur'
     ? 'jwtTokenOperateur'
     : 'jwtTokenAdmin';

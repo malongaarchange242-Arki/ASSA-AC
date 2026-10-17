@@ -1,7 +1,7 @@
 import supabase from '../Config/db.js';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import nodemailer from "nodemailer";
+import { sendEmail } from '../Services/emailService.js';
 
 // ================= Multer =================
 const storage = multer.memoryStorage();
@@ -22,20 +22,7 @@ const sendContestationEmail = async ({
       return;
     }
 
-    const port = Number(process.env.SMTP_PORT);
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure: port === 465,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
-
-    const mailOptions = {
-      from: `"ASSA-AC" <${process.env.SMTP_USER}>`,
+    const info = await sendEmail({
       to,
       subject: `⚠ Contestation de la facture ${numero_facture}`,
       text: `
@@ -80,10 +67,12 @@ ASSA-AC
           <strong>ASSA-AC</strong>
         </p>
       `
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log("📧 Email contestation envoyé :", info.messageId);
+    });
+    console.info("📧 E-mail de contestation accepté :", {
+      provider: info.provider,
+      messageId: info.messageId,
+      to
+    });
 
   } catch (error) {
     console.error("❌ ERREUR EMAIL CONTESTATION :", error);

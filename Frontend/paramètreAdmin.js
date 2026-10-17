@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Envoi API
             try {
-                const data = await fetchWithAdmin('http://localhost:5002/api/admins/update-password', {
+                const data = await fetchWithAdmin('https://assa-ac-api.onrender.com/api/admins/update-password', {
                     method: 'POST',
                     body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
                 });
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 // Note : Vérifiez si cette route API existe bien sur votre backend
-                const data = await fetchWithAdmin('http://localhost:5002/api/parametres', {
+                const data = await fetchWithAdmin('https://assa-ac-api.onrender.com/api/parametres', {
                     method: 'PUT',
                     body: JSON.stringify({ companyName, address, email })
                 });

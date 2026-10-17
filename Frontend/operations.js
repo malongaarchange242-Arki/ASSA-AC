@@ -292,9 +292,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const API_BASE = (() => {
             const origin = window.location.origin;
             if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-                return 'http://localhost:5002';
+                return 'https://assa-ac-api.onrender.com';
             }
-            return 'http://localhost:5002';
+            return 'https://assa-ac-api.onrender.com';
         })();
 
         const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenSuperviseur');
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (proofsEl) proofsEl.innerHTML = '<div class="notice">Chargement des preuves…</div>';
 
-        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
+        const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'https://assa-ac-api.onrender.com'; } return 'https://assa-ac-api.onrender.com'; })();
         const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
         const url = `${API_BASE}/api/preuves/by-facture/${encodeURIComponent(numero)}`;
 
@@ -739,7 +739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         tbody.setAttribute('aria-busy', 'true');
         tbody.replaceChildren();
         try {
-            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'http://localhost:5002'; } return 'http://localhost:5002'; })();
+            const API_BASE = (() => { const origin = window.location.origin; if (origin.includes('localhost') || origin.includes('127.0.0.1')) { return 'https://assa-ac-api.onrender.com'; } return 'https://assa-ac-api.onrender.com'; })();
             const token = localStorage.getItem('jwtTokenSuperviseur') || localStorage.getItem('jwtTokenAdmin') || localStorage.getItem('jwtToken');
             const url = `${API_BASE}/api/factures`;
             console.info('Fetching factures from API:', url);
