@@ -87,15 +87,10 @@
                         <i class="fas fa-filter"></i> Filtrer :
                     </div>
 
-                    <select class="report-select" title="Filtrer par mois"
-                        style="padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);" data-i18n-title="by_month">
-                        <option value="" data-i18n="by_month">Par mois</option>
-                        <option value="12" data-i18n="dec_2025">Décembre 2025</option>
-                        <option value="11" data-i18n="nov_2025">Novembre 2025</option>
-                        <option value="10" data-i18n="oct_2025">Octobre 2025</option>
-                    </select>
+                    <input type="month" class="report-select" id="filter-month" title="Mois / année"
+                        aria-label="Mois / année" data-i18n-title="month_year" data-i18n-aria-label="month_year">
 
-                    <select class="report-select" title="Filtrer par compagnie"
+                    <select class="report-select" id="filter-company" title="Filtrer par compagnie"
                         style="padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
                         <option value="" data-i18n="all_companies">Toutes compagnies</option>
                         <option>AfriTech Solutions</option>

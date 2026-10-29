@@ -437,6 +437,7 @@ function attachCompanyRowEvents() {
             }
 
             try {
+                const token = getToken();
                 const res = await fetch(
                     `https://assa-ac-api.onrender.com/api/companies/delete/${companyId}`,
                     {

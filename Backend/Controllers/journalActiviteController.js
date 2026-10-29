@@ -120,6 +120,64 @@ export const getActivitesByAdmin = async (req, res) => {
   }
 };
 
+export const getActivitesByOperateurConnecte = async (req, res) => {
+  const userId = req.user?.id;
+  const userEmail = req.user?.email;
+  if (!userId || !userEmail) {
+    return res.status(401).json({ message: 'Identité opérateur incomplète' });
+  }
+
+  try {
+    const [byIdResult, byEmailResult, operatorResult] = await Promise.all([
+      supabase
+        .from('journal_activite')
+        .select('*')
+        .eq('id_admin', userId)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('journal_activite')
+        .select('*')
+        .eq('utilisateur_email', userEmail)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('operateurs')
+        .select('nom, email')
+        .eq('id', userId)
+        .maybeSingle()
+    ]);
+
+    if (byIdResult.error) throw byIdResult.error;
+    if (byEmailResult.error) throw byEmailResult.error;
+    if (operatorResult.error) throw operatorResult.error;
+
+    const uniqueActivities = new Map();
+    [...(byIdResult.data || []), ...(byEmailResult.data || [])].forEach(activity => {
+      const key = activity.id || `${activity.created_at}:${activity.type_activite}:${activity.description}`;
+      uniqueActivities.set(String(key), activity);
+    });
+
+    const activites = [...uniqueActivities.values()]
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .slice(0, 10)
+      .map(activity => ({
+        ...activity,
+        utilisateur: operatorResult.data?.nom || userEmail,
+        role_utilisateur: 'Opérateur',
+        date_activite: activity.date_activite ?? activity.created_at ?? null
+      }));
+
+    return res.status(200).json({ success: true, activites });
+  } catch (err) {
+    console.error('Erreur récupération activités opérateur :', err);
+    return res.status(500).json({
+      message: 'Erreur récupération activités opérateur',
+      error: err.message
+    });
+  }
+};
+
 // ==========================
 // Activités par compagnie
 // ==========================

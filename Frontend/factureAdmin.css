@@ -1161,6 +1161,22 @@ body.invoice-view-open {
     opacity: 0.65;
 }
 
+.invoice-resend-spinner {
+    animation: invoice-resend-spin 0.8s linear infinite;
+}
+
+@keyframes invoice-resend-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .invoice-resend-spinner {
+        animation-duration: 1.6s;
+    }
+}
+
 .invoice-view-email-feedback {
     margin: 0;
     padding: 10px 20px;

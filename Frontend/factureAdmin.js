@@ -101,14 +101,14 @@ const highlightDisputedInvoices = new URLSearchParams(window.location.search).ge
         remplirListeCompagnies();
         const requestedCompany = new URLSearchParams(window.location.search).get("company");
         if (requestedCompany) {
-            const companySelect = document.querySelectorAll(".report-select")[1];
+            const companySelect = document.getElementById("filter-company");
             const existingOption = Array.from(companySelect.options)
                 .some(option => option.value === requestedCompany);
             if (!existingOption) companySelect.add(new Option(requestedCompany, requestedCompany));
             companySelect.value = requestedCompany;
             filtrerFactures();
         } else {
-            paginateFactures(FACTURES, 8);
+            filtrerFactures();
         }
         tbody.setAttribute('aria-busy', 'false');
         if (highlightDisputedInvoices) {
@@ -148,7 +148,7 @@ function extraireCompagnies() {
    3️⃣ REMPLIR LA LISTE DÉROULANTE DES COMPAGNIES
    ============================================================ */
 function remplirListeCompagnies() {
-    const select = document.querySelectorAll(".report-select")[1]; // 2e select = compagnie
+    const select = document.getElementById("filter-company");
 
     select.replaceChildren(new Option("Par compagnies", ""));
 
@@ -341,8 +341,10 @@ async function renvoyerFacture(button) {
     if (!numeroFacture || button.disabled) return;
 
     const emailFeedback = document.getElementById("invoice-view-email-feedback");
+    const idleLabel = window.t("invoice_resend");
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
+    button.innerHTML = `<i class="fas fa-circle-notch invoice-resend-spinner" aria-hidden="true"></i><span>${window.t("invoice_resend_loading")}</span>`;
     emailFeedback.hidden = true;
     emailFeedback.textContent = "";
 
@@ -367,6 +369,7 @@ async function renvoyerFacture(button) {
         emailFeedback.hidden = false;
         button.disabled = false;
         button.removeAttribute("aria-busy");
+        button.innerHTML = `<i class="fas fa-paper-plane" aria-hidden="true"></i><span>${idleLabel}</span>`;
     }
 }
 
@@ -412,48 +415,39 @@ async function voirPreuveFacture(numeroFacture) {
 /* ============================================================
    5️⃣ FILTRAGE LOCAL PAR COMPAGNIE + RECHERCHE
    ============================================================ */
-   function filtrerFactures() {
+function getInvoiceMonthKey(value) {
+    const dateValue = String(value || "");
+    if (/^\d{4}-\d{2}/.test(dateValue)) return dateValue.slice(0, 7);
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return "";
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getFilteredInvoices() {
     const selectStatut = document.getElementById("filter-statut");
     const statutFiltre = selectStatut ? selectStatut.value : "";
-
-    const selectMois = document.querySelectorAll(".report-select")[0];  // filtre par mois
-    const selectComp = document.querySelectorAll(".report-select")[1];  // filtre par compagnie
+    const moisFiltre = document.getElementById("filter-month").value;
+    const compagnieFiltre = document.getElementById("filter-company").value;
     const recherche = document.getElementById("searchInput").value.toLowerCase();
 
-    const moisFiltre = selectMois.value;       // "12", "11", "10"
-    const compagnieFiltre = selectComp.value;
-
-    const result = FACTURES.filter(f => {
-
-        // --- 📅 Filtre par mois ---
-        let matchMois = true;
-        if (moisFiltre && f.date) {
-            const moisFacture = new Date(f.date).getMonth() + 1;
-            matchMois = moisFacture.toString() === moisFiltre;
-        }
-    
-        // --- 🏢 Filtre par compagnie ---
+    return FACTURES.filter(f => {
+        const dateFacture = String(f.date || "");
+        const matchMois = moisFiltre ? getInvoiceMonthKey(dateFacture) === moisFiltre : true;
         const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
-    
-        // --- 💳 Filtre par statut ---
-        let matchStatut = true;
-        if (statutFiltre) {
-            matchStatut = f.status?.toLowerCase() === statutFiltre;
-        }
-    
-        // --- 🔍 Recherche ---
+        const matchStatut = statutFiltre ? f.status?.toLowerCase() === statutFiltre : true;
         const matchRecherche =
             String(f.client || "").toLowerCase().includes(recherche) ||
             String(f.numero_facture || "").toLowerCase().includes(recherche) ||
-            String(f.date || "").toLowerCase().includes(recherche);
-    
+            dateFacture.toLowerCase().includes(recherche);
+
         return matchMois && matchComp && matchStatut && matchRecherche;
     });
-    
-    paginateFactures(result, 8);
-
 }
 
+function filtrerFactures() {
+    paginateFactures(getFilteredInvoices(), 8);
+}
 
 function refaireFacture(numero) {
     // Ajoute le numéro dans la session pour préremplir si besoin
@@ -467,7 +461,6 @@ function refaireFacture(numero) {
 function appliquerRecherche() {
     filtrerFactures();
 }
-
 
 /* ============================================================
    6️⃣ CONFIRMER FACTURE
@@ -666,38 +659,7 @@ function paginateFactures(factures, rowsPerPage = 8) {
    🔟 EXPORTER LA LISTE DES FACTURES (CSV)
    ============================================================ */
    function exporterFactures() {
-    // 🔁 On reprend EXACTEMENT les filtres actuels
-    const selectStatut = document.getElementById("filter-statut");
-    const statutFiltre = selectStatut ? selectStatut.value : "";
-
-    const selectMois = document.querySelectorAll(".report-select")[0];
-    const selectComp = document.querySelectorAll(".report-select")[1];
-    const recherche = document.getElementById("searchInput")?.value.toLowerCase() || "";
-
-    const moisFiltre = selectMois.value;
-    const compagnieFiltre = selectComp.value;
-
-    const facturesFiltrees = FACTURES.filter(f => {
-        let matchMois = true;
-        if (moisFiltre && f.date) {
-            const moisFacture = new Date(f.date).getMonth() + 1;
-            matchMois = moisFacture.toString() === moisFiltre;
-        }
-
-        const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
-
-        let matchStatut = true;
-        if (statutFiltre) {
-            matchStatut = f.status?.toLowerCase() === statutFiltre;
-        }
-
-        const matchRecherche =
-            f.client?.toLowerCase().includes(recherche) ||
-            f.numero_facture?.toLowerCase().includes(recherche) ||
-            f.date?.toLowerCase().includes(recherche);
-
-        return matchMois && matchComp && matchStatut && matchRecherche;
-    });
+    const facturesFiltrees = getFilteredInvoices();
 
     if (!facturesFiltrees.length) {
         alert(window.t('no_invoices_export'));
@@ -745,8 +707,11 @@ function paginateFactures(factures, rowsPerPage = 8) {
    ============================================================ */
 window.onload = chargerFactures;
 
-// Activation du filtre "Par mois"
-document.querySelectorAll(".report-select")[0].addEventListener("change", filtrerFactures);
+// Filtrage par mois/année sélectionné dans le calendrier natif du navigateur
+const monthFilter = document.getElementById("filter-month");
+const now = new Date();
+monthFilter.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+monthFilter.addEventListener("change", filtrerFactures);
 document
     .getElementById("filter-statut")
     .addEventListener("change", filtrerFactures);

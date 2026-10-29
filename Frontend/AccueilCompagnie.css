@@ -13,15 +13,17 @@ body {
 
 #company-invoice-dashboard #main-content-scroll {
     display: flex;
-    flex: 1;
+    flex: 1 1 0%;
     min-height: 0;
+    box-sizing: border-box;
     overflow: hidden;
 }
 
 #company-invoice-dashboard #factures-view {
     display: flex;
-    flex: 1;
+    flex: 1 1 0%;
     min-height: 0;
+    height: 100%;
     flex-direction: column;
 }
 
@@ -31,16 +33,22 @@ body {
 
 .invoice-list-card {
     display: flex;
-    flex: 1;
-    min-height: 0;
+    flex: 0 1 auto;
     flex-direction: column;
 }
 
 .invoice-list-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
+    flex: 0 1 auto;
+    max-height: 45dvh;
+    overflow-x: auto;
+    overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+#pagination-controls,
+.invoice-list-card > .mt-6 {
+    flex-shrink: 0;
 }
 
 .invoice-list-scroll thead th {

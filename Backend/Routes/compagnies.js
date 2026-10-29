@@ -104,11 +104,11 @@ router.get(
   getCompanyById
 );
 
-// 🔹 Suppression définitive 
+// 🔹 Suppression définitive (ADMIN / SUPER DIRECTEUR)
 router.delete(
   '/delete/:id',
   verifyToken,
-  checkRole(['super_directeur']),
+  checkRole(['administrateur']),
   deleteCompanySafe
 );
 

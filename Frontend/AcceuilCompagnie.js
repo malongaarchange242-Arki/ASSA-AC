@@ -8,7 +8,7 @@ let ALL_INVOICES = [];
 let currentSortColumn = null;
 let currentSortDirection = 'asc';
 let CURRENT_PAGE = 1;
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 20;
 let FILTERED_INVOICES = []; // invoices after search / filter / sort
 let INVOICE_STATUS_FILTER = null;
 

@@ -109,6 +109,94 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    const tbody = document.querySelector('#table-activites tbody');
+    const token = localStorage.getItem('jwtTokenOperateur');
+    const apiBase = 'https://assa-ac-api.onrender.com';
+
+    if (!tbody) return;
+
+    const displayMessage = (message, retry = false) => {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.textContent = message;
+
+        if (retry) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = 'Réessayer';
+            button.addEventListener('click', chargerActivites);
+            cell.append(' ', button);
+        }
+
+        row.appendChild(cell);
+        tbody.replaceChildren(row);
+    };
+
+    const chargerActivites = async () => {
+        tbody.setAttribute('aria-busy', 'true');
+        const loadingRow = document.createElement('tr');
+        const loadingCell = document.createElement('td');
+        loadingCell.colSpan = 4;
+        loadingCell.textContent = 'Chargement des activités…';
+        loadingRow.appendChild(loadingCell);
+        tbody.replaceChildren(loadingRow);
+
+        try {
+            const response = await fetch(`${apiBase}/api/journal/operateur/me`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.message || `Erreur HTTP ${response.status}`);
+
+            const activities = Array.isArray(result.activites) ? result.activites : [];
+            if (!activities.length) {
+                displayMessage('Aucune activité récente.');
+                return;
+            }
+
+            const rows = activities.map(activity => {
+                const row = document.createElement('tr');
+                const date = activity.date_activite ? new Date(activity.date_activite) : null;
+                const formattedDate = date && !Number.isNaN(date.getTime())
+                    ? date.toLocaleString('fr-FR')
+                    : '—';
+                const cells = [
+                    activity.type_activite || '—',
+                    activity.description || '—',
+                    activity.utilisateur || activity.utilisateur_email || '—',
+                    formattedDate
+                ];
+
+                cells.forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.textContent = String(value);
+                    row.appendChild(cell);
+                });
+                return row;
+            });
+
+            tbody.replaceChildren(...rows);
+        } catch (error) {
+            console.error('Erreur récupération journal opérateur :', error);
+            displayMessage(`Impossible de charger le journal d’activité : ${error.message}`, true);
+        } finally {
+            tbody.setAttribute('aria-busy', 'false');
+        }
+    };
+
+    if (!token) {
+        displayMessage('Session opérateur manquante. Veuillez vous reconnecter.');
+        return;
+    }
+
+    chargerActivites();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
     const aside = document.getElementById('facture-aside');
     const toggleAsideBtn = document.getElementById('toggleAside');
 
@@ -140,4 +228,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
