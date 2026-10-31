@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="page_title_account_settings">ASSA-AC Portail Client - Mon Compte</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -113,7 +114,7 @@
                            dark:hover:bg-gray-700 transition">
                 <svg id="theme-icon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor"
                      viewBox="0 0 24 24"></svg>
-                <span id="theme-text">Mode Jour</span>
+                <span id="theme-text" data-i18n="theme_toggle_light_label">Mode Jour</span>
             </button>
 
             <a href="Index.html" data-company-logout
@@ -125,7 +126,7 @@
                           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1">
                     </path>
                 </svg>
-                Déconnexion
+                <span data-i18n="logout">Déconnexion</span>
             </a>
         </div>
 
@@ -172,10 +173,12 @@
                     <i class="fa-solid fa-chevron-down company-language-chevron" aria-hidden="true"></i>
                 </button>
 
-                <button class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                <a href="#logo-section"
+                   class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                   aria-label="Modifier le logo de la compagnie">
                     <span id="company-name" class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100"></span>
                     <img id="company-logo" class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary" src="" alt="Logo compagnie">
-                </button>
+                </a>
             </div>
         </header>
 
@@ -185,7 +188,7 @@
             <div class="space-y-8 max-w-5xl mx-auto">
 
                 <!-- LOGO FORM -->
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-secondary">
+                <div id="logo-section" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-secondary">
                     <h2 class="text-xl font-semibold mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 flex items-center" data-i18n="logo">
                         <svg class="w-6 h-6 mr-2 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -195,35 +198,32 @@
                     </h2>
 
                     <form id="profil-logo-form">
-                        <div class="flex items-center space-x-6">
+                        <div class="flex flex-col sm:flex-row sm:items-start gap-6">
                             <div class="shrink-0">
                                 <img id="header-avatar"
                                      class="h-20 w-20 object-cover rounded-full ring-4 
                                             ring-secondary dark:ring-green-400"
                                      src="https://placehold.co/80x80/1e40af/ffffff?text=AF"
-                                     alt="Logo Actuel">
+                                     alt="Logo Actuel"
+                                     data-i18n-alt="current_logo">
                             </div>
 
                             <label class="block">
                                 <span class="sr-only" data-i18n="choose_logo">Choisir le logo</span>
                                 <input type="file" id="file-input" accept="image/*"
-                                       class="block w-full text-sm text-gray-500
-                                              file:mr-4 file:py-2 file:px-4
-                                              file:rounded-full file:border-0
-                                              file:text-sm file:font-semibold
-                                              file:bg-primary file:text-white
-                                              hover:file:bg-indigo-600 transition duration-150 
-                                              cursor-pointer dark:file:bg-primary 
-                                              dark:file:hover:bg-indigo-600" />
+                                       class="sr-only" />
+                                <label for="file-input"
+                                       class="inline-flex items-center px-6 py-2.5 text-sm font-medium text-white
+                                              bg-primary rounded-full hover:bg-indigo-600 transition cursor-pointer"
+                                       data-i18n="choose_logo">
+                                    Choisir le logo
+                                </label>
                                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400" data-i18n="logo_file_types">
                                     JPG, PNG ou SVG (max. 1MB)
                                 </p>
                             </label>
-                        </div>
-
-                        <div class="mt-6 flex justify-end">
                             <button type="submit"
-                                    class="px-6 py-2.5 text-sm font-medium text-white 
+                                    class="self-start px-6 py-2.5 text-sm font-medium text-white
                                            bg-secondary rounded-lg hover:bg-emerald-600 
                                            transition shadow-md" data-i18n="save">
                                 Enregistrer
@@ -324,10 +324,11 @@
         <div class="relative">
             <input type="password" id="current-password"
                    class="w-full px-4 py-2 text-sm rounded-lg border bg-gray-50 dark:bg-gray-700 pr-10">
-            <button type="button" 
-                    class="absolute inset-y-0 right-3 flex items-center text-gray-500"
+            <button type="button"
+                    class="password-toggle absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-primary transition"
+                    aria-label="Afficher le mot de passe"
                     onclick="togglePasswordVisibility('current-password', this)">
-                👁️
+                <i class="password-toggle-icon fa-solid fa-eye" aria-hidden="true"></i>
             </button>
         </div>
     </div>
@@ -338,24 +339,26 @@
         <div class="relative">
             <input type="password" id="new-password"
                    class="w-full px-4 py-2 text-sm rounded-lg border bg-gray-50 dark:bg-gray-700 pr-10">
-            <button type="button" 
-                    class="absolute inset-y-0 right-3 flex items-center text-gray-500"
+            <button type="button"
+                    class="password-toggle absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-primary transition"
+                    aria-label="Afficher le mot de passe"
                     onclick="togglePasswordVisibility('new-password', this)">
-                👁️
+                <i class="password-toggle-icon fa-solid fa-eye" aria-hidden="true"></i>
             </button>
         </div>
     </div>
 
     <!-- Confirmer mot de passe -->
     <div>
-        <label class="block mb-2 font-medium">Confirmer mot de passe</label>
+        <label class="block mb-2 font-medium" data-i18n="confirm_password">Confirmer mot de passe</label>
         <div class="relative">
             <input type="password" id="confirm-password"
                    class="w-full px-4 py-2 text-sm rounded-lg border bg-gray-50 dark:bg-gray-700 pr-10">
-            <button type="button" 
-                    class="absolute inset-y-0 right-3 flex items-center text-gray-500"
+            <button type="button"
+                    class="password-toggle absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-primary transition"
+                    aria-label="Afficher le mot de passe"
                     onclick="togglePasswordVisibility('confirm-password', this)">
-                👁️
+                <i class="password-toggle-icon fa-solid fa-eye" aria-hidden="true"></i>
             </button>
         </div>
     </div>
@@ -402,6 +405,7 @@
 </div>
 
 <script src="langSwitch.js"></script>
+    <script src="companyCache.js"></script>
     <script src="ParametreCompagnie.js"></script>
 <script src="companyShell.js"></script>
 </body>

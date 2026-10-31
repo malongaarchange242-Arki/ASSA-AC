@@ -17,16 +17,10 @@ async function loadCompanyInfo() {
     if (!token) return;
 
     try {
-        const res = await fetch(`${API_BASE}/api/companies/me`, {
+        const data = await companyCache.getJson('company', `${API_BASE}/api/companies/me`, {
             headers: { Authorization: "Bearer " + token }
-        });
-
-        if (!res.ok) {
-            console.error("❌ Erreur API /companies/me :", res.status);
-            return;
-        }
-
-        const { company } = await res.json();
+        }, companyCache.TTL.company);
+        const { company } = data;
 
         /* === HEADER === */
         document.getElementById("company-name").textContent =
@@ -110,6 +104,7 @@ async function saveCompanyInfo() {
         }
 
         showModal("Succès", "Informations mises à jour avec succès !");
+        companyCache.invalidate('company');
         loadCompanyInfo(); // recharge les infos immédiatement
 
     } catch (err) {
@@ -198,17 +193,17 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
 
     // Validation frontend
     if (!currentPassword || !newPassword || !confirmPassword) {
-        alert("Veuillez remplir tous les champs.");
+        alert(t('password_required'));
         return;
     }
 
     if (newPassword !== confirmPassword) {
-        alert("Les mots de passe ne correspondent pas.");
+        alert(t('passwords_mismatch'));
         return;
     }
 
     if (newPassword.length < 6) {
-        alert("Le nouveau mot de passe doit contenir au moins 6 caractères.");
+        alert(t('password_min_length'));
         return;
     }
 
@@ -230,16 +225,16 @@ document.getElementById("security-form").addEventListener("submit", async (e) =>
         const data = await response.json();
 
         if (!response.ok) {
-            alert(data.message || "Erreur lors de la mise à jour.");
+            alert(data.message || t('password_update_error'));
             return;
         }
 
-        alert("Mot de passe mis à jour avec succès !");
+        alert(t('password_updated'));
         document.getElementById("security-form").reset();
 
     } catch (err) {
         console.error(err);
-        alert("Erreur réseau.");
+        alert(t('network_error'));
     }
 });
 
@@ -257,12 +252,12 @@ function setTheme(mode) {
             htmlElement.classList.add('dark');
             localStorage.setItem('theme', 'dark');
             if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-            if(themeText) themeText.textContent = 'Mode Jour';
+    if(themeText) themeText.textContent = t('theme_toggle_light_label');
         } else {
             htmlElement.classList.remove('dark');
             localStorage.setItem('theme', 'light');
             if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-            if(themeText) themeText.textContent = 'Mode Nuit';
+    if(themeText) themeText.textContent = t('theme_toggle_dark_label');
         }
     }
     
@@ -301,13 +296,16 @@ function setTheme(mode) {
     // Password visibility logic
     function togglePasswordVisibility(inputId, button) {
         const input = document.getElementById(inputId);
+        const icon = button.querySelector('.password-toggle-icon');
     
         if (input.type === "password") {
             input.type = "text";
-            button.innerHTML = "🙈"; // Utiliser innerHTML pour les emojis dans les boutons
+            icon?.classList.replace('fa-eye', 'fa-eye-slash');
+            button.setAttribute('aria-label', t('hide_password'));
         } else {
             input.type = "password";
-            button.innerHTML = "👁️";
+            icon?.classList.replace('fa-eye-slash', 'fa-eye');
+            button.setAttribute('aria-label', t('show_password'));
         }
     }
     
@@ -325,6 +323,10 @@ function setTheme(mode) {
     document.addEventListener("DOMContentLoaded", () => {
         // Initialise le thème au chargement
         setTheme(localStorage.getItem('theme') || 'light');
+        window.addEventListener('app-language-change', () => {
+            setTheme(localStorage.getItem('theme') || 'light');
+        });
         
+        companyCache.invalidate('company');
         loadCompanyInfo();
     });

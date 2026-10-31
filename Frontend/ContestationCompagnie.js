@@ -24,14 +24,14 @@ function setTheme(mode) {
         
         // Icône Soleil pour basculer vers le mode jour
         if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Jour';
+        if(themeText) themeText.textContent = t('theme_toggle_light_label');
     } else {
         htmlElement.classList.remove('dark');
         localStorage.setItem('theme', 'light');
         
         // Icône Lune pour basculer vers le mode nuit
         if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Nuit';
+        if(themeText) themeText.textContent = t('theme_toggle_dark_label');
     }
 }
 
@@ -51,18 +51,12 @@ async function loadCompanyInfo() {
     if (!token) return;
 
     try {
-        const response = await fetch(`${API_BASE}/api/companies/me`, {
+        const data = await companyCache.getJson('company', `${API_BASE}/api/companies/me`, {
             headers: {
                 "Authorization": "Bearer " + token
             }
-        });
+        }, companyCache.TTL.company);
 
-        if (!response.ok) {
-            console.error("❌ Erreur API /companies/me :", response.status);
-            return;
-        }
-
-        const data = await response.json();
         console.log("🏢 Compagnie connectée :", data);
 
         //  Les vrais données sont dans data.company
@@ -100,7 +94,7 @@ async function renderContestationsView() {
 
     const token = localStorage.getItem('jwtTokenCompany');
     if (!token) {
-        select.innerHTML = '<option value="">Connexion requise</option>';
+        select.innerHTML = `<option value="">${t('session_expired')}</option>`;
         return;
     }
 
@@ -133,8 +127,8 @@ async function renderContestationsView() {
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = unpaidInvoices.length
-        ? 'Sélectionnez une facture impayée...'
-        : 'Aucune facture impayée';
+        ? t('select_invoice_to_dispute')
+        : t('no_unpaid_invoices');
     select.replaceChildren(placeholder);
 
     unpaidInvoices.forEach(invoice => {
@@ -189,6 +183,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialiser le Thème
     const storedTheme = localStorage.getItem('theme') || 'light';
     setTheme(storedTheme);
+    window.addEventListener('app-language-change', () => {
+        setTheme(localStorage.getItem('theme') || 'light');
+        renderContestationsView();
+    });
     
     // 2. Rendu des données
     renderContestationsView(); 
@@ -210,13 +208,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const files = fileInputContestation.files ? Array.from(fileInputContestation.files) : [];
 
             if (!invoiceId || !explanation) {
-                showModal('Erreur de Formulaire', 'Veuillez remplir tous les champs obligatoires (Facture, Explication).');
+                showModal(t('form_error_title'), t('form_error_required'));
                 return;
             }
 
             const token = localStorage.getItem('jwtTokenCompany');
             if (!token) { 
-                showModal('Authentification requise', 'Veuillez vous reconnecter.'); 
+                showModal(t('authentication_required'), t('session_expired'));
                 return; 
             }
 
@@ -261,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const payload = await resp.json().catch(() => ({}));
                 if (!resp.ok) { 
-                    showModal('Erreur', payload.message || 'Échec de la soumission'); 
+                    showModal(t('error'), payload.message || t('dispute_submission_failed'));
                     return; 
                 }
 
@@ -270,19 +268,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         url: a.file_url,
                         name: a.file_name
                     }));
-                    const ctx = { invoiceId, text: `Contestation pour la facture ${invoiceId}` };
+                    const ctx = { invoiceId, text: `${t('dispute_for_invoice')} ${invoiceId}` };
                     localStorage.setItem('lastProofAttachments', JSON.stringify(atts));
                     localStorage.setItem('lastProofContext', JSON.stringify(ctx));
                 } catch {}
 
                 showModal(
-                    'Contestation Soumise',
-                    `Votre contestation pour la facture <strong>${invoiceId}</strong> a été soumise.`
+                    t('dispute_submitted'),
+                    `${t('dispute_for_invoice')} <strong>${invoiceId}</strong> ${t('has_been_submitted')}.`
                 );
 
+                companyCache.invalidate('invoices');
                 contestationForm.reset();
                 if (fileDisplayContestation) {
-                    fileDisplayContestation.textContent = 'PDF, PNG, JPG (MAX. 5 fichiers)';
+                    fileDisplayContestation.textContent = t('file_types');
                     fileDisplayContestation.classList.remove('file-selected');
                 }
 
@@ -291,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (err) {
                 console.error('Erreur soumission contestation:', err);
-                showModal('Erreur', 'Une erreur est survenue lors de la soumission.');
+                showModal(t('error'), t('dispute_submission_error'));
             } finally {
                 if (submitContestationButton) {
                     submitContestationButton.disabled = false;
@@ -313,11 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (count === 1) {
                     fileDisplayContestation.textContent = firstName;
                 } else {
-                    fileDisplayContestation.textContent = `${count} fichiers sélectionnés (ex: ${firstName})`;
+                    fileDisplayContestation.textContent = `${count} ${t('files_selected')} (${t('example_short')}: ${firstName})`;
                 }
                 fileDisplayContestation.classList.add('file-selected');
             } else {
-                fileDisplayContestation.textContent = 'PDF, PNG, JPG (MAX. 5 fichiers)';
+                fileDisplayContestation.textContent = t('file_types');
                 fileDisplayContestation.classList.remove('file-selected');
             }
         });

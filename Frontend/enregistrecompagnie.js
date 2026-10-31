@@ -307,7 +307,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = ct.includes('application/json') ? await response.json() : { message: await response.text() };
 
             if (!response.ok) {
-                showMessage(result.message || 'Erreur serveur', 'error');
+                if (result.erreur) console.error('Détail erreur API:', result.erreur);
+                const fieldLabels = {
+                    company_name: 'nom de la compagnie',
+                    representative_name: 'nom du représentant',
+                    email: 'adresse e-mail',
+                    full_address: 'adresse complète',
+                    country: 'pays',
+                    city: 'ville'
+                };
+                const missingFields = Array.isArray(result.champs_manquants)
+                    ? result.champs_manquants.map(field => fieldLabels[field] || field)
+                    : [];
+                const errorMessage = missingFields.length
+                    ? `Champs obligatoires manquants : ${missingFields.join(', ')}.`
+                    : result.message || 'Erreur serveur';
+                showMessage(errorMessage, 'error');
                 saveButton.disabled = false;
                 saveButton.textContent = companyId ? 'Modifier la Compagnie' : 'Enregistrer la Compagnie';
                 return;

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="page_title_submit_dispute">ASSA-AC Portail Client - Soumettre Contestation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -33,7 +34,7 @@
 
         <aside id="sidebar" class="bg-white dark:bg-gray-800 shadow-xl p-4 border-r border-gray-200 dark:border-gray-700">
             <div class="text-2xl font-extrabold text-assa-ac dark:text-primary mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
-                ASSA-AC Client
+                <span data-i18n="client_portal">ASSA-AC Client</span>
             </div>
 
             <nav class="space-y-2 flex-grow" id="nav-links">
@@ -69,12 +70,12 @@
                 <button onclick="toggleTheme()" class="w-full flex items-center p-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover-neon-glow hover:shadow-indigo-500/50">
                     <svg id="theme-icon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         </svg>
-                    <span id="theme-text">Mode Jour</span>
+                    <span id="theme-text" data-i18n="theme_toggle_light_label">Mode Jour</span>
                 </button>
 
                 <a href="Index.html" data-company-logout class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Déconnexion
+                    <span data-i18n="logout">Déconnexion</span>
                 </a>
             </div>
 
@@ -103,7 +104,9 @@
                         <i class="fa-solid fa-chevron-down company-language-chevron" aria-hidden="true"></i>
                     </button>
                     
-                    <button class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                    <a href="ParametreCompagnie.html#logo-section"
+                       class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                       aria-label="Modifier le logo de la compagnie">
                         <span id="company-name" 
                               class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100"></span>
                     
@@ -111,7 +114,7 @@
                              class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary"
                              src=""
                              alt="Logo compagnie">
-                    </button>
+                    </a>
                     
                 </div>
             </header>
@@ -121,7 +124,7 @@
                     
                     <div id="contestations-view">
                         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-3xl mx-auto">
-                            <h2 class="text-xl font-semibold mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 text-gray-900 dark:text-gray-100">Soumettre une Contestation de Facture</h2>
+                            <h2 class="text-xl font-semibold mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 text-gray-900 dark:text-gray-100" data-i18n="submit_dispute">Soumettre une Contestation de Facture</h2>
                             
                             <form id="contestations-form">
                                 <div class="space-y-6">
@@ -135,7 +138,7 @@
 
                                     <div>
                                         <label for="dispute-explanation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-i18n="detailed_explanation">Explication Détaillée <span class="text-red-500">*</span></label>
-                                        <textarea id="dispute-explanation" rows="5" placeholder="Veuillez fournir tous les détails pertinents pour l'examen de votre contestation..." data-i18n-placeholder="detailed_explanation" required class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150"></textarea>
+                                        <textarea id="dispute-explanation" rows="5" placeholder="Veuillez fournir tous les détails pertinents pour l'examen de votre contestation..." data-i18n-placeholder="dispute_explanation_placeholder" required class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150"></textarea>
                                     </div>
 
                                     <div>
@@ -159,8 +162,8 @@
                                 </div>
                                 
                                 <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-                                    <button id="submit-contestation-button" type="submit" class="contestation-submit-button px-6 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition duration-150 shadow-md hover-neon-glow hover:shadow-red-500/50" data-i18n="submit_dispute_button">
-                                        <span>Soumettre la Contestation</span>
+                                    <button id="submit-contestation-button" type="submit" class="contestation-submit-button px-6 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition duration-150 shadow-md hover-neon-glow hover:shadow-red-500/50">
+                                        <span data-i18n="submit_dispute_button">Soumettre la Contestation</span>
                                         <span class="contestation-submit-spinner" aria-hidden="true" hidden></span>
                                     </button>
                                 </div>
@@ -183,6 +186,7 @@
     </div>
 
     <script src="langSwitch.js"></script>
+    <script src="companyCache.js"></script>
     <script src="ContestationCompagnie.js"></script>
     <script src="companyShell.js"></script>
 </body>

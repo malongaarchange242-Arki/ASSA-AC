@@ -6,6 +6,7 @@ const PRICE_HORS_CEMAC = 1500;
 
 // === IMPORTANT : REMPLACEZ CECI PAR LE CHEMIN D'ACCÈS RÉEL DE VOTRE LOGO ===
 const LOGO_URL = 'logo.jpeg';
+const STAMP_URL = new URL('Cachet_+_Signature-removebg-preview.png', document.baseURI).href;
 // =========================================================================
 
 const itemsContainer = document.getElementById('items-container');
@@ -25,6 +26,17 @@ let rowCounter = 0;
 let companiesData = {}; // mapping: company_name -> { id, airport, city }
 
 // ======================= UTILITAIRES =======================
+function getLocalDateInputValue(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseInvoiceDate(value) {
+    return new Date(`${value}T12:00:00`);
+}
+
 function showMessage(msg, type = 'info') {
     formMessage.textContent = msg;
     const baseClasses = 'text-center p-3 mb-6 rounded-xl font-medium border transition-opacity duration-300';
@@ -304,8 +316,9 @@ async function fetchNextInvoiceId() {
         }
         const airport = encodeURIComponent(airportVal);
         const period = encodeURIComponent(periodVal);
+        const issueDate = encodeURIComponent(document.getElementById('issue-date').value);
         const companyId = (clientSelect && companiesData[clientSelect.value]) ? companiesData[clientSelect.value].id : '';
-        const url = `${API_BASE}/api/factures/generate-ref?airport=${airport}&period=${period}&id_companie=${encodeURIComponent(companyId)}`;
+        const url = `${API_BASE}/api/factures/generate-ref?airport=${airport}&period=${period}&id_companie=${encodeURIComponent(companyId)}&date_emission=${issueDate}`;
         const response = await fetch(url, {
             method: "GET",
                 headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", 'X-Operateur-Id': localStorage.getItem('operateurId') || '' }
@@ -324,6 +337,10 @@ async function fetchNextInvoiceId() {
         showMessage("Erreur génération référence: " + error.message, 'error');
     }
 }
+
+document.getElementById('issue-date').addEventListener('change', () => {
+    invoiceIdInput.value = '';
+});
 
 // ======================= APERÇU =======================
 function validateForm() {
@@ -385,7 +402,7 @@ async function showPreview() {
         const period = document.getElementById('period').value;
         const invoiceNumber = invoiceIdInput.value;
         const totalText = grandTotalSpan.textContent;
-        const formattedDate = new Date(issueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const formattedDate = parseInvoiceDate(issueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
         // 3. EN-TÊTE (CODE CORRIGÉ : Largeurs ajustées et Logo centré)
         const headerHTML = `
@@ -480,14 +497,13 @@ async function showPreview() {
                 ${totalInWords.textContent}
             </div>
 
-            <div class="signature-block" style="margin-top: 30px; text-align: right; margin-right: 50px; font-size: 10pt;">
-                <div style="display: inline-block; text-align: center;">
-                    <div style="font-weight: bold; margin-bottom: 50px;">Fait à ${issueLocation}, le ${formattedDate.toUpperCase()}</div>
-                    <div style="margin-bottom: 40px; text-decoration: underline;">La Direction Générale</div>
-                </div>
+            <div class="signature-block" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0; margin-top: 16px; margin-right: 0; font-size: 10pt;">
+                <div style="font-size: 9pt; text-align: right; margin-bottom: 20px;">Fait à ${issueLocation}, le ${formattedDate.toUpperCase()}</div>
+                <img src="${STAMP_URL}" alt="Cachet officiel ASSA-AC" width="145" height="90" style="display: block; width: 145px; height: 90px; object-fit: contain;">
+                <div style="font-weight: bold; text-align: right;">La Direction Générale</div>
             </div>
 
-            <div class="payment-conditions" style="margin-top: 40px; font-size: 9pt; border-top: none;">
+            <div class="payment-conditions" style="margin-top: 12px; padding-top: 9px; font-size: 9pt; border-top: 1px solid #9ca3af;">
                 <u style="font-weight: bold;">Conditions de paiement :</u>
                 <ul style="list-style-type: disc; padding-left: 20px; margin-top: 5px;">
                     <li>Par virement bancaire suivant RIB joint en annexe, à trente jours échus ;</li>
@@ -542,16 +558,26 @@ function printPreview() {
                 <title>Facture ${document.getElementById('invoice-id').value}</title>
                 <link rel="stylesheet" href="enregistrefacture.css"> 
                 <style>
-                    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; }
+                    @page { size: A4; margin: 8mm; }
+                    html, body { display: block; width: auto; min-height: 0; height: auto; overflow: visible; font-family: Arial, sans-serif; font-size: 10pt; color: #000; margin: 0; padding: 0; }
                     .print-controls { display: none !important; }
-                    /* Assurer que les styles du modal/aperçu sont appliqués */
                     .invoice-document {
-                        padding: 15mm !important;
-                        min-height: auto !important;
+                        box-sizing: border-box !important;
+                        width: auto !important;
+                        padding: 0 !important;
+                        min-height: 0 !important;
+                        overflow: visible !important;
                         box-shadow: none !important;
                     }
+                    .invoice-title { margin-top: 5px !important; }
+                    .client-details, .preview-details { margin-top: 10px !important; }
+                    .signature-block { margin: 12px 0 0 auto !important; }
+                    .signature-block img { width: 145px !important; height: 90px !important; max-height: 90px !important; }
+                    .payment-conditions { margin-top: 12px !important; }
+                    .payment-conditions ul { margin-top: 3px !important; }
                     table { border-collapse: collapse; width: 100%; }
                     img { max-width: 100%; }
+                    tr { break-inside: avoid; page-break-inside: avoid; }
                 </style>
             </head>
             <body>
@@ -616,7 +642,7 @@ async function sendInvoice(buttonElement) {
         objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
         periode: document.getElementById('period')?.value || '',
         aeroport: document.getElementById('airport')?.value || '',
-        date_emission: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
+        date_emission: document.getElementById('issue-date')?.value || getLocalDateInputValue(),
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
@@ -671,8 +697,7 @@ async function sendInvoice(buttonElement) {
 // ======================= INITIALISATION (inchangé) =======================
 window.onload = () => {
     try {
-        const today = new Date();
-        document.getElementById('issue-date').value = today.toISOString().split('T')[0];
+        document.getElementById('issue-date').value = getLocalDateInputValue();
         document.getElementById('period').value = getPreviousMonthPeriod();
 
         fetchNextInvoiceId();

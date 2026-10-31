@@ -1,22 +1,55 @@
 // Exemple complet pour toutes les routes
 
 import supabase from '../Config/db.js';
+import { resolveInvoiceReferences } from '../Services/invoiceReferenceService.js';
+
+const getAllRows = async (buildQuery) => {
+  const rows = [];
+  const pageSize = 1000;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await buildQuery().range(offset, offset + pageSize - 1);
+    if (error) throw error;
+
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) return rows;
+  }
+};
 
 // Helper async pour enrichir les activités
 const enrichActivites = async (activites) => {
   const companyIds = [...new Set(activites.map(activity => activity.id_companie).filter(Boolean).map(String))];
-  const companiesById = new Map();
-  if (companyIds.length) {
-    const { data: companies, error } = await supabase
-      .from('companies')
-      .select('id, company_name')
-      .in('id', companyIds);
-    if (error) throw error;
-    (companies || []).forEach(company => companiesById.set(String(company.id), company));
-  }
+  const adminIds = [...new Set(activites.map(activity => activity.id_admin).filter(Boolean).map(String))];
+  const operatorEmails = [...new Set(activites
+    .filter(activity => !activity.id_admin && activity.utilisateur_email)
+    .map(activity => activity.utilisateur_email))];
 
-  return await Promise.all(
-    activites.map(async (act) => {
+  const fetchMatchingRows = async (table, column, select, values) => {
+    const rows = [];
+    for (let offset = 0; offset < values.length; offset += 500) {
+      const { data, error } = await supabase
+        .from(table)
+        .select(select)
+        .in(column, values.slice(offset, offset + 500));
+      if (error) throw error;
+      rows.push(...(data || []));
+    }
+    return rows;
+  };
+
+  const [companies, admins, operateurs] = await Promise.all([
+    fetchMatchingRows('companies', 'id', 'id, company_name', companyIds),
+    fetchMatchingRows('admins', 'id', 'id, nom_complet, email', adminIds),
+    fetchMatchingRows('operateurs', 'email', 'nom, email', operatorEmails)
+  ]);
+  const companiesById = new Map(companies.map(company => [String(company.id), company]));
+  const adminsById = new Map(admins.map(admin => [String(admin.id), admin]));
+  const operateursByEmail = new Map(operateurs.map(operateur => [
+    String(operateur.email || '').toLocaleLowerCase('fr-FR'),
+    operateur
+  ]));
+
+  return activites.map((act) => {
       const recordedName = typeof act.utilisateur_nom === 'string' ? act.utilisateur_nom.trim() : '';
       const usableRecordedName = !['admin', 'administrateur', 'opérateur', 'operateur', 'agent', '-']
         .includes(recordedName.toLocaleLowerCase('fr-FR')) ? recordedName : '';
@@ -27,28 +60,14 @@ const enrichActivites = async (activites) => {
         role = role || 'Compagnie';
       }
 
-      if (act.id_admin) {
-        const { data: admin, error } = await supabase
-          .from('admins')
-          .select('nom_complet, email')
-          .eq('id', act.id_admin)
-          .maybeSingle();
-
-        if (error) throw error;
-        if (admin) {
-          utilisateur = admin.nom_complet || usableRecordedName || admin.email || act.utilisateur_email || '-';
-          role = role || 'Administrateur';
-        }
+      const admin = act.id_admin ? adminsById.get(String(act.id_admin)) : null;
+      if (admin) {
+        utilisateur = admin.nom_complet || usableRecordedName || admin.email || act.utilisateur_email || '-';
+        role = role || 'Administrateur';
       }
 
       if (!act.id_admin && act.utilisateur_email) {
-        const { data: operateur, error } = await supabase
-          .from('operateurs')
-          .select('nom, email')
-          .ilike('email', act.utilisateur_email)
-          .maybeSingle();
-
-        if (error) throw error;
+        const operateur = operateursByEmail.get(act.utilisateur_email.toLocaleLowerCase('fr-FR'));
         if (operateur) {
           utilisateur = operateur.nom || usableRecordedName || operateur.email || '-';
           role = role || 'Opérateur';
@@ -66,10 +85,10 @@ const enrichActivites = async (activites) => {
         utilisateur,
         role_utilisateur: role,
         cible,
+        compagnie_nom: company?.company_name || act.compagnie_nom || null,
         date_activite: act.date_activite ?? act.created_at ?? null
       };
-    })
-  );
+  });
 };
 
 
@@ -79,13 +98,13 @@ const enrichActivites = async (activites) => {
 // ==========================
 export const getAllActivites = async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const data = await getAllRows(() => supabase
       .from('journal_activite')
       .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
+      .order('created_at', { ascending: false }));
 
-    const activites = await enrichActivites((data || []).map(item => ({
+    const rowsWithInvoiceReferences = await resolveInvoiceReferences(data || [], 'reference');
+    const activites = await enrichActivites(rowsWithInvoiceReferences.map(item => ({
       ...item,
       date_activite: item.date_activite ?? item.created_at ?? null
     })));

@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dCompanyMessage = document.getElementById('detail-company-message');
     const btnValider = document.getElementById('detail-validate');
     const btnRejeter = document.getElementById('detail-reject');
+    const btnSupprimer = document.getElementById('detail-delete');
 
     /* ---------- STATE ---------- */
     let filtered = [...operations];
@@ -148,6 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="table-actions">
                     <button class="table-btn validate" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) ? `disabled title="${t('paid_invoice_action_unavailable')}"` : ''}>${t('validate')}</button>
                     <button class="table-btn reject" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) ? `disabled title="${t('paid_invoice_action_unavailable')}"` : ''}>${t('reject')}</button>
+                    <button class="table-btn delete" data-id="${op.id}" type="button">${t('delete')}</button>
                 </div>
             </td>
         `;
@@ -165,6 +167,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             tr.querySelector('.reject').addEventListener('click', e => { 
                 e.stopPropagation(); 
                 changeStatus(op.id, 'Rejetée'); 
+            });
+
+            tr.querySelector('.delete').addEventListener('click', e => {
+                e.stopPropagation();
+                deleteOperation(op.id).catch(error => {
+                    console.error('Erreur suppression opération :', error);
+                    window.alert(error.message || t('error_deletion'));
+                });
             });
 
             tbody.appendChild(tr);
@@ -287,6 +297,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Persist status change to backend API
+    async function deleteOperation(id) {
+        const operation = operations.find(item => item.id === id);
+        if (!operation) return;
+
+        if (!window.confirm(t('confirm_delete_invoice'))) return;
+
+        const API_BASE = 'https://assa-ac-api.onrender.com';
+        const token = localStorage.getItem('jwtTokenSuperviseur')
+            || localStorage.getItem('jwtTokenAdmin')
+            || localStorage.getItem('jwtToken');
+        const response = await fetch(
+            `${API_BASE}/api/factures/delete/${encodeURIComponent(operation.ref || operation.id)}`,
+            {
+                method: 'DELETE',
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            }
+        );
+
+        let data = null;
+        try {
+            data = await response.json();
+        } catch {
+            // The status code below still determines whether the operation succeeded.
+        }
+
+        if (!response.ok) {
+            throw new Error(data?.message || `Erreur API ${response.status}`);
+        }
+
+        operations = operations.filter(item => item.id !== id);
+        filtered = filtered.filter(item => item.id !== id);
+        if (currentDetailOperationId === id) {
+            currentDetailOperationId = null;
+            detailPanel.close();
+        }
+        render();
+        showDetailConfirmation(data?.message || t('invoice_removed'));
+    }
+
     async function updateStatusInDB(numero_facture, statut) {
         // Determine API base (same heuristic as other frontend modules)
         const API_BASE = (() => {
@@ -371,6 +420,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { viewProofs(op.ref || op.id); } catch (e) { console.warn('viewProofs failed', e); }
         btnValider.onclick = () => changeStatus(op.id, 'Payée');
         btnRejeter.onclick = () => changeStatus(op.id, 'Rejetée');
+        btnSupprimer.onclick = () => deleteOperation(op.id).catch(error => {
+            console.error('Erreur suppression opération :', error);
+            showDetailConfirmation(error.message || t('error_deletion'), true);
+        });
         if (!detailPanel.open) detailPanel.showModal();
     }
 

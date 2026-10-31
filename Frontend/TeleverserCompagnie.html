@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="page_title_upload_proof">ASSA-AC Portail Client - Téléverser Preuve</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -31,7 +32,7 @@
 
         <aside id="sidebar" class="bg-white dark:bg-gray-800 shadow-xl p-4 border-r border-gray-200 dark:border-gray-700">
             <div class="text-2xl font-extrabold text-assa-ac dark:text-primary mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
-                ASSA-AC Client
+                <span data-i18n="client_portal">ASSA-AC Client</span>
             </div>
 
             <nav class="space-y-2 flex-grow" id="nav-links">
@@ -65,12 +66,12 @@
                 <button onclick="toggleTheme()" class="w-full flex items-center p-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 hover-neon-glow hover:shadow-indigo-500/50">
                     <svg id="theme-icon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         </svg>
-                    <span id="theme-text">Mode Jour</span>
+                    <span id="theme-text" data-i18n="theme_toggle_light_label">Mode Jour</span>
                 </button>
 
                 <a href="Index.html" data-company-logout class="flex items-center p-3 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition duration-150 hover-neon-glow hover:shadow-red-500/50">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-3m0-7V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Déconnexion
+                    <span data-i18n="logout">Déconnexion</span>
                 </a>
             </div>
 
@@ -100,7 +101,9 @@
                         <i class="fa-solid fa-chevron-down company-language-chevron" aria-hidden="true"></i>
                     </button>
                     
-                    <button class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                    <a href="ParametreCompagnie.html#logo-section"
+                       class="company-identity flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                       aria-label="Modifier le logo de la compagnie">
                         <span id="company-name" 
                               class="text-sm font-medium hidden sm:inline text-gray-900 dark:text-gray-100"></span>
                     
@@ -108,7 +111,7 @@
                              class="w-9 h-9 rounded-full object-cover ring-2 ring-assa-ac dark:ring-primary"
                              src=""
                              alt="Logo compagnie">
-                    </button>
+                    </a>
                 </div>
             </header>
 
@@ -124,7 +127,7 @@
                                     <div>
                                         <label for="invoice-select-paiement" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-i18n="invoice_concerned">Facture concernée <span class="text-red-500">*</span></label>
                                         <select id="invoice-select-paiement" name="invoice" required class="w-full pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-primary focus:border-primary transition duration-150">
-                                            <option value="" data-i18n="select_invoice_to_dispute">Sélectionnez la facture...</option>
+                                            <option value="" data-i18n="select_invoice">Sélectionnez la facture...</option>
                                         </select>
                                     </div>
                                     
@@ -150,12 +153,12 @@
                                 </div>
                                 
                                 <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-                                    <button id="upload-proof-submit" type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 disabled:grayscale transition duration-150 shadow-md hover-neon-glow hover:shadow-emerald-500/50" data-i18n="upload_confirmation">
+                                    <button id="upload-proof-submit" type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 disabled:grayscale transition duration-150 shadow-md hover-neon-glow hover:shadow-emerald-500/50">
                                         <svg id="upload-proof-spinner" class="hidden h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span id="upload-proof-submit-label">Confirmer & Téléverser</span>
+                                        <span id="upload-proof-submit-label" data-i18n="upload_confirmation">Confirmer & Téléverser</span>
                                     </button>
                                 </div>
                             </form>
@@ -180,6 +183,7 @@
     </div>
 
     <script src="langSwitch.js"></script>
+    <script src="companyCache.js"></script>
     <!-- <script src="script.js"></script>  -->
     <script src="TeleverserCompagnie.js"></script>
     <script src="companyShell.js"></script>

@@ -51,7 +51,7 @@ export const archiveCompanyService = async (company, adminId) => {
     type: "Archivage de compagnie",
     ref: company.id,
     compagnie_id: company.id,
-    compagnie_nom: company.nom
+    compagnie_nom: company.company_name
   });
 
   return true;

@@ -82,6 +82,10 @@
                                     placeholder="Ex: Pointe-Noire">
                             </div>
                             <div>
+                                <label for="issue-date" class="block text-sm font-bold text-gray-700 mb-1" data-i18n="invoice_issue_date">Date d’émission</label>
+                                <input type="date" id="issue-date" class="form-input" required>
+                            </div>
+                            <div>
                                 <label for="client-name" class="block text-sm font-bold text-gray-700 mb-1"><span data-i18n="client">Client</span><span class="text-red-500">*</span></label>
                                 <select id="client-name" required class="form-select">
                                     <option value="" disabled selected data-i18n="select_company">Sélectionner une compagnie</option>
@@ -100,7 +104,6 @@
 
                             <div class="hidden">
                                 <input type="text" id="invoice-id" class="form-input" readonly value="">
-                                <input type="date" id="issue-date" class="form-input" readonly>
                                 <input type="text" id="purpose" class="form-input"
                                     value="Redevance de Sécurité Aérienne Régionale (RSAR)" readonly>
                                 <input type="text" id="period" class="form-input" readonly>

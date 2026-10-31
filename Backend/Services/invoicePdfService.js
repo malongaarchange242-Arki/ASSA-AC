@@ -10,7 +10,7 @@ const PAGE_HEIGHT = 841.89;
 const PAGE_MARGIN = 45;
 
 function formatAmount(value) {
-  return (Number(value) || 0).toLocaleString('fr-FR');
+  return (Number(value) || 0).toLocaleString('fr-FR').replace(/[\u00a0\u202f]/g, ' ');
 }
 
 function formatDate(value) {
@@ -23,8 +23,7 @@ function formatDate(value) {
 export async function generateInvoicePdf(facture, lignes) {
   const logo = await readFile(path.join(frontendDirectory, 'logo.jpeg'));
   const stampPath = path.join(frontendDirectory, 'Cachet_+_Signature-removebg-preview.png');
-  const isPaid = String(facture.statut || '').trim().toLowerCase() === 'payée';
-  const stamp = isPaid ? await readFile(stampPath) : null;
+  const stamp = await readFile(stampPath);
 
   return new Promise((resolve, reject) => {
     const document = new PDFDocument({
@@ -198,18 +197,17 @@ export async function generateInvoicePdf(facture, lignes) {
           width: pageContentWidth,
           align: 'right'
         });
-      y += 26;
-
-      if (stamp) {
-        document.image(stamp, PAGE_WIDTH - PAGE_MARGIN - 145, y, { fit: [130, 95], align: 'center', valign: 'center' });
-        y += 102;
-      } else {
-        document.font('Helvetica-Bold').fontSize(10).text('La Direction Générale', PAGE_MARGIN, y, {
-          width: pageContentWidth,
-          align: 'right'
-        });
-        y += 25;
-      }
+      const signatureY = y + 16;
+      document.image(stamp, PAGE_WIDTH - PAGE_MARGIN - 150, signatureY + 18, {
+        fit: [145, 90],
+        align: 'center',
+        valign: 'center'
+      });
+      document.font('Helvetica-Bold').fontSize(10).text('La Direction Générale', PAGE_WIDTH - PAGE_MARGIN - 230, signatureY + 108, {
+        width: 230,
+        align: 'right'
+      });
+      y = signatureY + 130;
 
       if (y + 80 > PAGE_HEIGHT - PAGE_MARGIN) y = addPage();
       document.moveTo(PAGE_MARGIN, y).lineTo(PAGE_WIDTH - PAGE_MARGIN, y).stroke('#9ca3af');
@@ -226,9 +224,10 @@ export async function generateInvoicePdf(facture, lignes) {
       for (let pageIndex = pageRange.start; pageIndex < pageRange.start + pageRange.count; pageIndex++) {
         document.switchToPage(pageIndex);
         document.font('Helvetica').fontSize(8).fillColor('#6b7280')
-          .text(`${pageIndex + 1} / ${pageRange.count}`, PAGE_MARGIN, PAGE_HEIGHT - 32, {
+          .text(`${pageIndex + 1} / ${pageRange.count}`, PAGE_MARGIN, PAGE_HEIGHT - PAGE_MARGIN - 20, {
             width: pageContentWidth,
-            align: 'center'
+            align: 'center',
+            lineBreak: false
           });
       }
 

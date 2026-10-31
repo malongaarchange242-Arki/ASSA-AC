@@ -187,6 +187,16 @@
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
+.table-btn.delete {
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+.table-btn.delete:hover {
+    background: #6d28d9;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
 .table-btn:disabled,
 .detail-actions button:disabled {
     border: 1px solid #d1d5db;

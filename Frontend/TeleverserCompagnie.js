@@ -80,18 +80,12 @@ async function loadCompanyInfo() {
     if (!token) return;
 
     try {
-        const response = await fetch(`${API_BASE}/api/companies/me`, {
+        const data = await companyCache.getJson('company', `${API_BASE}/api/companies/me`, {
             headers: {
                 "Authorization": "Bearer " + token
             }
-        });
+        }, companyCache.TTL.company);
 
-        if (!response.ok) {
-            console.error("❌ Erreur API /companies/me :", response.status);
-            return;
-        }
-
-        const data = await response.json();
         console.log("🏢 Compagnie connectée :", data);
 
         //  Les vrais données sont dans data.company
@@ -126,12 +120,20 @@ function renderInvoiceSelect(viewId, filterFn = inv => true) {
 
     const targetInvoices = SERVER_INVOICES.filter(filterFn);
 
-    let options = `<option value="">Sélectionnez la facture...</option>`;
+    let options = `<option value="">${t('select_invoice')}</option>`;
     targetInvoices.forEach(inv => {
         const ref = inv.numero_facture || inv.id;
         const amount = Number(inv.amount || 0).toLocaleString('fr-CM', { style: 'currency', currency: 'XAF' });
         const stat = inv.status || inv.statut || '-';
-        options += `<option value="${ref}">${ref} (${amount} - Statut: ${stat})</option>`;
+        const normalizedStatus = String(stat).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const translatedStatus = normalizedStatus === 'impayee'
+            ? t('status_unpaid')
+            : normalizedStatus === 'payee'
+                ? t('status_paid')
+                : normalizedStatus.includes('contest')
+                    ? t('status_disputed')
+                    : stat;
+        options += `<option value="${ref}">${ref} (${amount} - ${t('status')}: ${translatedStatus})</option>`;
     });
 
     select.innerHTML = options;
@@ -169,12 +171,12 @@ function setTheme(mode) {
         htmlElement.classList.add('dark');
         localStorage.setItem('theme', 'dark');
         if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Jour';
+        if(themeText) themeText.textContent = t('theme_toggle_light_label');
     } else {
         htmlElement.classList.remove('dark');
         localStorage.setItem('theme', 'light');
         if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Nuit';
+        if(themeText) themeText.textContent = t('theme_toggle_dark_label');
     }
 }
 
@@ -220,7 +222,7 @@ function changeView(view) {
 
     let titleMap = {
         'factures': 'Consultation des Factures',
-        'paiements': 'Téléverser Preuve de Paiement',
+        'paiements': 'upload_payment_proof',
         'contestations': 'Soumettre une Contestation',
         'messagerie': 'Messagerie',
         'profil': 'Mon Compte',
@@ -237,7 +239,10 @@ function changeView(view) {
 
     Object.values(views).forEach(v => { if(v) v.classList.add('hidden'); });
     if(views[view]) views[view].classList.remove('hidden');
-    if(mainTitle) mainTitle.textContent = titleMap[view] || 'Portail Client';
+    if (mainTitle) {
+        const title = titleMap[view] || 'Portail Client';
+        mainTitle.textContent = title === 'upload_payment_proof' ? t(title) : title;
+    }
 
     if (view === 'paiements') {
         renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
@@ -251,6 +256,11 @@ function changeView(view) {
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Thème
     setTheme(localStorage.getItem('theme') || 'light');
+    window.addEventListener('app-language-change', () => {
+        setTheme(localStorage.getItem('theme') || 'light');
+        renderInvoiceSelect('paiement', inv => inv.status === 'Impayée' || inv.status === 'En Retard');
+        changeView('paiements');
+    });
 
     // 2. Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -342,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ================================
                 const invoice = SERVER_INVOICES.find(f => f.numero_facture == invoiceId);
                 if (invoice) invoice.statut = "En Attente";
+                companyCache.invalidate('invoices');
 
                 // 🔥 Mise à jour du select (retirer la facture)
                 renderInvoiceSelect('paiement', inv =>

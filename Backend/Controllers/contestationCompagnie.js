@@ -2,6 +2,7 @@ import supabase from '../Config/db.js';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '../Services/emailService.js';
+import { logActivite } from '../Services/journalService.js';
 
 // ================= Multer =================
 const storage = multer.memoryStorage();
@@ -197,12 +198,24 @@ export const uploadContestation = async (req, res) => {
     console.log("✅ Contestation enregistrée :", contestation.id);
 
     // ================= Mise à jour facture =================
-    await supabase
+    const { error: invoiceUpdateError } = await supabase
       .from("factures")
       .update({ statut: "Contestée" })
       .eq("id", facture.id);
+    if (invoiceUpdateError) throw invoiceUpdateError;
 
     console.log("🔄 Facture mise à jour → Contestée");
+
+    await logActivite({
+      module: 'Factures',
+      type_activite: 'create',
+      categorie: 'Contestation',
+      reference: numero_facture,
+      description: `Contestation envoyée pour la facture ${numero_facture}`,
+      id_companie: companyId,
+      utilisateur_nom: user.company_name || user.email || 'Compagnie',
+      utilisateur_email: user.email || null
+    });
 
     // ================= Admin =================
     const { data: admin } = await supabase

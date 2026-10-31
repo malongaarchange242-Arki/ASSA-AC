@@ -238,7 +238,7 @@ export const loginCompany = async (req, res) => {
 
     await logActivite({
       module: 'Authentification',
-      type_activite: 'create',
+      type_activite: 'login',
       categorie: 'auth',
       description: `Connexion de la compagnie ${company.company_name}`,
       id_companie: company.id,
@@ -349,9 +349,13 @@ export const archiveCompany = async (req, res) => {
     await logActivite({
       module: 'Compagnies',
       type_activite: 'archive',
+      categorie: 'Compagnie',
+      reference: companyData.id,
       description: `Compagnie ${companyData.company_name} archivée`,
       id_admin: req.user?.id,
-      id_companie: companyData.id
+      id_companie: companyData.id,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
+      utilisateur_email: req.user?.email || null
     });
 
     res.json({ message: 'Compagnie archivée avec succès', company: companyData });
@@ -377,9 +381,13 @@ export const restoreCompany = async (req, res) => {
     await logActivite({
       module: 'Compagnies',
       type_activite: 'restore',
+      categorie: 'Compagnie',
+      reference: companyData.id,
       description: `Compagnie ${companyData.company_name} restaurée`,
       id_admin: req.user?.id,
-      id_companie: companyData.id
+      id_companie: companyData.id,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
+      utilisateur_email: req.user?.email || null
     });
 
     res.json({ message: 'Compagnie restaurée avec succès', company: companyData });
@@ -509,6 +517,17 @@ export const updateCompanyInfo = async (req, res) => {
       console.error("❌ Erreur Supabase :", error);
       return res.status(400).json({ message: "Échec de la mise à jour" });
     }
+
+    await logActivite({
+      module: 'Compagnies',
+      type_activite: 'update',
+      categorie: 'Compagnie',
+      reference: data.id,
+      description: `La compagnie ${data.company_name} a mis à jour ses informations`,
+      id_companie: data.id,
+      utilisateur_nom: data.company_name,
+      utilisateur_email: req.user.email || null
+    });
 
     return res.status(200).json({
       message: "Informations mises à jour avec succès",
@@ -702,6 +721,7 @@ export const deleteCompanySafe = async (req, res) => {
       type_activite: 'delete',
       categorie: 'Compagnie',
       description: `Suppression définitive de la compagnie ${company.company_name}`,
+      reference: company.id,
       id_admin: req.user?.id,
       id_companie: id
     });
@@ -736,7 +756,7 @@ export const updateCompanyPassword = async (req, res) => {
     // Lire la compagnie
     const { data: company, error } = await supabase
       .from("companies")
-      .select("password_hash")
+      .select("password_hash, company_name, email")
       .eq("id", companyId)
       .single();
 
@@ -756,10 +776,22 @@ export const updateCompanyPassword = async (req, res) => {
     // Hacher le nouveau
     const newHash = await bcrypt.hash(new_password, 10);
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("companies")
       .update({ password_hash: newHash, updated_at: new Date() })
       .eq("id", companyId);
+    if (updateError) throw updateError;
+
+    await logActivite({
+      module: 'Compagnies',
+      type_activite: 'update',
+      categorie: 'Sécurité',
+      reference: companyId,
+      description: `Mot de passe de la compagnie ${company.company_name || companyId} modifié`,
+      id_companie: companyId,
+      utilisateur_nom: company.company_name || 'Compagnie',
+      utilisateur_email: req.user?.email || null
+    });
 
     return res.status(200).json({ message: "Mot de passe mis à jour avec succès" });
 

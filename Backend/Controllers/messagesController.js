@@ -1,5 +1,6 @@
 import supabase from '../Config/db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { logActivite } from '../Services/journalService.js';
 
 const ATTACH_BUCKET = 'Attachement_message';
 const getRoomKey = (adminId, companyId) => `${adminId}:${companyId}`;
@@ -205,6 +206,18 @@ export const postMessage = async (req, res, broadcastToRoom) => {
       console.error('❌ Supabase insert error:', error);
       throw error;
     }
+
+    await logActivite({
+      module: 'Messagerie',
+      type_activite: 'create',
+      categorie: 'Message',
+      reference: msg.id,
+      description: `Message envoyé à la compagnie ${companyId}`,
+      id_admin: ['admin', 'administrateur'].includes(String(user.role || '').toLowerCase()) ? user.id : null,
+      id_companie: companyId,
+      utilisateur_nom: user.nom_complet || user.nom || user.email || 'Utilisateur',
+      utilisateur_email: user.email || null
+    });
 
     // -----------------------
     // GESTION DES FICHIERS

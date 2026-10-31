@@ -175,7 +175,19 @@ export const generateRef = async (req, res) => {
 
     if (!targetCompanyId) return res.status(400).json({ message: 'id_companie requis pour générer la référence' });
 
-    const numero_facture = await generateNumeroFacture(targetCompanyId);
+    const date_emission = req.query.date_emission;
+    if (date_emission) {
+      const parsedDate = new Date(`${date_emission}T00:00:00.000Z`);
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date_emission) ||
+        Number.isNaN(parsedDate.getTime()) ||
+        parsedDate.toISOString().slice(0, 10) !== date_emission
+      ) {
+        return res.status(400).json({ message: 'Date d’émission invalide.' });
+      }
+    }
+
+    const numero_facture = await generateNumeroFacture(targetCompanyId, date_emission);
     res.status(200).json({ numero_facture });
   } catch (err) {
     console.error('Erreur génération référence :', err);
@@ -901,10 +913,11 @@ export const archiveFacture = async (req, res) => {
     }
 
     // Mise à jour du statut et archivage dans factures
-    await supabase
+    const { error: archiveError } = await supabase
       .from('factures')
       .update({ archived: true, statut: 'Archivée' })
       .eq('numero_facture', numero_facture);
+    if (archiveError) throw archiveError;
 
     // Journal d'activité
     await logActivite({
@@ -913,7 +926,9 @@ export const archiveFacture = async (req, res) => {
       categorie: "Facture",
       reference: numero_facture,
       description: `Facture ${numero_facture} archivée`,
-      id_admin: req.user.id,
+      id_admin: ['admin', 'administrateur'].includes(String(req.user?.role || '').toLocaleLowerCase('fr-FR'))
+        ? req.user.id
+        : null,
       id_companie
     });
     
@@ -922,9 +937,14 @@ export const archiveFacture = async (req, res) => {
     // Création d’une entrée dans la table archives
     await createArchive({
       type: 'Archivage de facture',
+      ref: numero_facture,
+      compagnie_id: factureData.id_companie,
+      compagnie_nom: factureData.nom_client,
+      montant: factureData.montant_total,
+      statut: 'Archivée',
+      admin_id: req.user?.id,
+      admin_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
       description: `L'administrateur ${req.user?.email} a archivé la facture ${numero_facture}.`,
-      reference: numero_facture,
-      fichier_url: null
     });
 
     res.status(200).json({ message: 'Facture archivée avec succès', facture: factureData });
@@ -1012,7 +1032,9 @@ export const cancelInvoiceDraft = async (req, res) => {
       categorie: 'Facture',
       reference: numero_facture,
       description: `Annulation de la facture ${numero_facture}`,
-      id_admin: req.user.id,
+      id_admin: ['admin', 'administrateur', 'superviseur', 'super_directeur'].includes(
+        String(req.user?.role || '').toLocaleLowerCase('fr-FR')
+      ) ? req.user.id : null,
       id_companie: facture.id_companie,
       utilisateur_email: req.user.email
     });
@@ -1292,14 +1314,33 @@ export const confirmerFacture = async (req, res) => {
 // ===============================================================
 export const deleteFacture = async (req, res) => {
   try {
-    let numero_facture = decodeURIComponent(req.params.numero_facture);
+    const numero_facture = decodeURIComponent(req.params.numero_facture);
+    const { data: facture, error } = await supabase
+      .from('factures')
+      .select('numero_facture, id_companie, nom_client, archived')
+      .eq('numero_facture', numero_facture)
+      .maybeSingle();
 
-    console.log("➡ Suppression FRONT ONLY :", numero_facture);
+    if (error) throw error;
+    if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
 
-    // ❌ On NE SUPPRIME RIEN dans la base de données !
+    await logActivite({
+      module: 'Factures',
+      type_activite: 'delete',
+      categorie: 'Facture',
+      reference: numero_facture,
+      description: `Facture ${numero_facture} retirée de la liste de facturation`,
+      id_admin: ['admin', 'administrateur', 'superviseur', 'super_directeur'].includes(
+        String(req.user?.role || '').toLocaleLowerCase('fr-FR')
+      ) ? req.user.id : null,
+      id_companie: facture.id_companie,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || req.user?.name || 'Utilisateur',
+      utilisateur_email: req.user?.email || null
+    });
+
     return res.status(200).json({
       success: true,
-      message: `Facture ${numero_facture} retirée du front uniquement.`
+      message: `Facture ${numero_facture} retirée de la liste et action enregistrée.`
     });
 
   } catch (err) {

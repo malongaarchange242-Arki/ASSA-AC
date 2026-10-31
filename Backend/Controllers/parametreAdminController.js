@@ -1,5 +1,6 @@
 // controllers/parametreAdminController.js
 import supabase from '../Config/db.js';
+import { logActivite } from '../Services/journalService.js';
 
 // ----------------- GET : récupérer tous les paramètres -----------------
 export const getParametres = async (req, res) => {
@@ -56,6 +57,17 @@ export const updateParametres = async (req, res) => {
       .single();
 
     if (error) return res.status(500).json({ message: 'Erreur mise à jour', erreur: error.message });
+
+    await logActivite({
+      module: 'Paramètres',
+      type_activite: 'update',
+      categorie: 'Configuration',
+      reference: String(data.id),
+      description: 'Paramètres généraux mis à jour',
+      id_admin: req.user?.id || null,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
+      utilisateur_email: req.user?.email || null
+    });
 
     res.json({ message: 'Paramètres mis à jour avec succès', parametres: data });
   } catch (err) {

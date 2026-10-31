@@ -43,12 +43,12 @@ function setTheme(mode) {
         htmlElement.classList.add('dark');
         localStorage.setItem('theme', 'dark');
         if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Jour';
+        if(themeText) themeText.textContent = t('theme_toggle_light_label');
     } else {
         htmlElement.classList.remove('dark');
         localStorage.setItem('theme', 'light');
         if(themeIcon) themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-        if(themeText) themeText.textContent = 'Mode Nuit';
+        if(themeText) themeText.textContent = t('theme_toggle_dark_label');
     }
 }
 
@@ -68,7 +68,10 @@ function changeView(viewKey) {
     if (viewEl) viewEl.classList.remove('hidden');
     document.querySelector(`.nav-link[data-view="${viewKey}"]`)?.classList.add('active');
 
-    document.getElementById('main-title').textContent = viewKey === 'messagerie' ? 'Messagerie' : viewKey;
+    const mainTitle = document.getElementById('main-title');
+    if (mainTitle) {
+        mainTitle.textContent = viewKey === 'messagerie' ? t('messagerie') : viewKey;
+    }
 
     if (viewKey === 'messagerie') {
         if (!historyLoaded) loadHistory();
@@ -85,12 +88,12 @@ function showPinnedInvoice(invoiceId, proofId) {
     if (!box || !title || !proof) return;
 
     box.classList.remove('hidden');
-    title.textContent = `📌 Facture épinglée : ${invoiceId}`;
+    title.textContent = `${t('pinned_invoice')}: ${invoiceId}`;
 
     if (proofId) {
-        proof.textContent = `Preuve liée : ${proofId}`;
+        proof.textContent = `${t('linked_proof')}: ${proofId}`;
     } else {
-        proof.textContent = "Aucune preuve jointe.";
+        proof.textContent = t('no_attached_proof');
     }
 }
 
@@ -148,7 +151,7 @@ function renderMessage(message, attachments){
             a.target = '_blank';
             a.rel = 'noopener noreferrer';
             a.className = 'block text-xs underline';
-            a.textContent = att.file_name || 'Pièce jointe';
+            a.textContent = att.file_name || t('attachment');
             list.appendChild(a);
         });
         bubble.appendChild(list);
@@ -178,7 +181,7 @@ async function loadHistory(){
         data.forEach(item => renderMessage(item.message, item.attachments));
     } catch(err) {
         console.error('Erreur chargement messages:', err);
-        alert('Impossible de charger l’historique. Veuillez réessayer plus tard.');
+        alert(t('history_load_failed'));
     }
 
     historyLoaded = true;
@@ -209,7 +212,7 @@ async function sendMessage(text, files){
         renderMessage(payload.message, payload.attachments);
     } catch(err) {
         console.error('Erreur envoi message:', err);
-        alert('Échec de l’envoi. Veuillez réessayer.');
+        alert(t('message_send_failed'));
     } finally {
         sendingMessage = false;
     }
@@ -318,18 +321,12 @@ async function loadCompanyInfo() {
     if (!token) return;
 
     try {
-        const response = await fetch(`${API_BASE}/api/companies/me`, {
+        const data = await companyCache.getJson('company', `${API_BASE}/api/companies/me`, {
             headers: {
                 "Authorization": "Bearer " + token
             }
-        });
+        }, companyCache.TTL.company);
 
-        if (!response.ok) {
-            console.error("❌ Erreur API /companies/me :", response.status);
-            return;
-        }
-
-        const data = await response.json();
         console.log("🏢 Compagnie connectée :", data);
 
         //  Les vrais données sont dans data.company
@@ -366,6 +363,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     window.removeFileFromPreview = removeFileFromPreview;
 
     setTheme(localStorage.getItem('theme') || 'light');
+    window.addEventListener('app-language-change', () => {
+        setTheme(localStorage.getItem('theme') || 'light');
+        if (document.getElementById('main-title')) {
+            document.getElementById('main-title').textContent = t('messagerie');
+        }
+    });
 
     const msgForm = document.getElementById('message-form');
     msgForm?.addEventListener('submit', handleMessageSubmit);
@@ -412,7 +415,7 @@ document.addEventListener('DOMContentLoaded',()=>{
             updateFilePreview();
 
             const input = document.getElementById('message-input');
-            if (input && invoiceId) input.value = `Preuve de paiement pour la facture ${invoiceId}`;
+            if (input && invoiceId) input.value = `${t('payment_proof_for_invoice')} ${invoiceId}`;
         } catch (err) { console.error('Pré-remplissage preuve échoué:', err); }
     }
 
@@ -429,7 +432,7 @@ document.addEventListener('DOMContentLoaded',()=>{
             attachmentInput.files = dt.files;
             updateFilePreview();
             const input = document.getElementById('message-input');
-            if (input && invoiceId) input.value = `Preuve de paiement pour la facture ${invoiceId}`;
+            if (input && invoiceId) input.value = `${t('payment_proof_for_invoice')} ${invoiceId}`;
         } catch (err) { console.error('Pré-remplissage preuve (URL) échoué:', err); }
     }
 

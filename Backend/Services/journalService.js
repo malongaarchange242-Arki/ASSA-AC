@@ -14,48 +14,39 @@ export const logActivite = async ({
   utilisateur_nom = null,
   utilisateur_email = null
 }) => {
-  try {
-    // ❌ On ne log PAS les archives dans le journal visible
-    if (['archive', 'restore'].includes(type_activite)) {
-      return { success: true, skipped: true };
-    }
+  const payload = {
+    type_activite,
+    categorie,
+    module,
+    description: description || reference || 'Activité système',
 
-    const payload = {
-      type_activite,
-      categorie,
-      module,
-      description: description || reference || 'Activité système',
+    id_admin,
+    id_companie,
 
-      id_admin,
-      id_companie,
+    utilisateur_nom: utilisateur_nom || (id_admin ? 'Administrateur' : 'Système'),
+    utilisateur_email: utilisateur_email || null,
 
-      utilisateur_nom: utilisateur_nom || (id_admin ? 'Administrateur' : 'Système'),
-      utilisateur_email: utilisateur_email || null,
+    created_at: new Date()
+  };
 
-      created_at: new Date()
-    };
+  const { data, error } = await supabase
+    .from('journal_activite')
+    .insert([payload])
+    .select()
+    .single();
 
-    if (reference && !payload.description) {
-      payload.description = String(reference);
-    }
-
-    const { data, error } = await supabase
-      .from('journal_activite')
-      .insert([payload])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return { success: true, activity: data };
-
-  } catch (err) {
-    console.error('❌ Erreur journalService:', err.message);
-    return { success: false, message: err.message };
+  if (error) {
+    console.error('❌ Erreur journalService:', error.message);
+    throw error;
   }
+
+  return { success: true, activity: data };
 };
 
-const TYPES_VISIBLES = ['create', 'update', 'delete', 'validate', 'reject', 'system'];
+const TYPES_VISIBLES = [
+  'create', 'update', 'delete', 'validate', 'reject', 'submit',
+  'archive', 'restore', 'disable', 'login', 'security', 'system'
+];
 
 export const getRecentActivites = async (limit = 10) => {
   try {

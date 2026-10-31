@@ -86,6 +86,16 @@ export const loginAdmin = async (req, res) => {
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
+    await logActivite({
+      type_activite: 'system',
+      categorie: 'auth',
+      module: 'login',
+      description: 'Connexion administrateur',
+      id_admin: user.id,
+      utilisateur_email: user.email,
+      utilisateur_nom: user.nom_complet
+    });
+
     res.json({
       message: 'Connexion réussie',
       jwtTokenAdmin: token,
@@ -95,16 +105,6 @@ export const loginAdmin = async (req, res) => {
       role: payload.role,
       permissions: payload.permissions,
       id_companie: payload.id_companie
-    });
-
-    await logActivite({
-      type_activite: 'system',
-      categorie: 'auth',
-      module: 'login',
-      description: 'Connexion administrateur',
-      id_admin: user.id,
-      utilisateur_email: user.email,
-      utilisateur_nom: user.nom_complet
     });
     
 
@@ -154,10 +154,24 @@ export const createCompany = async (req, res) => {
     company_name, representative_name, email, phone_number,
     full_address, country, city, airport_code
   } = req.body;
-  
-  // Vérification des champs obligatoires
-  if (!company_name || !representative_name || !email || !full_address || !country || !city) {
-    return res.status(400).json({ message: 'Tous les champs obligatoires doivent être remplis' });
+
+  const requiredFields = {
+    company_name,
+    representative_name,
+    email,
+    full_address,
+    country,
+    city
+  };
+  const missingFields = Object.entries(requiredFields)
+    .filter(([, value]) => typeof value !== 'string' || !value.trim())
+    .map(([field]) => field);
+
+  if (missingFields.length) {
+    return res.status(400).json({
+      message: 'Tous les champs obligatoires doivent être remplis',
+      champs_manquants: missingFields
+    });
   }
   
   console.log('Body reçu :', req.body);
@@ -214,7 +228,15 @@ export const createCompany = async (req, res) => {
   
   if (insertError) {
     console.error('Erreur insertion company :', insertError);
-    return res.status(400).json({ message: 'Erreur création compagnie', erreur: insertError.message });
+    if (insertError.code === '23505') {
+      return res.status(409).json({
+        message: 'Une compagnie existe déjà avec cette adresse e-mail.'
+      });
+    }
+    return res.status(500).json({
+      message: 'Erreur lors de la création de la compagnie.',
+      erreur: insertError.message
+    });
   }
   
   const newCompany = insertedData[0];
@@ -339,8 +361,6 @@ export const updateAdminPassword = async (req, res) => {
 
     if (updateError) return res.status(500).json({ message: 'Erreur mise à jour mot de passe', erreur: updateError.message });
 
-    res.json({ message: 'Mot de passe mis à jour avec succès' });
-
     await logActivite({
       type_activite: 'update',
       categorie: 'security',
@@ -351,6 +371,8 @@ export const updateAdminPassword = async (req, res) => {
       utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Administrateur',
       utilisateur_email: req.user?.email || null
     });
+
+    res.json({ message: 'Mot de passe mis à jour avec succès' });
     
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', erreur: err.message });
@@ -413,6 +435,17 @@ export const archiveAdmin = async (req, res) => {
     // Appel au service d’archivage
     await archiveAdminService(admin, req.user.id);
 
+    await logActivite({
+      module: 'Administrateurs',
+      type_activite: 'archive',
+      categorie: 'Administrateur',
+      reference: admin.id,
+      description: `Administrateur ${admin.nom_complet || admin.email} archivé`,
+      id_admin: req.user.id,
+      utilisateur_nom: req.user.nom_complet || req.user.email || 'Administrateur',
+      utilisateur_email: req.user.email || null
+    });
+
     res.status(200).json({
       success: true,
       message: "Administrateur archivé avec succès"
@@ -441,6 +474,17 @@ export const restoreAdmin = async (req, res) => {
 
     // Appel au service
     await restoreAdminService(admin);
+
+    await logActivite({
+      module: 'Administrateurs',
+      type_activite: 'restore',
+      categorie: 'Administrateur',
+      reference: admin.id,
+      description: `Administrateur ${admin.nom_complet || admin.email} restauré`,
+      id_admin: req.user.id,
+      utilisateur_nom: req.user.nom_complet || req.user.email || 'Administrateur',
+      utilisateur_email: req.user.email || null
+    });
 
     res.status(200).json({
       success: true,

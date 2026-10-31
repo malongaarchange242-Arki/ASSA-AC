@@ -2,6 +2,7 @@
 import supabase from '../Config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { logActivite } from '../Services/journalService.js';
 
 /**
  * Authentification pour les superviseurs
@@ -56,6 +57,16 @@ export const loginSuperviseur = async (req, res) => {
 
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+
+    await logActivite({
+      module: 'Authentification',
+      type_activite: 'login',
+      categorie: 'Superviseur',
+      reference: user.email,
+      description: 'Connexion superviseur',
+      utilisateur_nom: user.nom_complet || user.email,
+      utilisateur_email: user.email
+    });
 
     return res.json({
       message: 'Connexion réussie',
@@ -154,6 +165,16 @@ export const updateSuperviseur = async (req, res) => {
       console.error('Supabase error updateSuperviseur:', error);
       return res.status(500).json({ message: 'Erreur serveur' });
     }
+
+    await logActivite({
+      module: 'Superviseurs',
+      type_activite: 'update',
+      categorie: 'Superviseur',
+      reference: data?.id || id,
+      description: `Profil superviseur ${data?.nom_complet || data?.email || id} mis à jour`,
+      utilisateur_nom: req.user?.nom_complet || req.user?.email || 'Superviseur',
+      utilisateur_email: req.user?.email || null
+    });
 
     return res.json({ message: 'Profil mis à jour', superviseur: data });
   } catch (err) {

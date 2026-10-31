@@ -2,6 +2,7 @@ import supabase from '../Config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import { sendEmail } from '../Services/emailService.js';
+import { logActivite } from '../Services/journalService.js';
 
 // ================= Multer =================
 const storage = multer.memoryStorage();
@@ -129,6 +130,18 @@ export const uploadPreuvesPaiement = async (req, res) => {
 
         console.log("📌 UPDATE RESULT =", updateData);
         console.log("🟥 UPDATE ERROR =", updateError);
+        if (updateError) throw updateError;
+
+        await logActivite({
+            module: 'Factures',
+            type_activite: 'create',
+            categorie: 'Preuve de paiement',
+            reference: numero_facture,
+            description: `Preuve de paiement envoyée pour la facture ${numero_facture}`,
+            id_companie,
+            utilisateur_nom: req.user?.company_name || req.user?.email || 'Compagnie',
+            utilisateur_email: req.user?.email || null
+        });
 
     // ==========================
     // 6️⃣ EMAIL ADMIN

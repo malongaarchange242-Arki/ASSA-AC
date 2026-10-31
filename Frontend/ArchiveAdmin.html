@@ -56,11 +56,25 @@
           <div class="archive-management">
 
             <div class="print-selector-group">
-                <label for="select-month"><i class="fas fa-print" aria-hidden="true"></i><span data-i18n="archive_report">Rapport d'Archive</span></label>
+                <label for="select-month"><i class="fas fa-filter" aria-hidden="true"></i><span data-i18n="actions_period">Période des actions</span></label>
                 <select id="select-month" aria-label="Période du rapport d'archive" data-i18n-aria-label="archive_period_accessible">
+                    <option value="all" data-i18n="all_periods">Toutes les périodes</option>
                     <option value="current" data-i18n="current_month">Mois en cours</option>
                     <option value="last" data-i18n="last_month">Mois dernier</option>
                 </select>
+
+                <label for="select-action-type"><i class="fas fa-list" aria-hidden="true"></i><span data-i18n="filter_action_type">Type d’action</span></label>
+                <select id="select-action-type" aria-label="Filtrer par type d’action" data-i18n-aria-label="filter_action_type_accessible">
+                    <option value="all" data-i18n="all_action_types">Tous les types d’action</option>
+                </select>
+
+                <label for="search-actions"><i class="fas fa-search" aria-hidden="true"></i><span data-i18n="search_actions">Rechercher une action</span></label>
+                <input id="search-actions" type="search" aria-label="Rechercher parmi les actions" data-i18n-aria-label="search_actions_accessible" placeholder="Référence, utilisateur ou compagnie" data-i18n-placeholder="search_actions_placeholder">
+
+                <button id="clear-filters" type="button">
+                    <i class="fas fa-rotate-left" aria-hidden="true"></i>
+                    <span data-i18n="reset_filters">Réinitialiser</span>
+                </button>
 
                 <button id="csv-btn" type="button">
                     <i class="fas fa-file-csv" aria-hidden="true"></i>
@@ -69,16 +83,16 @@
             </div>
 
             <div class="card-table-container">
-                <h2 data-i18n="closed_docs">Factures et Documents Clôturés</h2>
+                <h2 data-i18n="all_recorded_actions">Toutes les actions enregistrées</h2>
                 <div class="archive-table-scroll">
                   <table class="archive-table">
-                    <caption class="visually-hidden" data-i18n="closed_docs">Factures et Documents Clôturés</caption>
+                    <caption class="visually-hidden" data-i18n="all_recorded_actions">Toutes les actions enregistrées</caption>
                     <thead>
                         <tr>
                             <th data-i18n="type_col">Type</th>
                             <th data-i18n="ref_col">N° Réf.</th>
-                            <th data-i18n="companies">Compagnie</th>
-                            <th data-i18n="archive_date_col">Date de clôture</th>
+                            <th data-i18n="archive_actor_col">Utilisateur / compagnie</th>
+                            <th data-i18n="archive_date_col">Date de l'action</th>
                             <th data-i18n="actions_col">Actions</th>
                         </tr>
                     </thead>

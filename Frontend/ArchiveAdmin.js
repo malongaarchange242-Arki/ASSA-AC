@@ -83,13 +83,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         'restauration d’administrateur': 'archive_type_admin_restored',
         'archivage de facture': 'archive_type_invoice_archived',
         'restauration de facture': 'archive_type_invoice_restored',
-        'confirmation de paiement': 'archive_type_payment_confirmed'
+        'confirmation de paiement': 'archive_type_payment_confirmed',
+        'create:facture': 'archive_type_invoice_created',
+        'create:company': 'archive_type_company_created',
+        'create:compagnie': 'archive_type_company_created',
+        'update:company': 'archive_type_company_updated',
+        'update:compagnie': 'archive_type_company_updated',
+        'validate:facture': 'archive_type_invoice_validated',
+        'reject:facture': 'archive_type_invoice_rejected',
+        'submit:facture': 'archive_type_invoice_submitted',
+        'delete:facture': 'archive_type_invoice_deleted',
+        'login:auth': 'archive_type_login',
+        'login:operateur': 'archive_type_login',
+        'system:auth': 'archive_type_login',
+        'security:sécurité': 'archive_type_security',
+        'disable:operateur': 'archive_type_operator_disabled',
+        create: 'activity_created',
+        update: 'activity_updated',
+        delete: 'activity_deleted',
+        validate: 'activity_validated',
+        reject: 'activity_rejected',
+        submit: 'activity_submitted',
+        system: 'activity_system_event',
+        security: 'archive_type_security',
+        disable: 'archive_type_operator_disabled',
+        login: 'archive_type_login'
     };
 
-    const localizeArchiveType = type => {
-        const key = archiveTypeKeys[String(type || '').trim().toLocaleLowerCase('fr-FR')];
+    const localizeArchiveType = (type, category = '') => {
+        const normalizedType = String(type || '').trim().toLocaleLowerCase('fr-FR');
+        const normalizedCategory = String(category || '').trim().toLocaleLowerCase('fr-FR');
+        const key = archiveTypeKeys[`${normalizedType}:${normalizedCategory}`] || archiveTypeKeys[normalizedType];
         return key ? t(key) : (type || '-');
     };
+
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[character]);
 
     const localizeArchiveStatus = status => {
         const normalized = String(status || '').trim().toLocaleLowerCase('fr-FR');
@@ -183,6 +217,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resetBtn = document.querySelector('.action-buttons button:nth-child(2)');
     const printBtn = document.querySelector('.print-btn');
     const selectMonth = document.getElementById('select-month');
+    const selectActionType = document.getElementById('select-action-type');
+    const searchActions = document.getElementById('search-actions');
+    const clearFiltersButton = document.getElementById('clear-filters');
 
     const modal = document.getElementById('archiveModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -209,41 +246,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return new Intl.NumberFormat(getLocale()).format(n) + ' XAF';
     };
 
-    const getMonthParams = (value) => {
-        const now = new Date();
-    
-        // 🔹 Mois en cours
-        if (value === 'current') {
-            return {
-                mois: now.getMonth() + 1,
-                annee: now.getFullYear()
-            };
-        }
-    
-        // 🔹 Mois dernier
-        if (value === 'last') {
-            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            return {
-                mois: lastMonth.getMonth() + 1,
-                annee: lastMonth.getFullYear()
-            };
-        }
-    
-        // 🔹 Mois précis (ex: 2025-09)
-        const [annee, mois] = value.split('-');
-        return {
-            mois: Number(mois),
-            annee: Number(annee)
-        };
-    };
-    
-
-    function populateMonthSelect(archives = [], selectedValue = 'current') {
+    function populateMonthSelect(archives = [], selectedValue = 'all') {
         const select = document.getElementById("select-month");
         if (!select) return;
     
         const now = new Date();
         const options = [
+            new Option(t('all_periods'), 'all'),
             new Option(`${t('current_month')} (${now.toLocaleString(getLocale(), { month: 'long', year: 'numeric' })})`, 'current'),
             new Option(t('last_month'), 'last')
         ];
@@ -272,6 +281,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         select.replaceChildren(...options);
         select.value = selectedValue;
     }
+
+    const getActionTypeKey = action => {
+        const type = String(action.type || '').trim().toLocaleLowerCase('fr-FR');
+        const category = String(action.categorie || '').trim().toLocaleLowerCase('fr-FR');
+        const translationKey = archiveTypeKeys[`${type}:${category}`] || archiveTypeKeys[type];
+        return translationKey ? `translation:${translationKey}` : `type:${type}:${category}`;
+    };
+
+    const populateActionTypeSelect = (actions = [], selectedValue = 'all') => {
+        const optionsByKey = new Map();
+        actions.forEach(action => {
+            const key = getActionTypeKey(action);
+            if (!optionsByKey.has(key)) {
+                optionsByKey.set(key, localizeArchiveType(action.type, action.categorie));
+            }
+        });
+
+        const options = [new Option(t('all_action_types'), 'all')];
+        [...optionsByKey.entries()]
+            .sort((a, b) => a[1].localeCompare(b[1], getLocale()))
+            .forEach(([key, label]) => options.push(new Option(label, key)));
+        selectActionType.replaceChildren(...options);
+        selectActionType.value = selectedValue === 'all' || optionsByKey.has(selectedValue)
+            ? selectedValue
+            : 'all';
+    };
     
     
 
@@ -281,7 +316,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createArchiveRow = (a) => {
         const tr = document.createElement('tr');
 
-        [localizeArchiveType(a.type), a.ref || '-', a.compagnie_nom || '-', formatDate(a.date_cloture)].forEach(value => {
+        [localizeArchiveType(a.type, a.categorie), a.ref || '-', a.admin_nom || a.compagnie_nom || '-', formatDate(a.date_cloture)].forEach(value => {
             const cell = document.createElement('td');
             cell.textContent = value;
             tr.appendChild(cell);
@@ -330,7 +365,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* =====================================================
        LOAD ARCHIVES
     ===================================================== */
-    const loadArchives = async (monthValue = 'current') => {
+    const applyFilters = () => {
+        const period = selectMonth.value || 'all';
+        const selectedActionType = selectActionType.value || 'all';
+        const searchTerm = searchActions.value.trim().toLocaleLowerCase(getLocale());
+        let periodActions;
+        if (period === 'all') {
+            periodActions = allActionsData;
+        } else {
+            const now = new Date();
+            let year = now.getFullYear();
+            let month = now.getMonth();
+
+            if (period === 'last') {
+                const lastMonth = new Date(year, month - 1, 1);
+                year = lastMonth.getFullYear();
+                month = lastMonth.getMonth();
+            } else if (period !== 'current') {
+                const [selectedYear, selectedMonth] = period.split('-').map(Number);
+                year = selectedYear;
+                month = selectedMonth - 1;
+            }
+
+            periodActions = allActionsData.filter(action => {
+                const date = new Date(action.date_cloture);
+                return !Number.isNaN(date.getTime()) &&
+                    date.getFullYear() === year &&
+                    date.getMonth() === month;
+            });
+        }
+
+        archivesData = periodActions.filter(action => {
+            if (selectedActionType !== 'all' && getActionTypeKey(action) !== selectedActionType) return false;
+            if (!searchTerm) return true;
+
+            const searchableValues = [
+                localizeArchiveType(action.type, action.categorie),
+                action.ref,
+                action.admin_nom,
+                action.compagnie_nom,
+                action.description,
+                action.module,
+                action.categorie
+            ];
+            return searchableValues.some(value =>
+                String(value || '').toLocaleLowerCase(getLocale()).includes(searchTerm)
+            );
+        });
+
+        paginateArchives(archivesData, 6);
+    };
+
+    let allActionsData = [];
+
+    const loadArchives = async () => {
         archiveTableBody.setAttribute('aria-busy', 'true');
         archiveTableBody.innerHTML = Array.from({ length: 3 }, () => `
             <tr class="admin-skeleton-row">
@@ -338,15 +426,92 @@ document.addEventListener('DOMContentLoaded', async () => {
             </tr>
         `).join('');
         try {
-            const { mois, annee } = getMonthParams(monthValue);
-            const res = await fetchWithAuth(
-                `${API_BASE}/api/archives?mois=${mois}&annee=${annee}`
-            );
-    
-            archivesData = res.archives || [];
-    
-            populateMonthSelect(archivesData, monthValue);
-            paginateArchives(archivesData, 6);
+            const [archiveResponse, activityResponse] = await Promise.all([
+                fetchWithAuth(`${API_BASE}/api/archives`),
+                fetchWithAuth(`${API_BASE}/api/journal`)
+            ]);
+            if (!Array.isArray(archiveResponse.archives) || !Array.isArray(activityResponse.activites)) {
+                throw new Error('Les réponses des actions ou des archives sont incomplètes.');
+            }
+
+            const archiveActions = archiveResponse.archives.map(action => ({
+                ...action,
+                date_cloture: action.date_cloture,
+                source: 'archive'
+            }));
+            const journalActions = activityResponse.activites.map(action => ({
+                type: action.type_activite,
+                categorie: action.categorie,
+                module: action.module,
+                ref: action.reference || action.numero_facture || action.id,
+                compagnie_id: action.id_companie,
+                compagnie_nom: action.compagnie_nom || action.company_name || null,
+                admin_nom: action.utilisateur || action.utilisateur_nom || action.utilisateur_email || '-',
+                montant: action.montant ?? null,
+                objet: action.description || null,
+                statut: action.statut || null,
+                date_cloture: action.date_activite || action.created_at,
+                description: action.description || '',
+                role_utilisateur: action.role_utilisateur || '',
+                source: 'activity'
+            }));
+
+            const duplicateOfJournal = archiveAction => journalActions.some(activity => {
+                const archiveType = String(archiveAction.type || '').toLocaleLowerCase('fr-FR');
+                const activityType = String(activity.type || '').toLocaleLowerCase('fr-FR');
+                const archiveDate = new Date(archiveAction.date_cloture).getTime();
+                const activityDate = new Date(activity.date_cloture).getTime();
+                const withinSameOperation = Number.isFinite(archiveDate) &&
+                    Number.isFinite(activityDate) &&
+                    Math.abs(archiveDate - activityDate) < 5 * 60 * 1000;
+                if (!withinSameOperation) return false;
+
+                if (archiveType === 'création de facture') {
+                    return activityType === 'create' &&
+                        String(activity.categorie || '').toLocaleLowerCase('fr-FR') === 'facture' &&
+                        String(activity.ref || '') === String(archiveAction.ref || '');
+                }
+
+                if (archiveType === 'création de compagnie' || archiveType === 'mise à jour de compagnie') {
+                    const expectedType = archiveType === 'création de compagnie' ? 'create' : 'update';
+                    return activityType === expectedType &&
+                        ['company', 'compagnie'].includes(String(activity.categorie || '').toLocaleLowerCase('fr-FR')) &&
+                        String(activity.compagnie_id || '') === String(archiveAction.compagnie_id || '');
+                }
+
+                if (archiveType === 'confirmation de paiement') {
+                    return activityType === 'update' &&
+                        String(activity.categorie || '').toLocaleLowerCase('fr-FR') === 'facture' &&
+                        String(activity.ref || '') === String(archiveAction.ref || '') &&
+                        String(activity.description || '').toLocaleLowerCase('fr-FR').includes('paiement');
+                }
+
+                const archiveEventTypes = {
+                    'archivage de compagnie': 'archive',
+                    'restauration de compagnie': 'restore',
+                    "archivage d'administrateur": 'archive',
+                    'archivage d’administrateur': 'archive',
+                    "restauration d'administrateur": 'restore',
+                    'restauration d’administrateur': 'restore',
+                    'archivage de facture': 'archive',
+                    'restauration de facture': 'restore'
+                };
+                const expectedEventType = archiveEventTypes[archiveType];
+                if (expectedEventType) {
+                    return activityType === expectedEventType &&
+                        String(activity.ref || '') === String(archiveAction.ref || '');
+                }
+
+                return false;
+            });
+
+            allActionsData = [...archiveActions.filter(action => !duplicateOfJournal(action)), ...journalActions]
+                .sort((a, b) => new Date(b.date_cloture) - new Date(a.date_cloture));
+
+            const selectedPeriod = selectMonth.value || 'all';
+            populateMonthSelect(allActionsData, selectedPeriod);
+            populateActionTypeSelect(allActionsData, selectActionType.value || 'all');
+            applyFilters();
             archiveTableBody.setAttribute('aria-busy', 'false');
 
         } catch (error) {
@@ -360,7 +525,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const retryButton = document.createElement('button');
             retryButton.type = 'button';
             retryButton.textContent = t('archive_retry');
-            retryButton.addEventListener('click', () => loadArchives(monthValue));
+            retryButton.addEventListener('click', () => loadArchives());
             cell.appendChild(retryButton);
             row.appendChild(cell);
             archiveTableBody.replaceChildren(row);
@@ -384,7 +549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const cell = document.createElement('td');
                 cell.className = 'archive-empty-cell';
                 cell.colSpan = 5;
-                cell.textContent = t('archive_empty');
+                cell.textContent = t('archive_no_matching_actions');
                 row.appendChild(cell);
                 archiveTableBody.replaceChildren(row);
                 return;
@@ -396,24 +561,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     
         function renderPagination() {
-            pagination.innerHTML = "";
-            const totalPages = Math.ceil(data.length / rowsPerPage);
-    
-            if (totalPages <= 1) return;
-    
-            for (let i = 1; i <= totalPages; i++) {
-                const btn = document.createElement("button");
-                btn.textContent = i;
-                btn.classList.toggle("active", i === currentPage);
-    
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderPage();
-                    renderPagination();
-                };
-    
-                pagination.appendChild(btn);
-            }
+            const totalPages = Math.max(1, Math.ceil(data.length / rowsPerPage));
+            pagination.innerHTML = `
+                <button id="archive-prev-page" type="button" aria-label="${t('pagination_previous')}" ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                    <span>${t('pagination_previous')}</span>
+                </button>
+                <span class="pagination-page" aria-live="polite">
+                    ${t('page')} <strong>${currentPage}</strong> ${t('pagination_of')} ${totalPages}
+                </span>
+                <button id="archive-next-page" type="button" aria-label="${t('pagination_next')}" ${currentPage === totalPages ? 'disabled' : ''}>
+                    <span>${t('pagination_next')}</span>
+                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </button>
+            `;
+
+            pagination.querySelector("#archive-prev-page").addEventListener("click", () => {
+                currentPage = Math.max(1, currentPage - 1);
+                renderPage();
+                renderPagination();
+            });
+            pagination.querySelector("#archive-next-page").addEventListener("click", () => {
+                currentPage = Math.min(totalPages, currentPage + 1);
+                renderPage();
+                renderPagination();
+            });
         }
     
         renderPage();
@@ -426,7 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const openModal = (a) => {
         currentArchive = a;
-        modalTitle.textContent = localizeArchiveType(a.type);
+        modalTitle.textContent = localizeArchiveType(a.type, a.categorie);
         modalContent.innerHTML = renderArchiveDetails(a);
         
         // CORRECTION : Utilisez 'open' pour correspondre au CSS du Side Panel
@@ -460,24 +632,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const renderArchiveDetails = (a) => `
         <div class="modal-section">
             <h4>${t('archive_general_info')}</h4>
-            <div class="modal-row"><span>${t('archive_type')}</span><span>${localizeArchiveType(a.type)}</span></div>
-            <div class="modal-row"><span>${t('archive_date')}</span><span>${formatDate(a.date_cloture)}</span></div>
-            <div class="modal-row"><span>${t('archive_administrator')}</span><span>${a.admin_nom || '-'}</span></div>
+            <div class="modal-row"><span>${t('archive_type')}</span><span>${escapeHtml(localizeArchiveType(a.type, a.categorie))}</span></div>
+            <div class="modal-row"><span>${t('archive_date')}</span><span>${escapeHtml(formatDate(a.date_cloture))}</span></div>
+            <div class="modal-row"><span>${t('activity_actor')}</span><span>${escapeHtml(a.admin_nom || '-')}</span></div>
         </div>
 
         ${a.compagnie_nom ? `
         <div class="modal-section">
             <h4>${t('archive_company')}</h4>
-            <div class="modal-row"><span>${t('archive_name')}</span><span>${a.compagnie_nom}</span></div>
+            <div class="modal-row"><span>${t('archive_name')}</span><span>${escapeHtml(a.compagnie_nom)}</span></div>
         </div>` : ''}
 
         ${a.ref ? `
         <div class="modal-section">
             <h4>${t('archive_invoice')}</h4>
-            <div class="modal-row"><span>${t('archive_reference')}</span><span>${a.ref}</span></div>
-            <div class="modal-row"><span>${t('archive_amount')}</span><span>${formatAmount(a.montant)}</span></div>
-            <div class="modal-row"><span>${t('archive_status')}</span><span>${localizeArchiveStatus(a.statut)}</span></div>
+            <div class="modal-row"><span>${t('archive_reference')}</span><span>${escapeHtml(a.ref)}</span></div>
+            <div class="modal-row"><span>${t('archive_amount')}</span><span>${escapeHtml(formatAmount(a.montant))}</span></div>
+            <div class="modal-row"><span>${t('archive_status')}</span><span>${escapeHtml(localizeArchiveStatus(a.statut))}</span></div>
         </div>` : ''}
+
+        ${a.description ? `<div class="modal-section"><h4>${t('activity_description')}</h4><p>${escapeHtml(a.description)}</p></div>` : ''}
+        ${a.role_utilisateur ? `<div class="modal-row"><span>${t('activity_role')}</span><span>${escapeHtml(a.role_utilisateur)}</span></div>` : ''}
 
         <div class="modal-footer">
             <button class="btn-primary btn-pdf">
@@ -552,11 +727,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 y += 8;
             };
     
-            drawRow(`${t('archive_type')} :`, localizeArchiveType(a.type));
+            drawRow(`${t('archive_type')} :`, localizeArchiveType(a.type, a.categorie));
             drawRow(`${t('archive_date')} :`, formatDate(a.date_cloture));
-            drawRow(`${t('archive_administrator')} :`, a.admin_nom);
+            drawRow(`${t('activity_actor')} :`, a.admin_nom);
             drawRow(`${t('archive_company')} :`, a.compagnie_nom);
             drawRow(`${t('archive_reference')} :`, a.ref || '-');
+            drawRow(`${t('activity_description')} :`, a.description || '-');
             drawRow(`${t('archive_amount')} :`, a.montant ? formatAmount(a.montant) : '-');
             drawRow(`${t('archive_status')} :`, localizeArchiveStatus(a.statut));
     
@@ -586,17 +762,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     };
     
-    selectMonth.addEventListener("change", () => {
-        loadArchives(selectMonth.value);
+    selectMonth.addEventListener("change", applyFilters);
+    selectActionType.addEventListener("change", applyFilters);
+    searchActions.addEventListener("input", applyFilters);
+    clearFiltersButton.addEventListener("click", () => {
+        selectMonth.value = 'all';
+        selectActionType.value = 'all';
+        searchActions.value = '';
+        applyFilters();
     });
     
     document.getElementById("csv-btn").addEventListener("click", downloadArchiveCSV);
 
 window.addEventListener('app-language-change', () => {
-    populateMonthSelect(archivesData, selectMonth.value || 'current');
-    paginateArchives(archivesData, 6);
+    populateMonthSelect(allActionsData, selectMonth.value || 'all');
+    populateActionTypeSelect(allActionsData, selectActionType.value || 'all');
+    applyFilters();
     if (modal.classList.contains('open') && currentArchive) {
-        modalTitle.textContent = localizeArchiveType(currentArchive.type);
+        modalTitle.textContent = localizeArchiveType(currentArchive.type, currentArchive.categorie);
         modalContent.innerHTML = renderArchiveDetails(currentArchive);
     }
 });
@@ -607,57 +790,25 @@ function downloadArchiveCSV() {
         return;
     }
 
-    const select = document.getElementById("select-month");
-    const value = select.value;
-    const now = new Date();
-
-    let startDate, endDate;
-
-    // 📌 Mois en cours
-    if (value === "current") {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    }
-    // 📌 Mois dernier
-    else if (value === "last") {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-    }
-    // 📌 Mois spécifique
-    else {
-        const [year, month] = value.split("-");
-        startDate = new Date(year, month - 1, 1);
-        endDate = new Date(year, month, 0);
-    }
-
-    // 🔥 Filtrage des archives
-    const filtered = archivesData.filter(a => {
-        const d = new Date(a.date_cloture);
-        return d >= startDate && d <= endDate;
-    });
-
-    if (!filtered.length) {
-        alert(t('archive_no_month_export'));
-        return;
-    }
-
     // 🔥 Génération CSV
     const headers = [
         t('archive_csv_type'),
-        t('archive_csv_administrator'),
+        t('activity_actor'),
         t('archive_csv_company'),
         t('archive_csv_date'),
         t('archive_csv_reference'),
+        t('activity_description'),
         t('archive_csv_amount'),
         t('archive_csv_status')
     ];
 
-    const rows = filtered.map(a => [
-        localizeArchiveType(a.type),
+    const rows = archivesData.map(a => [
+        localizeArchiveType(a.type, a.categorie),
         a.admin_nom || "",
         a.compagnie_nom || "",
-        new Date(a.date_cloture).toLocaleDateString(getLocale()),
+        formatDate(a.date_cloture),
         a.ref || "",
+        a.description || "",
         a.montant || "",
         localizeArchiveStatus(a.statut)
     ]);
@@ -673,7 +824,7 @@ function downloadArchiveCSV() {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `archives_${startDate.getFullYear()}_${startDate.getMonth() + 1}.csv`;
+    a.download = `actions_${selectMonth.value || 'all'}.csv`;
     document.body.appendChild(a);
     a.click();
 

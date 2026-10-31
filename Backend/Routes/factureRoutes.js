@@ -57,7 +57,7 @@ router.put(
 router.delete(
   '/delete/:numero_facture',
   verifyToken,
-  checkRole(['administrateur', 'super_directeur']),
+  checkRole(['administrateur', 'superviseur', 'super_directeur']),
   deleteFacture
 );
 

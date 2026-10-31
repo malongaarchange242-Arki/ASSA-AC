@@ -73,7 +73,8 @@
     color: var(--primary);
 }
 
-.print-selector-group select {
+.print-selector-group select,
+.print-selector-group input[type="search"] {
     min-height: 40px;
     min-width: 190px;
     padding: 8px 34px 8px 11px;
@@ -85,10 +86,38 @@
     font: inherit;
 }
 
+.print-selector-group input[type="search"] {
+    min-width: 220px;
+    flex: 1 1 220px;
+    padding-right: 11px;
+}
+
 .print-selector-group select:focus-visible,
+.print-selector-group input[type="search"]:focus-visible,
 .archive-page button:focus-visible {
     outline: 3px solid rgba(79, 70, 229, 0.3);
     outline-offset: 2px;
+}
+
+#clear-filters {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+#clear-filters:hover {
+    border-color: #c7d2fe;
+    background: var(--primary-soft);
 }
 
 #csv-btn {
@@ -243,15 +272,19 @@
     display: flex;
     min-height: 38px;
     flex: 0 0 auto;
-    justify-content: flex-end;
-    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     margin-top: 14px;
 }
 
 .pagination button {
-    min-width: 36px;
     min-height: 36px;
-    padding: 7px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
@@ -265,10 +298,16 @@
     color: var(--primary);
 }
 
-.pagination button.active {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: #fff;
+.pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.pagination-page {
+    min-width: 88px;
+    color: var(--text);
+    font-size: 0.875rem;
+    text-align: center;
 }
 
 .modal-overlay {
@@ -435,6 +474,8 @@
 }
 
 .dark-mode .print-selector-group select,
+.dark-mode .print-selector-group input[type="search"],
+.dark-mode #clear-filters,
 .dark-mode .pagination button,
 .dark-mode .table-actions button,
 .dark-mode .close-btn,
@@ -473,7 +514,8 @@
         width: 100%;
     }
 
-    .print-selector-group select {
+    .print-selector-group select,
+    .print-selector-group input[type="search"] {
         min-width: 0;
         flex: 1 1 100%;
     }

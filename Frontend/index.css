@@ -45,24 +45,6 @@ body {
 /* STYLE LOGO ASSA-AC (40px) */
 #assaac-logo { height: 70px; width: auto; }
 
-/* Signature "By Softura" (SANS IMAGE) */
-.signature {
-    position: absolute;
-    bottom: 30px;
-    left: 50px;
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.6); /* Le reste du texte reste ici */
-    font-weight: 300; 
-    letter-spacing: 0.5px;
-}
-
-/* NOUVELLE RÈGLE : Cible uniquement le texte "Softura" */
-#softuraText {
-    font-weight: 700; /* Rend le mot Softura en Gras (Bold) */
-    color: #ffffff;  /* Le met en blanc pour bien ressortir */
-}
-
-
 /* SECTION DE CONNEXION */
 .login-section { flex-basis: 45%; display: flex; align-items: center; justify-content: center; padding: 40px; }
 

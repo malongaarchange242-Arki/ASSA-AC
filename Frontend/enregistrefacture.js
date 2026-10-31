@@ -10,6 +10,7 @@ const PRICE_HORS_CEMAC = 1500;
 
 // === IMPORTANT : REMPLACEZ CECI PAR LE CHEMIN D'ACCÈS RÉEL DE VOTRE LOGO ===
 const LOGO_URL = 'logo.jpeg';
+const STAMP_URL = new URL('Cachet_+_Signature-removebg-preview.png', document.baseURI).href;
 // =========================================================================
 
 const itemsContainer = document.getElementById('items-container');
@@ -36,6 +37,17 @@ let previewOpener = null;
 let invoiceDraftSaved = false;
 
 // ======================= UTILITAIRES =======================
+function getLocalDateInputValue(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseInvoiceDate(value) {
+    return new Date(`${value}T12:00:00`);
+}
+
 function showMessage(msg, type = 'info') {
     formMessage.textContent = msg;
     const baseClasses = 'text-center p-3 mb-6 rounded-xl font-medium border transition-opacity duration-300';
@@ -66,9 +78,7 @@ function resetInvoiceForm() {
     issueLocationInput.value = '';
     airportInput.value = '';
 
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    document.getElementById('issue-date').value = today;
+    document.getElementById('issue-date').value = getLocalDateInputValue();
     document.getElementById('period').value = getPreviousMonthPeriod();
 
     itemsContainer.replaceChildren();
@@ -418,7 +428,7 @@ function updateInvoiceLanguage() {
     if (previewWords) previewWords.textContent = totalInWords.textContent;
     const signatureDate = previewContent.querySelector('.invoice-signature-date');
     if (signatureDate) {
-        const date = new Date(document.getElementById('issue-date').value);
+        const date = parseInvoiceDate(document.getElementById('issue-date').value);
         const locale = localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR';
         signatureDate.textContent = t('invoice_signature_date')
             .replace('{location}', issueLocationInput.value || 'Pointe-Noire')
@@ -481,7 +491,7 @@ function buildInvoicePayload() {
         objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
         periode: document.getElementById('period')?.value || '',
         aeroport: document.getElementById('airport')?.value || '',
-        date_emission: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
+        date_emission: document.getElementById('issue-date')?.value || getLocalDateInputValue(),
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
@@ -617,7 +627,7 @@ async function showPreview() {
         const issueDate = document.getElementById('issue-date').value;
         const period = document.getElementById('period').value;
         const invoiceNumber = invoiceIdInput.value;
-        const formattedDate = new Date(issueDate).toLocaleDateString(
+        const formattedDate = parseInvoiceDate(issueDate).toLocaleDateString(
             localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR',
             { day: 'numeric', month: 'long', year: 'numeric' }
         );
@@ -732,14 +742,13 @@ async function showPreview() {
                 ${totalInWords.textContent}
             </div>
 
-            <div class="signature-block" style="margin-top: 30px; text-align: right; margin-right: 50px; font-size: 10pt;">
-                <div style="display: inline-block; text-align: center;">
-                    <div class="invoice-signature-date" style="font-weight: bold; margin-bottom: 50px;">${t('invoice_signature_date').replace('{location}', issueLocation).replace('{date}', formattedDate.toUpperCase())}</div>
-                    <div style="margin-bottom: 40px; text-decoration: underline;" data-i18n="invoice_general_management">La Direction Générale</div>
-                </div>
+            <div class="signature-block" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0; margin-top: 16px; margin-right: 0; font-size: 10pt;">
+                <div class="invoice-signature-date" style="font-size: 9pt; text-align: right; margin-bottom: 20px;">${t('invoice_signature_date').replace('{location}', issueLocation).replace('{date}', formattedDate.toUpperCase())}</div>
+                <img src="${STAMP_URL}" alt="Cachet officiel ASSA-AC" width="145" height="90" style="display: block; width: 145px; height: 90px; object-fit: contain;">
+                <div style="font-weight: bold; text-align: right;" data-i18n="invoice_general_management">La Direction Générale</div>
             </div>
 
-            <div class="payment-conditions" style="margin-top: 40px; font-size: 9pt; border-top: none;">
+            <div class="payment-conditions" style="margin-top: 12px; padding-top: 9px; font-size: 9pt; border-top: 1px solid #9ca3af;">
                 <u style="font-weight: bold;" data-i18n="invoice_payment_terms">Conditions de paiement :</u>
                 <ul style="list-style-type: disc; padding-left: 20px; margin-top: 5px;">
                     <li data-i18n="invoice_payment_transfer">Par virement bancaire suivant le RIB joint en annexe, à trente jours échus ;</li>
@@ -866,26 +875,32 @@ function printPreview() {
                 <title>Facture ${document.getElementById('invoice-id').value}</title>
                 <link rel="stylesheet" href="enregistrefacture.css"> 
                 <style>
-                    @page { size: A4; margin: 0; }
-                    html, body { display: block; width: 210mm; min-height: 0; height: auto; overflow: visible; font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 0; }
+                    @page { size: A4; margin: 8mm; }
+                    html, body { display: block; width: auto; min-height: 0; height: auto; overflow: visible; font-family: Arial, sans-serif; font-size: 10pt; color: #000; margin: 0; padding: 0; }
                     .print-controls { display: none !important; }
                     .invoice-viewer { display: block !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
-                    .invoice-sheet-viewport { display: block !important; width: 210mm !important; height: auto !important; margin: 0 !important; }
+                    .invoice-sheet-viewport { display: block !important; width: auto !important; height: auto !important; margin: 0 !important; }
                     .invoice-document {
                         box-sizing: border-box !important;
-                        width: 210mm !important;
+                        width: auto !important;
                         max-height: none !important;
                         overflow: visible !important;
                         border: 0 !important;
-                        padding: 15mm !important;
-                        min-height: 297mm !important;
+                        padding: 0 !important;
+                        min-height: 0 !important;
                         box-shadow: none !important;
                         transform: none !important;
-                        page-break-after: auto;
                     }
+                    .invoice-title { margin-top: 5px !important; }
+                    .client-details, .preview-details { margin-top: 10px !important; }
+                    .invoice-amount-words { margin-top: 8px !important; }
+                    .signature-block { margin: 12px 0 0 auto !important; }
+                    .signature-block img { width: 145px !important; height: 90px !important; max-height: 90px !important; }
+                    .payment-conditions { margin-top: 12px !important; }
+                    .payment-conditions ul { margin-top: 3px !important; }
                     table { border-collapse: collapse; width: 100%; }
                     img { max-width: 100%; }
-                    tr, .payment-conditions, .signature-block { break-inside: avoid; page-break-inside: avoid; }
+                    tr { break-inside: avoid; page-break-inside: avoid; }
                 </style>
             </head>
             <body>
@@ -1009,7 +1024,7 @@ async function sendInvoice(buttonElement) {
         objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
         periode: document.getElementById('period')?.value || '',
         aeroport: document.getElementById('airport')?.value || '',
-        date_emission: document.getElementById('issue-date')?.value || new Date().toISOString().split('T')[0],
+        date_emission: document.getElementById('issue-date')?.value || getLocalDateInputValue(),
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
         montant_total: totalNumeric,
         devise: CURRENCY,
@@ -1153,8 +1168,7 @@ window.onload = () => {
     try {
         initialiserMenuOperateur();
         updateInvoiceLanguage();
-        const today = new Date();
-        document.getElementById('issue-date').value = today.toISOString().split('T')[0];
+        document.getElementById('issue-date').value = getLocalDateInputValue();
         document.getElementById('period').value = getPreviousMonthPeriod();
 
         loadClients();

@@ -150,7 +150,7 @@ function extraireCompagnies() {
 function remplirListeCompagnies() {
     const select = document.getElementById("filter-company");
 
-    select.replaceChildren(new Option("Par compagnies", ""));
+    select.replaceChildren(new Option(window.t('all_companies'), ""));
 
     COMPAGNIES.forEach(comp => {
         select.add(new Option(comp, comp));

@@ -87,23 +87,11 @@ async function loadCompanyInfo() {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/api/companies/me`, {
+        const data = await companyCache.getJson('company', `${API_BASE}/api/companies/me`, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
-        });
-
-        if (response.status === 401 || response.status === 403) {
-            console.error("🔒 Session expirée ou non autorisée");
-            return;
-        }
-
-        if (!response.ok) {
-            console.error("❌ Erreur API /companies/me :", response.status);
-            return;
-        }
-
-        const data = await response.json();
+        }, companyCache.TTL.company);
 
         if (!data.company) {
             console.error("❌ Données compagnie manquantes", data);
@@ -160,7 +148,7 @@ function setTheme(mode) {
     }
 
     if (themeText) {
-        themeText.textContent = isDark ? 'Mode Jour' : 'Mode Nuit';
+        themeText.textContent = isDark ? t('theme_toggle_light_label') : t('theme_toggle_dark_label');
     }
 }
 
@@ -178,16 +166,9 @@ async function loadInvoices() {
     if (!companyId) return;
 
     try {
-        const response = await fetch(`${API_BASE}/api/factures?compagnie_id=${companyId}`, {
+        ALL_INVOICES = await companyCache.getJson('invoices', `${API_BASE}/api/factures?compagnie_id=${companyId}`, {
             headers: { "Authorization": "Bearer " + localStorage.getItem("jwtTokenCompany") }
-        });
-
-        if (!response.ok) {
-            console.error("❌ Erreur API:", response.status);
-            return;
-        }
-
-        ALL_INVOICES = await response.json(); // ⬅️ ON STOCKE TOUTES LES FACTURES
+        }, companyCache.TTL.invoices); // ⬅️ ON STOCKE TOUTES LES FACTURES
 
         // Initial filtered set = all invoices
         FILTERED_INVOICES = Array.isArray(ALL_INVOICES) ? ALL_INVOICES.slice() : [];
@@ -290,6 +271,14 @@ function renderInvoices(INVOICES = []) {
         });
 
         const displayStatus = inv.status || '—';
+        const normalizedStatus = normalizeInvoiceStatus(displayStatus);
+        const displayStatusLabel = normalizedStatus === 'payee'
+            ? t('status_paid')
+            : normalizedStatus === 'impayee'
+                ? t('status_unpaid')
+                : normalizedStatus.includes('contest')
+                    ? t('status_disputed')
+                    : displayStatus;
         let statusClass = '';
 
         switch (displayStatus.toLowerCase()) {
@@ -318,14 +307,14 @@ function renderInvoices(INVOICES = []) {
             actionButton = `
                 <a href="TeleverserCompagnie.html?facture=${encodeURIComponent(inv.numero_facture)}"
                    class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 font-semibold transition hover:scale-105">
-                    Téléverser preuve
+                    ${t('invoice_action_upload')}
                 </a>`;
         } 
         else if (['payée', 'payee'].includes(displayStatus.toLowerCase())) {
-            actionButton = `<span class="text-green-600 dark:text-green-400 font-medium">Réglée</span>`;
+            actionButton = `<span class="text-green-600 dark:text-green-400 font-medium">${t('invoice_action_paid')}</span>`;
         } 
         else if (['contestée', 'conteste'].includes(displayStatus.toLowerCase())) {
-            actionButton = `<span class="text-orange-600 dark:text-orange-400 font-medium">En revue</span>`;
+            actionButton = `<span class="text-orange-600 dark:text-orange-400 font-medium">${t('invoice_action_review')}</span>`;
         }
 
         rowsHTML += `
@@ -344,7 +333,7 @@ function renderInvoices(INVOICES = []) {
 
     <td class="px-6 py-4">
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-            ${displayStatus}
+            ${displayStatusLabel}
         </span>
     </td>
 
@@ -358,7 +347,7 @@ function renderInvoices(INVOICES = []) {
             type="button"
             onclick="openInvoicePage('${inv.numero_facture}', '${inv.status}')"
             class="text-blue-600 hover:text-blue-900 dark:text-blue-400 font-medium"
-            title="Voir la facture"
+            title="${t('invoice_view_title')}"
         >
             <svg xmlns="http://www.w3.org/2000/svg"
                  fill="none"
@@ -401,6 +390,9 @@ function renderInvoices(INVOICES = []) {
         ?.setAttribute('aria-pressed', String(INVOICE_STATUS_FILTER === 'valid'));
     document.getElementById('disputed-invoices-filter')
         ?.setAttribute('aria-pressed', String(INVOICE_STATUS_FILTER === 'disputed'));
+    const searchValue = document.getElementById('search-input')?.value.trim();
+    document.getElementById('total-invoices-filter')
+        ?.setAttribute('aria-pressed', String(!INVOICE_STATUS_FILTER && !searchValue));
 }
 
 
@@ -540,6 +532,22 @@ document.addEventListener('DOMContentLoaded', () => {
         ?.addEventListener('click', () => setInvoiceStatusFilter('valid'));
     document.getElementById('disputed-invoices-filter')
         ?.addEventListener('click', () => setInvoiceStatusFilter('disputed'));
+    document.getElementById('total-invoices-filter')
+        ?.addEventListener('click', () => {
+            INVOICE_STATUS_FILTER = null;
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = '';
+            applySearch();
+            document.getElementById('invoices-table-body')?.closest('.invoice-list-card')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+    window.addEventListener('app-language-change', () => {
+        setTheme(localStorage.getItem('theme') || 'light');
+        renderInvoices(getPaginatedInvoices());
+        renderPaginationControls();
+    });
 
 
     loadCompanyInfo();  // ⬅️ ICI AJOUTÉ
