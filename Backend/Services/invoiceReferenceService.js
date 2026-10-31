@@ -3,10 +3,9 @@ import supabase from '../Config/db.js';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const resolveInvoiceReferences = async (rows, referenceField) => {
-  const invoiceRows = rows.filter(row => {
-    const category = String(row.categorie || row.type_archive || row.type || '').toLocaleLowerCase('fr-FR');
-    return category.includes('facture') && UUID_PATTERN.test(String(row[referenceField] || ''));
-  });
+  const invoiceRows = rows.filter(row =>
+    UUID_PATTERN.test(String(row[referenceField] || ''))
+  );
   const invoiceIds = [...new Set(invoiceRows.map(row => String(row[referenceField])))];
   if (!invoiceIds.length) return rows;
 
