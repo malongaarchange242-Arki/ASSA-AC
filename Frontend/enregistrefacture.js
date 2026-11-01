@@ -243,7 +243,7 @@ function numberToWords(n) {
     if (num < 1000000) {
         let m = Math.floor(num / 1000);
         let r = num % 1000;
-        let mots = convertHundreds(m).replace('cent ', 'cent').replace('cents ', 'cents') + ' mille';
+        let mots = convertHundreds(m) + ' mille';
 
         if (r > 0) {
             mots += ' ' + convertHundreds(r);

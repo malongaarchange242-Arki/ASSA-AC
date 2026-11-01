@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentEmail = '';
     let currentRole = '';
+    let isResetMode = false;
     let isChecking = false;
     let isLoggingIn = false;
     let typingTimer;
@@ -55,12 +56,25 @@ document.addEventListener('DOMContentLoaded', () => {
             mainButton.textContent = 'Se Connecter';
         }
     }
-    
-    // ==========================
-    // GESTION DU MODE RÉINITIALISATION ET SIMULATION
-    // ==========================
-    let isResetMode = false;
-    const SIMULATED_RESET_OTP = '123456'; // CODE OTP FIXE POUR LA SIMULATION
+
+    async function requestPasswordResetOtp() {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/password-reset/request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail })
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.message || 'Impossible d’envoyer le code de réinitialisation.');
+            otpCodeInput.value = '';
+            alert(data?.message || 'Si un compte correspond à cette adresse, un code de réinitialisation lui a été envoyé.');
+            return true;
+        } catch (err) {
+            console.error(err);
+            alert(err.message || 'Impossible d’envoyer le code de réinitialisation. Réessayez.');
+            return false;
+        }
+    }
     
     // ==========================
     // 2. Effet flottant inputs
@@ -115,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.readOnly = false;
         currentRole = '';
         currentEmail = '';
+        isResetMode = false;
         showSection(emailSection);
         emailInput.focus();
         inputGroups.forEach(({ input, group }) => checkFloatingState(input, group));
@@ -176,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordInput.focus();
             } else if (data.role === 'company') {
                 if (!data.has_password) {
+                    isResetMode = false;
                     showSection(otpSection);
                     mainTitle.textContent = 'Validation OTP';
                     subTitle.textContent = 'Veuillez entrer le code OTP reçu par email.';
@@ -225,17 +241,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return alert("Veuillez entrer une adresse email valide avant de cliquer sur 'Mot de passe oublié'.");
         }
 
-        currentEmail = email; 
-        
-        // --- SIMULATION DU BACKEND (DÉBUT) ---
-        await new Promise(resolve => setTimeout(resolve, 800)); 
-        
-        alert(` Un code de réinitialisation a été envoyé à ${currentEmail}.\nUtilisez le code : ${SIMULATED_RESET_OTP}`);
-        
+        currentEmail = email;
+        isResetMode = true;
+        if (!await requestPasswordResetOtp()) {
+            isResetMode = false;
+            return;
+        }
 
         // 3. Mise à jour de l'interface
-        isResetMode = true; 
-        
         emailSection.classList.remove('visible');
         passwordField.classList.remove('visible'); 
         actionButtonContainer.classList.remove('visible');
@@ -243,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Changer les textes pour la réinitialisation
         document.getElementById('otpSection').querySelector('h2').textContent = 'Réinitialisation du mot de passe';
-        document.getElementById('otpSection').querySelector('p').textContent = `Entrez le code (${SIMULATED_RESET_OTP}) et votre nouveau mot de passe.`;
+        document.getElementById('otpSection').querySelector('p').textContent = 'Entrez le code reçu et votre nouveau mot de passe.';
         
         // Afficher le champ pour le nouveau mot de passe (Même logique que le premier login)
         otpPasswordGroup.style.display = 'block';
@@ -255,19 +268,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. Demande OTP (Premier Login Compagnie - Code original conservé)
     // ==========================
     async function requestOtp() {
+        if (!currentEmail) return false;
+
         try {
             const res = await fetch(`${API_BASE}/api/companies/first-login-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: currentEmail })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Erreur serveur');
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.message || 'Erreur serveur');
+            if (data?.email_sent === false) {
+                throw new Error('Le code OTP n’a pas pu être envoyé. Vérifiez la configuration e-mail puis réessayez.');
+            }
+            otpCodeInput.value = '';
             alert(`Un code OTP a été envoyé à ${currentEmail}.`);
+            return true;
         } catch (err) {
             console.error(err);
-            alert('Impossible d\'envoyer l\'OTP. Réessayez.');
-            resetToInitialView();
+            alert(err.message || 'Impossible d\'envoyer l\'OTP. Réessayez.');
+            return false;
         }
     }
     
@@ -282,23 +302,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
         try {
             if (isResetMode) {
-                // --- SIMULATION DU BACKEND (DÉBUT) ---
-                await new Promise(resolve => setTimeout(resolve, 800)); 
-                
-                if (otp !== SIMULATED_RESET_OTP) {
-                    throw new Error('Code de réinitialisation invalide.');
-                }
-                if (password.length < 6) {
-                    throw new Error('Le nouveau mot de passe est trop court.');
-                }
-
-                alert('Mot de passe modifié avec succès ! (Simulation)\nVeuillez vous reconnecter avec votre nouveau mot de passe.');
+                const res = await fetch(`${API_BASE}/api/auth/password-reset/confirm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail, otp, password })
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok) throw new Error(data?.message || 'Impossible de réinitialiser le mot de passe.');
+                alert(data?.message || 'Mot de passe réinitialisé. Vous pouvez vous connecter.');
                 resetToInitialView();
-                return; 
-                // --- SIMULATION DU BACKEND (FIN) ---
-            } 
-            
-            // Logique du Premier Login Compagnie (vraie route)
+                return;
+            }
+
             const url = `${API_BASE}/api/companies/validate-otp`;
             const res = await fetch(url, {
                 method: 'POST',
@@ -475,7 +490,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     document.getElementById('validateOtpButton').addEventListener('click', validateOtp);
-    resendOtpLink.addEventListener('click', e => { e.preventDefault(); if (currentEmail) requestOtp(); });
+    resendOtpLink.addEventListener('click', e => {
+        e.preventDefault();
+        if (currentEmail) {
+            if (isResetMode) requestPasswordResetOtp();
+            else requestOtp();
+        }
+    });
     backToEmail2.addEventListener('click', e => { e.preventDefault(); resetToInitialView(); });
 
     // ==========================
