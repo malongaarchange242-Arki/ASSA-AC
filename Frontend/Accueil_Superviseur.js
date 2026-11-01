@@ -173,8 +173,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (statCards.validated) {
                 const valides = facturesArr.filter(f => {
-                    const statut = normalize(f.statut || f.status || f.etat || f.state);
-                    return statut.includes('pay') || statut.includes('valide');
+                    const statutValidation = normalize(f.daf_status || f.validation_status || f.workflow_status);
+                    return statutValidation === 'validated' || statutValidation === 'validee';
                 });
                 setStatValue('validated', valides.length.toLocaleString());
             }

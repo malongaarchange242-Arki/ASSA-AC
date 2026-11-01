@@ -29,9 +29,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ================== Sélecteurs des cartes ==================
     const statCards = {
-        companies: document.querySelector('.stat-card:nth-child(1) .stat-value'),
-        factures: document.querySelector('.stat-card:nth-child(2) .stat-value'),
-        contestees: document.querySelector('#facturesContesteesValue') // 👈 AJOUT
+        companies: document.getElementById('companies-value'),
+        factures: document.getElementById('invoices-value'),
+        contestees: document.getElementById('facturesContesteesValue')
+    };
+
+    const setStatValue = (element, value) => {
+        if (!element) return;
+        element.textContent = value;
+        element.closest('.stat-card')?.setAttribute('aria-busy', 'false');
     };
 
     // ================== Refresh Token ==================
@@ -91,14 +97,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     )
                 );
 
-                statCards.companies.textContent = activeCompanies.length;
+                setStatValue(statCards.companies, activeCompanies.length);
             } else {
-                statCards.companies.textContent = '0';
+                setStatValue(statCards.companies, '0');
             }
 
         } catch (err) {
             console.error('Erreur récupération compagnies :', err);
-            statCards.companies.textContent = '0';
+            setStatValue(statCards.companies, '0');
         }
     }
 
@@ -111,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!statCards.factures) return;
     
             // Total factures
-            statCards.factures.textContent = Array.isArray(factures) ? factures.length : '0';
+            setStatValue(statCards.factures, Array.isArray(factures) ? factures.length : '0');
     
           // Factures contestées
             if (statCards.contestees) {
@@ -128,15 +134,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })
                     : [];
 
-                statCards.contestees.textContent = contestees.length;
+                setStatValue(statCards.contestees, contestees.length);
             }
 
     
         } catch (err) {
             console.error('Erreur récupération factures :', err);
     
-            statCards.factures.textContent = '0';
-            if (statCards.contestees) statCards.contestees.textContent = '0';
+            setStatValue(statCards.factures, '0');
+            setStatValue(statCards.contestees, '0');
         }
     }
     

@@ -44,6 +44,11 @@ function getLocalDateInputValue(date = new Date()) {
     return `${year}-${month}-${day}`;
 }
 
+const issueDateInput = document.getElementById('issue-date');
+if (issueDateInput && !issueDateInput.value) {
+    issueDateInput.value = getLocalDateInputValue();
+}
+
 function parseInvoiceDate(value) {
     return new Date(`${value}T12:00:00`);
 }
@@ -1085,10 +1090,21 @@ async function sendInvoice(buttonElement) {
         }
         invoiceDraftSaved = true;
 
+        const emailResponse = await fetch(
+            `${API_BASE}/api/factures/${encodeURIComponent(invoiceIdInput.value)}/resend-email`,
+            {
+                method: 'POST',
+                headers: getInvoiceAuthHeaders(token)
+            }
+        );
+        const emailResult = await emailResponse.json().catch(() => ({}));
+        if (!emailResponse.ok) {
+            throw new Error(emailResult.message || `Erreur e-mail ${emailResponse.status}`);
+        }
+
         const refShown = invoiceIdInput.value
             ? ` (${t('invoice_reference_label').replace('{reference}', invoiceIdInput.value)})`
             : '';
-        // Show message inside preview modal (always show success per request)
         const previewMsg = document.getElementById('preview-message');
         if (previewMsg) {
             previewMsg.dataset.messageKey = 'invoice_saved_success';
@@ -1102,7 +1118,7 @@ async function sendInvoice(buttonElement) {
         } else {
             showMessage(t('invoice_saved_success').replace('{reference}', refShown), 'success');
         }
-        // Close the preview after the confirmation is visible, then prepare a blank invoice.
+        // Close only after both the invoice save and email request succeed.
         setTimeout(() => {
             closePreview();
             resetInvoiceForm();

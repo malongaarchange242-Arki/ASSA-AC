@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'mise à jour de compagnie': 'archive_type_company_updated',
         'archivage de compagnie': 'archive_type_company_archived',
         'restauration de compagnie': 'archive_type_company_restored',
+        'suppression définitive de compagnie': 'archive_type_company_deleted',
         "archivage d'administrateur": 'archive_type_admin_archived',
         'archivage d’administrateur': 'archive_type_admin_archived',
         "restauration d'administrateur": 'archive_type_admin_restored',
@@ -89,6 +90,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         'create:compagnie': 'archive_type_company_created',
         'update:company': 'archive_type_company_updated',
         'update:compagnie': 'archive_type_company_updated',
+        'update:facture': 'activity_updated',
+        'création:company': 'archive_type_company_created',
+        'création:compagnie': 'archive_type_company_created',
+        'création:facture': 'archive_type_invoice_created',
+        'modification:company': 'archive_type_company_updated',
+        'modification:compagnie': 'archive_type_company_updated',
+        'archive:company': 'archive_type_company_archived',
+        'archive:compagnie': 'archive_type_company_archived',
+        'restore:company': 'archive_type_company_restored',
+        'restore:compagnie': 'archive_type_company_restored',
+        'delete:company': 'archive_type_company_deleted',
+        'delete:compagnie': 'archive_type_company_deleted',
         'validate:facture': 'archive_type_invoice_validated',
         'reject:facture': 'archive_type_invoice_rejected',
         'submit:facture': 'archive_type_invoice_submitted',
@@ -110,11 +123,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         login: 'archive_type_login'
     };
 
-    const localizeArchiveType = (type, category = '') => {
+    const getActionDomain = (action, reference = '') => {
+        const category = String(action.categorie || '').trim().toLocaleLowerCase('fr-FR');
+        const module = String(action.module || '').trim().toLocaleLowerCase('fr-FR');
+        const description = String(action.description || '').trim().toLocaleLowerCase('fr-FR');
+        if (category.includes('facture') || category.includes('invoice') ||
+            module.includes('facture') || module.includes('invoice') ||
+            description.includes('facture') || description.includes('invoice')) return 'facture';
+        if (category.includes('company') || category.includes('compagn') ||
+            module.includes('company') || module.includes('compagn') ||
+            description.includes('compagnie') || description.includes('company') ||
+            (action.compagnie_nom && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(reference)))) {
+            return 'company';
+        }
+        if (category.includes('operateur') || category.includes('operator') ||
+            module.includes('operateur') || module.includes('operator') ||
+            description.includes('opérateur') || description.includes('operateur')) return 'operateur';
+        if (category.includes('sécurité') || category.includes('security') ||
+            module.includes('security') || description.includes('sécurité')) return 'sécurité';
+        if (category.includes('auth') || module.includes('auth')) return 'auth';
+        return category;
+    };
+
+    const getArchiveTypeTranslationKey = (action, reference = action.ref) => {
+        const normalizedType = String(action.type || '').trim().toLocaleLowerCase('fr-FR');
+        const domain = getActionDomain(action, reference);
+        const specificKey = archiveTypeKeys[`${normalizedType}:${domain}`];
+        if (specificKey) return specificKey;
+        const exactKey = archiveTypeKeys[normalizedType];
+        if (exactKey && !['activity_created', 'activity_updated', 'activity_deleted', 'activity_validated', 'activity_rejected', 'activity_submitted'].includes(exactKey)) {
+            return exactKey;
+        }
+        return exactKey;
+    };
+
+    const localizeArchiveType = (type, category = '', context = {}) => {
         const normalizedType = String(type || '').trim().toLocaleLowerCase('fr-FR');
         const normalizedCategory = String(category || '').trim().toLocaleLowerCase('fr-FR');
-        const key = archiveTypeKeys[`${normalizedType}:${normalizedCategory}`] || archiveTypeKeys[normalizedType];
+        const action = { ...context, type, categorie: category || context.categorie };
+        const key = archiveTypeKeys[`${normalizedType}:${normalizedCategory}`] ||
+            getArchiveTypeTranslationKey(action, context.ref);
         return key ? t(key) : (type || '-');
+    };
+
+    const getInvoiceReferenceFromDescription = description =>
+        String(description || '').match(/\b[A-Z0-9]+-\d{3}\/\d{2}\/\d{4}\/ASSA-AC\/DAF\b/i)?.[0] || null;
+
+    const isCompanyAction = action => {
+        const type = String(action.type || '').trim().toLocaleLowerCase('fr-FR');
+        return type.includes('compagnie') || getActionDomain(action, action.ref) === 'company';
     };
 
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -283,10 +340,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const getActionTypeKey = action => {
+        const translationKey = getArchiveTypeTranslationKey(action);
+        if (translationKey) return `translation:${translationKey}`;
         const type = String(action.type || '').trim().toLocaleLowerCase('fr-FR');
         const category = String(action.categorie || '').trim().toLocaleLowerCase('fr-FR');
-        const translationKey = archiveTypeKeys[`${type}:${category}`] || archiveTypeKeys[type];
-        return translationKey ? `translation:${translationKey}` : `type:${type}:${category}`;
+        return `type:${type}:${category}`;
     };
 
     const populateActionTypeSelect = (actions = [], selectedValue = 'all') => {
@@ -294,7 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         actions.forEach(action => {
             const key = getActionTypeKey(action);
             if (!optionsByKey.has(key)) {
-                optionsByKey.set(key, localizeArchiveType(action.type, action.categorie));
+                optionsByKey.set(key, localizeArchiveType(action.type, action.categorie, action));
             }
         });
 
@@ -315,8 +373,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const createArchiveRow = (a) => {
         const tr = document.createElement('tr');
+        const referenceOrCompany = isCompanyAction(a)
+            ? a.compagnie_nom || a.company_name || a.ref || '-'
+            : a.ref || '-';
 
-        [localizeArchiveType(a.type, a.categorie), a.ref || '-', a.admin_nom || a.compagnie_nom || '-', formatDate(a.date_cloture)].forEach(value => {
+        [localizeArchiveType(a.type, a.categorie, a), referenceOrCompany, a.admin_nom || a.compagnie_nom || '-', formatDate(a.date_cloture)].forEach(value => {
             const cell = document.createElement('td');
             cell.textContent = value;
             tr.appendChild(cell);
@@ -400,7 +461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!searchTerm) return true;
 
             const searchableValues = [
-                localizeArchiveType(action.type, action.categorie),
+                localizeArchiveType(action.type, action.categorie, action),
                 action.ref,
                 action.admin_nom,
                 action.compagnie_nom,
@@ -443,7 +504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 type: action.type_activite,
                 categorie: action.categorie,
                 module: action.module,
-                ref: action.reference || action.numero_facture || action.id,
+                ref: action.numero_facture || getInvoiceReferenceFromDescription(action.description) || action.reference || action.id,
                 compagnie_id: action.id_companie,
                 compagnie_nom: action.compagnie_nom || action.company_name || null,
                 admin_nom: action.utilisateur || action.utilisateur_nom || action.utilisateur_email || '-',
@@ -489,6 +550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const archiveEventTypes = {
                     'archivage de compagnie': 'archive',
                     'restauration de compagnie': 'restore',
+                    'suppression définitive de compagnie': 'delete',
                     "archivage d'administrateur": 'archive',
                     'archivage d’administrateur': 'archive',
                     "restauration d'administrateur": 'restore',
@@ -598,7 +660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ===================================================== */
     const openModal = (a) => {
         currentArchive = a;
-        modalTitle.textContent = localizeArchiveType(a.type, a.categorie);
+        modalTitle.textContent = localizeArchiveType(a.type, a.categorie, a);
         modalContent.innerHTML = renderArchiveDetails(a);
         
         // CORRECTION : Utilisez 'open' pour correspondre au CSS du Side Panel
@@ -632,7 +694,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const renderArchiveDetails = (a) => `
         <div class="modal-section">
             <h4>${t('archive_general_info')}</h4>
-            <div class="modal-row"><span>${t('archive_type')}</span><span>${escapeHtml(localizeArchiveType(a.type, a.categorie))}</span></div>
+            <div class="modal-row"><span>${t('archive_type')}</span><span>${escapeHtml(localizeArchiveType(a.type, a.categorie, a))}</span></div>
             <div class="modal-row"><span>${t('archive_date')}</span><span>${escapeHtml(formatDate(a.date_cloture))}</span></div>
             <div class="modal-row"><span>${t('activity_actor')}</span><span>${escapeHtml(a.admin_nom || '-')}</span></div>
         </div>
@@ -727,7 +789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 y += 8;
             };
     
-            drawRow(`${t('archive_type')} :`, localizeArchiveType(a.type, a.categorie));
+            drawRow(`${t('archive_type')} :`, localizeArchiveType(a.type, a.categorie, a));
             drawRow(`${t('archive_date')} :`, formatDate(a.date_cloture));
             drawRow(`${t('activity_actor')} :`, a.admin_nom);
             drawRow(`${t('archive_company')} :`, a.compagnie_nom);
@@ -779,7 +841,7 @@ window.addEventListener('app-language-change', () => {
     populateActionTypeSelect(allActionsData, selectActionType.value || 'all');
     applyFilters();
     if (modal.classList.contains('open') && currentArchive) {
-        modalTitle.textContent = localizeArchiveType(currentArchive.type, currentArchive.categorie);
+        modalTitle.textContent = localizeArchiveType(currentArchive.type, currentArchive.categorie, currentArchive);
         modalContent.innerHTML = renderArchiveDetails(currentArchive);
     }
 });
@@ -803,7 +865,7 @@ function downloadArchiveCSV() {
     ];
 
     const rows = archivesData.map(a => [
-        localizeArchiveType(a.type, a.categorie),
+        localizeArchiveType(a.type, a.categorie, a),
         a.admin_nom || "",
         a.compagnie_nom || "",
         formatDate(a.date_cloture),

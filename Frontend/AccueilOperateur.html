@@ -48,22 +48,22 @@
         </div>
 
         <div class="dashboard-grid">
-            <a href="compagniesActivesOperateur.html" class="card stat-card companies-card-link" aria-label="Compagnies Actives">
+            <a href="compagniesActivesOperateur.html?highlight=active" class="card stat-card companies-card-link" aria-label="Compagnies Actives" aria-busy="true">
                 <div class="stat-icon"><i class="fas fa-building"></i></div>
                 <div class="stat-title">Compagnies Actives</div>
-                <div class="stat-value" id="companies-value">0</div>
+                <div class="stat-value" id="companies-value"><span class="admin-skeleton operator-stat-skeleton" aria-hidden="true"></span></div>
             </a>
 
-            <a href="factureOperateur.html" class="card stat-card invoice-count-link" aria-label="Nombre total de factures">
+            <a href="factureOperateur.html" class="card stat-card invoice-count-link" aria-label="Nombre total de factures" aria-busy="true">
                 <div class="stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
                 <div class="stat-title">Nombre total de factures</div>
-                <div class="stat-value">0</div>
+                <div class="stat-value" id="invoices-value"><span class="admin-skeleton operator-stat-skeleton" aria-hidden="true"></span></div>
             </a>
 
-            <a href="factureOperateur.html?highlight=disputed" class="card stat-card alert-card disputed-invoices-link" aria-label="Factures Contestées">
+            <a href="factureOperateur.html?highlight=disputed" class="card stat-card alert-card disputed-invoices-link" aria-label="Factures Contestées" aria-busy="true">
                 <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="stat-title">Factures Contestées</div>
-                <div class="stat-value" id="facturesContesteesValue">0</div>
+                <div class="stat-value" id="facturesContesteesValue"><span class="admin-skeleton operator-stat-skeleton" aria-hidden="true"></span></div>
                 <div class="stat-extra">Nécessite une action</div>
             </a>
 
@@ -89,7 +89,26 @@
                             <th>Date</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody aria-busy="true">
+                        <tr class="admin-skeleton-row" aria-hidden="true">
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                        </tr>
+                        <tr class="admin-skeleton-row" aria-hidden="true">
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                        </tr>
+                        <tr class="admin-skeleton-row" aria-hidden="true">
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>

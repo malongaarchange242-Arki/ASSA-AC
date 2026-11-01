@@ -71,11 +71,6 @@ const highlightDisputedInvoices = new URLSearchParams(window.location.search).ge
    async function chargerFactures() {
     const tbody = document.getElementById("factureTableBody");
     tbody.setAttribute('aria-busy', 'true');
-    tbody.innerHTML = Array.from({ length: 3 }, () => `
-        <tr class="admin-skeleton-row">
-            ${Array.from({ length: 7 }, () => '<td><span class="admin-skeleton admin-skeleton-block"></span></td>').join('')}
-        </tr>
-    `).join('');
     try {
         const res = await fetch(`${API_URL}/api/factures`, {
             method: "GET",
@@ -99,6 +94,9 @@ const highlightDisputedInvoices = new URLSearchParams(window.location.search).ge
 
         extraireCompagnies();
         remplirListeCompagnies();
+        if (highlightDisputedInvoices) {
+            document.getElementById("filter-statut").value = "contestée";
+        }
         const requestedCompany = new URLSearchParams(window.location.search).get("company");
         if (requestedCompany) {
             const companySelect = document.getElementById("filter-company");
@@ -435,7 +433,14 @@ function getFilteredInvoices() {
         const dateFacture = String(f.date || "");
         const matchMois = moisFiltre ? getInvoiceMonthKey(dateFacture) === moisFiltre : true;
         const matchComp = compagnieFiltre ? f.client === compagnieFiltre : true;
-        const matchStatut = statutFiltre ? f.status?.toLowerCase() === statutFiltre : true;
+        const normalizeStatus = value => String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim()
+            .toLowerCase();
+        const matchStatut = statutFiltre
+            ? normalizeStatus(f.status) === normalizeStatus(statutFiltre)
+            : true;
         const matchRecherche =
             String(f.client || "").toLowerCase().includes(recherche) ||
             String(f.numero_facture || "").toLowerCase().includes(recherche) ||
@@ -709,8 +714,6 @@ window.onload = chargerFactures;
 
 // Filtrage par mois/année sélectionné dans le calendrier natif du navigateur
 const monthFilter = document.getElementById("filter-month");
-const now = new Date();
-monthFilter.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 monthFilter.addEventListener("change", filtrerFactures);
 document
     .getElementById("filter-statut")

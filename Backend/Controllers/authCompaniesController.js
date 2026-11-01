@@ -715,7 +715,18 @@ export const deleteCompanySafe = async (req, res) => {
 
     if (deleteCompanyError) throw deleteCompanyError;
 
-    // 4️⃣ Journaliser la suppression
+    // 4️⃣ Conserver la suppression dans le registre d’archives
+    await createArchive({
+      type: 'Suppression définitive de compagnie',
+      ref: company.id,
+      compagnie_id: company.id,
+      compagnie_nom: company.company_name,
+      statut: company.status,
+      admin_id: req.user?.id,
+      admin_nom: req.user?.nom_complet || req.user?.nom || req.user?.email || 'Administrateur'
+    });
+
+    // 5️⃣ Journaliser la suppression
     await logActivite({
       module: 'Compagnies',
       type_activite: 'delete',

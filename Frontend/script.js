@@ -38,6 +38,126 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     const dashboardError = document.getElementById('dashboard-load-error');
     const dashboardFailures = new Map();
+    const recentActivitiesBody = document.getElementById('recent-activities-body');
+    let recentActivities = [];
+
+    const activityTranslationKeys = {
+        'create:company': 'archive_type_company_created',
+        'create:compagnie': 'archive_type_company_created',
+        'create:facture': 'archive_type_invoice_created',
+        'update:company': 'archive_type_company_updated',
+        'update:compagnie': 'archive_type_company_updated',
+        'update:facture': 'activity_updated',
+        'delete:facture': 'archive_type_invoice_deleted',
+        'delete:company': 'activity_deleted',
+        'delete:compagnie': 'activity_deleted',
+        'validate:facture': 'archive_type_invoice_validated',
+        'reject:facture': 'archive_type_invoice_rejected',
+        'submit:facture': 'archive_type_invoice_submitted',
+        'archive:company': 'archive_type_company_archived',
+        'archive:compagnie': 'archive_type_company_archived',
+        'restore:company': 'archive_type_company_restored',
+        'restore:compagnie': 'archive_type_company_restored',
+        'login:auth': 'archive_type_login',
+        'login:operateur': 'archive_type_login',
+        'system:auth': 'archive_type_login',
+        'security:sécurité': 'archive_type_security',
+        'disable:operateur': 'archive_type_operator_disabled'
+    };
+    const genericActivityTranslationKeys = {
+        create: 'activity_created',
+        update: 'activity_updated',
+        delete: 'activity_deleted',
+        validate: 'activity_validated',
+        reject: 'activity_rejected',
+        submit: 'activity_submitted',
+        login: 'activity_login',
+        security: 'activity_security',
+        disable: 'activity_disabled'
+    };
+
+    const normalizeActivityValue = value => String(value || '').trim().toLocaleLowerCase('fr-FR');
+    let recentActivitiesError = false;
+
+    function renderRecentActivities() {
+        if (!recentActivitiesBody) return;
+        recentActivitiesBody.replaceChildren();
+
+        if (recentActivitiesBody.getAttribute('aria-busy') === 'true' && !recentActivitiesError) {
+            return;
+        }
+
+        if (recentActivitiesError) {
+            const row = recentActivitiesBody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 4;
+            cell.className = 'dashboard-activity-message';
+            cell.replaceChildren(document.createTextNode(`${t('activity_load_error')} `));
+            const retryButton = document.createElement('button');
+            retryButton.type = 'button';
+            retryButton.textContent = t('dashboard_retry');
+            retryButton.addEventListener('click', chargerActivitesRecentes);
+            cell.appendChild(retryButton);
+            return;
+        }
+
+        if (!recentActivities.length) {
+            const row = recentActivitiesBody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 4;
+            cell.className = 'dashboard-activity-message';
+            cell.textContent = t('activity_empty_dashboard');
+            return;
+        }
+
+        recentActivities.forEach(activity => {
+            const row = recentActivitiesBody.insertRow();
+            const actorCell = row.insertCell();
+            actorCell.textContent = activity.utilisateur || activity.utilisateur_nom || activity.utilisateur_email || t('activity_user_system');
+
+            const type = normalizeActivityValue(activity.type_activite);
+            const category = normalizeActivityValue(activity.categorie);
+            const key = activityTranslationKeys[`${type}:${category}`] ||
+                activityTranslationKeys[type] ||
+                genericActivityTranslationKeys[type];
+            const actionCell = row.insertCell();
+            actionCell.textContent = key ? t(key) : (activity.type_activite || '—');
+
+            const targetCell = row.insertCell();
+            const isCompanyAction = category.includes('company') || category.includes('compagn') ||
+                normalizeActivityValue(activity.module).includes('compagn') ||
+                normalizeActivityValue(activity.description).includes('compagnie');
+            targetCell.textContent = isCompanyAction
+                ? activity.compagnie_nom || activity.company_name || activity.cible || activity.reference || '—'
+                : activity.cible || activity.numero_facture || activity.reference || activity.compagnie_nom || '—';
+
+            const dateCell = row.insertCell();
+            const date = new Date(activity.date_activite || activity.created_at || '');
+            dateCell.textContent = Number.isNaN(date.getTime())
+                ? '—'
+                : date.toLocaleString(localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR');
+        });
+    }
+
+    async function chargerActivitesRecentes() {
+        if (!recentActivitiesBody) return;
+        recentActivitiesBody.setAttribute('aria-busy', 'true');
+        try {
+            const data = await fetchWithAuth(`${API_BASE}/api/journal/recent?limit=6`);
+            if (!Array.isArray(data.activites)) {
+                throw new Error('La réponse des activités récentes est invalide.');
+            }
+            recentActivitiesError = false;
+            recentActivities = data.activites;
+            recentActivitiesBody.setAttribute('aria-busy', 'false');
+            renderRecentActivities();
+        } catch (error) {
+            console.error('Erreur récupération des activités récentes :', error);
+            recentActivitiesError = true;
+            recentActivitiesBody.setAttribute('aria-busy', 'false');
+            renderRecentActivities();
+        }
+    }
 
     function renderDashboardFailure() {
         if (!dashboardError) return;
@@ -301,6 +421,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.addEventListener('app-language-change', () => {
         renderDashboardFailure();
+        renderRecentActivities();
         document.querySelectorAll('[data-error-i18n]').forEach(element => {
             const message = t(element.dataset.errorI18n);
             element.title = message;
@@ -311,10 +432,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ================== Initialisation ==================
     await chargerCompanies();
     await chargerFactures();
+    await chargerActivitesRecentes();
 
     // Rafraîchissement toutes les 10 minutes
     setInterval(async () => {
         await chargerCompanies();
         await chargerFactures();
+        await chargerActivitesRecentes();
     }, 600000);
 });

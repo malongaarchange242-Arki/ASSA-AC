@@ -905,6 +905,22 @@ body.dark-mode .daf-status-rejected {
     flex-wrap: wrap;
 }
 
+.filter-month-field {
+    display: flex;
+    min-width: 220px;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-month-field label {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
 .report-select {
     padding: 8px 12px;
     border-radius: 8px;
@@ -912,6 +928,36 @@ body.dark-mode .daf-status-rejected {
     background: var(--panel);
     color: inherit;
     min-width: 150px;
+}
+
+.filter-month-field .report-select {
+    width: 220px;
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.filter-month-field .report-select:hover {
+    border-color: #94a3b8;
+}
+
+.filter-month-field .report-select:focus-visible {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+@media (max-width: 767px) {
+    .filter-month-field,
+    .filter-month-field .report-select {
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 /* ================== Aside + overlay ================== */
@@ -978,6 +1024,20 @@ body.dark-mode .daf-status-rejected {
     background: var(--primary-blue);
     color: #fff;
     font-weight: 700;
+}
+
+.pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.pagination-page-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+    white-space: nowrap;
 }
 
 

@@ -17,9 +17,15 @@ if (!token || (role && !operatorRoles.includes(role))) {
 }
 
 let FACTURES = [];
+let FACTURES_FILTREES = [];
+const FACTURES_PAR_PAGE = 10;
+let pageFactures = 1;
 
 document.addEventListener('DOMContentLoaded', () => {
   initialiserMenuMobile();
+  document.getElementById('filter-month')?.addEventListener('change', appliquerFiltres);
+  document.getElementById('filter-company')?.addEventListener('change', appliquerFiltres);
+  document.getElementById('filter-statut')?.addEventListener('change', appliquerFiltres);
   chargerFactures();
 });
 
@@ -50,6 +56,10 @@ function initialiserMenuMobile() {
 }
 
 async function chargerFactures() {
+  const tbody = document.getElementById('factureTableBody');
+  if (!tbody) return;
+  tbody.setAttribute('aria-busy', 'true');
+
   try {
     const res = await fetch(`${API_URL}/api/factures`, {
       method: 'GET',
@@ -58,7 +68,12 @@ async function chargerFactures() {
     if (!res.ok) throw new Error('Erreur chargement');
     const data = await res.json();
     FACTURES = Array.isArray(data) ? data : data.factures || [];
-    remplirTableau(FACTURES);
+    remplirFiltres();
+    pageFactures = 1;
+    if (highlightDisputedInvoices) {
+      document.getElementById('filter-statut').value = 'contestée';
+    }
+    appliquerFiltres();
     if (highlightDisputedInvoices) {
       document.querySelector('.invoice-disputed.animate-disputed')?.scrollIntoView({
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
@@ -66,9 +81,106 @@ async function chargerFactures() {
       });
     }
   } catch (err) {
-    console.error(err);
-    alert('Impossible de charger les factures');
+    console.error('Erreur de chargement des factures opérateur :', err);
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 7;
+    cell.className = 'table-message';
+    cell.textContent = 'Impossible de charger les factures. ';
+    const retryButton = document.createElement('button');
+    retryButton.type = 'button';
+    retryButton.textContent = 'Réessayer';
+    retryButton.addEventListener('click', chargerFactures);
+    cell.appendChild(retryButton);
+    row.appendChild(cell);
+    tbody.replaceChildren(row);
+    document.getElementById('facture-pagination')?.replaceChildren();
+  } finally {
+    tbody.setAttribute('aria-busy', 'false');
   }
+}
+
+function normaliserValeurFacture(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('fr-FR');
+}
+
+function obtenirMoisFacture(value) {
+  const dateValue = String(value || '').trim();
+  const isoMatch = dateValue.match(/^(\d{4})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}`;
+
+  const frenchMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (frenchMatch) return `${frenchMatch[3]}-${frenchMatch[2].padStart(2, '0')}`;
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function remplirFiltres() {
+  const monthFilter = document.getElementById('filter-month');
+  const companyFilter = document.getElementById('filter-company');
+  if (!monthFilter || !companyFilter) return;
+
+  const selectedMonth = monthFilter.value;
+  const months = [...new Set(FACTURES
+    .map(facture => obtenirMoisFacture(facture.date_emission || facture.date))
+    .filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a));
+  monthFilter.replaceChildren(new Option('Par mois', ''));
+  months.forEach(month => {
+    const [year, monthNumber] = month.split('-').map(Number);
+    const label = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
+      .format(new Date(year, monthNumber - 1, 1));
+    monthFilter.add(new Option(label, month));
+  });
+  if (months.includes(selectedMonth)) monthFilter.value = selectedMonth;
+
+  const selectedCompany = companyFilter.value;
+  const companies = [...new Set(FACTURES
+    .map(facture => String(facture.client || facture.company_name || '').trim())
+    .filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  companyFilter.replaceChildren(new Option('Toutes compagnies', ''));
+  companies.forEach(company => companyFilter.add(new Option(company, company)));
+  if (companies.includes(selectedCompany)) companyFilter.value = selectedCompany;
+}
+
+function appliquerRecherche() {
+  appliquerFiltres();
+}
+
+function appliquerFiltres() {
+  const month = document.getElementById('filter-month')?.value || '';
+  const company = document.getElementById('filter-company')?.value || '';
+  const status = document.getElementById('filter-statut')?.value || '';
+  const search = normaliserValeurFacture(document.getElementById('searchInput')?.value);
+  const normalizedStatus = normaliserValeurFacture(status);
+  const normalizedCompany = normaliserValeurFacture(company);
+
+  FACTURES_FILTREES = FACTURES.filter(facture => {
+    const invoiceDate = String(facture.date_emission || facture.date || '');
+    const invoiceCompany = String(facture.client || facture.company_name || '');
+    const invoiceStatus = String(facture.statut || facture.status || 'Impayée');
+    const matchesSearch = [
+      facture.numero_facture,
+      invoiceCompany,
+      invoiceDate,
+      obtenirMoisFacture(invoiceDate)
+    ].some(value => normaliserValeurFacture(value).includes(search));
+
+    return (!month || obtenirMoisFacture(invoiceDate) === month) &&
+      (!company || normaliserValeurFacture(invoiceCompany) === normalizedCompany) &&
+      (!status || normaliserValeurFacture(invoiceStatus) === normalizedStatus) &&
+      matchesSearch;
+  });
+
+  pageFactures = 1;
+  remplirTableau(FACTURES_FILTREES);
 }
 
 function remplirTableau(factures) {
@@ -76,7 +188,25 @@ function remplirTableau(factures) {
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  factures.forEach(f => {
+  const pagination = document.getElementById('facture-pagination');
+  if (factures.length === 0) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 7;
+    cell.className = 'table-message';
+    cell.textContent = 'Aucune facture disponible.';
+    row.appendChild(cell);
+    tbody.appendChild(row);
+    pagination?.replaceChildren();
+    return;
+  }
+
+  const totalPages = Math.ceil(factures.length / FACTURES_PAR_PAGE);
+  pageFactures = Math.min(Math.max(pageFactures, 1), totalPages);
+  const pageStart = (pageFactures - 1) * FACTURES_PAR_PAGE;
+  const pageFacturesAffichees = factures.slice(pageStart, pageStart + FACTURES_PAR_PAGE);
+
+  pageFacturesAffichees.forEach(f => {
     const numero = String(f.numero_facture || '');
     const row = document.createElement('tr');
     row.dataset.factureId = numero;
@@ -150,6 +280,40 @@ function remplirTableau(factures) {
 
     tbody.appendChild(row);
   });
+
+  afficherPagination(totalPages);
+}
+
+function afficherPagination(totalPages) {
+  const pagination = document.getElementById('facture-pagination');
+  if (!pagination) return;
+
+  pagination.replaceChildren();
+  if (totalPages <= 1) return;
+
+  const creerBouton = (label, page, disabled, active = false) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.disabled = disabled;
+    if (active) {
+      button.classList.add('active');
+      button.setAttribute('aria-current', 'page');
+    }
+    button.addEventListener('click', () => {
+      pageFactures = page;
+      remplirTableau(FACTURES_FILTREES);
+    });
+    return button;
+  };
+
+  pagination.appendChild(creerBouton('Précédent', pageFactures - 1, pageFactures === 1));
+  const indicator = document.createElement('span');
+  indicator.className = 'pagination-page-indicator';
+  indicator.textContent = `Page ${pageFactures} sur ${totalPages}`;
+  indicator.setAttribute('aria-live', 'polite');
+  pagination.appendChild(indicator);
+  pagination.appendChild(creerBouton('Suivant', pageFactures + 1, pageFactures === totalPages));
 }
 
 async function soumettreFacture(numero, button) {
@@ -171,7 +335,7 @@ async function soumettreFacture(numero, button) {
       facture.daf_status = data.daf_status || 'pending';
       facture.submitted_to_daf_at = submittedAt;
     }
-    remplirTableau(FACTURES);
+    remplirTableau(FACTURES_FILTREES);
     alert('Facture soumise au DAF');
   } catch (err) {
     console.error(err);

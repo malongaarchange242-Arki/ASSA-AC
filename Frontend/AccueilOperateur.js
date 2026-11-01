@@ -119,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
         cell.colSpan = 4;
+        cell.className = 'dashboard-activity-message';
         cell.textContent = message;
 
         if (retry) {
@@ -135,12 +136,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const chargerActivites = async () => {
         tbody.setAttribute('aria-busy', 'true');
-        const loadingRow = document.createElement('tr');
-        const loadingCell = document.createElement('td');
-        loadingCell.colSpan = 4;
-        loadingCell.textContent = 'Chargement des activités…';
-        loadingRow.appendChild(loadingCell);
-        tbody.replaceChildren(loadingRow);
+        const skeletonRows = Array.from({ length: 3 }, () => {
+            const row = document.createElement('tr');
+            row.className = 'admin-skeleton-row';
+            row.setAttribute('aria-hidden', 'true');
+            Array.from({ length: 4 }, () => {
+                const cell = row.insertCell();
+                const block = document.createElement('span');
+                block.className = 'admin-skeleton admin-skeleton-block';
+                cell.appendChild(block);
+            });
+            return row;
+        });
+        tbody.replaceChildren(...skeletonRows);
 
         try {
             const response = await fetch(`${apiBase}/api/journal/operateur/me`, {

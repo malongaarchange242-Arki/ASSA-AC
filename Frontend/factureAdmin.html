@@ -87,8 +87,11 @@
                         <i class="fas fa-filter"></i> Filtrer :
                     </div>
 
-                    <input type="month" class="report-select" id="filter-month" title="Mois / année"
-                        aria-label="Mois / année" data-i18n-title="month_year" data-i18n-aria-label="month_year">
+                    <div class="filter-month-field">
+                        <label for="filter-month" data-i18n="month_year_optional">Mois / année (facultatif)</label>
+                        <input type="month" class="report-select" id="filter-month" title="Mois / année (facultatif)"
+                            aria-label="Mois / année (facultatif)" data-i18n-title="month_year_optional" data-i18n-aria-label="month_year_optional">
+                    </div>
 
                     <select class="report-select" id="filter-company" title="Filtrer par compagnie"
                         style="padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
@@ -130,7 +133,7 @@
                                 <th style="text-align:center;" data-i18n="view">Voir</th>
                             </tr>
                         </thead>
-                        <tbody id="factureTableBody">
+                        <tbody id="factureTableBody" aria-busy="true">
                             <tr class="admin-skeleton-row">
                                 <td><span class="admin-skeleton admin-skeleton-block"></span></td>
                                 <td><span class="admin-skeleton admin-skeleton-block"></span></td>

@@ -68,7 +68,6 @@
                 <div class="stat-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
                 <div class="stat-title" data-i18n="disputed_invoices">Factures Contestées</div>
                 <div class="stat-value admin-skeleton" id="facturesContesteesValue">0</div>
-                <div class="stat-extra" data-i18n="needs_action">Nécessite une action rapide</div>
             </a>
 
             <a href="enregistrefacture.html" class="card stat-card quick-action toggleAside">
@@ -78,6 +77,48 @@
                 <div class="stat-extra" data-i18n="quick_access">Accès rapide</div>
             </a>
 
+        </section>
+        <section class="card recent-activity-card" aria-labelledby="recent-activities-title">
+            <div class="card-heading">
+                <div>
+                    <h2 id="recent-activities-title" data-i18n="recent_activities">Dernières activités</h2>
+                    <p class="archive-page-description" data-i18n="recent_activities_description">Les actions récentes sur la plateforme.</p>
+                </div>
+                <a class="recent-activity-link" href="ArchiveAdmin.html" data-i18n="view_operations_registry">Voir le registre complet</a>
+            </div>
+            <div class="table-wrap">
+                <table class="activity-table">
+                    <caption class="visually-hidden" data-i18n="recent_activities">Dernières activités</caption>
+                    <thead>
+                        <tr>
+                            <th data-i18n="activity_agent">Admin / Agent</th>
+                            <th data-i18n="activity_action">Action</th>
+                            <th data-i18n="activity_target">Cible</th>
+                            <th data-i18n="activity_date">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-activities-body" aria-live="polite" aria-busy="true">
+                        <tr class="admin-skeleton-row">
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                        </tr>
+                        <tr class="admin-skeleton-row">
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                        </tr>
+                        <tr class="admin-skeleton-row">
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                            <td><span class="admin-skeleton admin-skeleton-block"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
         <div id="dashboard-load-error" class="dashboard-load-error" role="alert" hidden></div>
     </main>

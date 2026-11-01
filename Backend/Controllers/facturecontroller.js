@@ -315,35 +315,12 @@ export const createFacture = async (req, res) => {
     // 4️⃣ Récupération email compagnie
     const { data: company, error: companyError } = await supabase
       .from('companies')
-      .select('email, company_name')
+      .select('company_name')
       .eq('id', compagnieId)
       .single();
 
     if (companyError) {
       console.error("Erreur récupération compagnie:", companyError);
-    }
-
-    console.log("📧 Email compagnie trouvé :", company?.email);
-
-    // 5️⃣ Envoi email à la compagnie
-    let emailNotificationStatus = 'not_sent';
-    try {
-      if (company?.email) {
-        const invoicePdf = await generateInvoicePdf(factureData, lignes || []);
-        const emailInfo = await sendInvoiceEmail(company.email, numero_facture, montant_total, invoicePdf);
-        emailNotificationStatus = 'accepted_by_provider';
-        console.info('Fournisseur e-mail a accepté la notification de facture', {
-          provider: emailInfo.provider,
-          to: company.email,
-          messageId: emailInfo.messageId,
-          response: emailInfo.response
-        });
-      } else {
-        console.warn("⚠ Aucune adresse email dans la compagnie :", compagnieId);
-      }
-    } catch (err) {
-      emailNotificationStatus = 'failed';
-      console.error("Échec de la notification de facture :", err);
     }
 
     // 🔹 ARCHIVAGE (AUDIT)
@@ -368,7 +345,7 @@ export const createFacture = async (req, res) => {
       message: 'Facture créée avec succès',
       facture: factureData,
       numero_facture,
-      email_notification_status: emailNotificationStatus
+      email_notification_status: 'awaiting_confirmation'
     });
 
   } catch (err) {

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshButton = document.getElementById('refresh-companies');
     const searchInput = document.getElementById('company-search');
     const token = localStorage.getItem('jwtTokenOperateur');
+    let highlightActiveCompanies = new URLSearchParams(window.location.search).get('highlight') === 'active';
     let activeCompanies = [];
 
     if (!token) {
@@ -55,6 +56,21 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.replaceChildren(row);
     }
 
+    function showSkeletonRows() {
+        const rows = Array.from({ length: 3 }, () => {
+            const row = document.createElement('tr');
+            row.className = 'admin-skeleton-row';
+            Array.from({ length: 7 }, () => {
+                const cell = row.insertCell();
+                const block = document.createElement('span');
+                block.className = 'admin-skeleton admin-skeleton-block';
+                cell.appendChild(block);
+            });
+            return row;
+        });
+        tbody.replaceChildren(...rows);
+    }
+
     function buildLogoUrl(value) {
         const logo = typeof value === 'string' ? value.trim() : '';
         if (!logo) return '';
@@ -67,12 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderActiveCompanies(companies) {
         if (companies.length === 0) {
             appendMessage('Aucune compagnie active ne correspond à la recherche.');
+            highlightActiveCompanies = false;
             return;
         }
 
         const rows = companies.map(company => {
             const row = document.createElement('tr');
-            row.className = 'company-row status-active';
+            row.className = `company-row status-active${highlightActiveCompanies ? ' company-active-highlight animate-active-highlight' : ''}`;
             const companyCell = document.createElement('td');
             companyCell.className = 'company-name-cell';
             const identity = document.createElement('div');
@@ -127,6 +144,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return row;
         });
         tbody.replaceChildren(...rows);
+        if (highlightActiveCompanies) {
+            tbody.querySelector('.company-active-highlight')?.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'center'
+            });
+            highlightActiveCompanies = false;
+        }
     }
 
     function filterActiveCompanies() {
@@ -143,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshButton.disabled = true;
         tbody.setAttribute('aria-busy', 'true');
         count.textContent = 'Chargement des compagnies…';
-        appendMessage('Chargement des compagnies…');
+        showSkeletonRows();
         try {
             const response = await fetch(OPERATOR_COMPANIES_API, {
                 headers: {
