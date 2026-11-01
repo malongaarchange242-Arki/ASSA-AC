@@ -163,7 +163,11 @@ export const generateRef = async (req, res) => {
 
     // If admin requested another company, verify permission
     let targetCompanyId = requestedCompany;
-    if (isAdminRole && requestedCompany && !['super_directeur','superadmin','super_admin','super admin'].includes(rawRole)) {
+    if (
+      isAdminRole &&
+      requestedCompany &&
+      !['operateur', 'operator', 'super_directeur', 'superadmin', 'super_admin', 'super admin'].includes(rawRole)
+    ) {
       const { data: link } = await supabase
         .from('admin_companies')
         .select('company_id')
@@ -228,12 +232,14 @@ export const createFacture = async (req, res) => {
     }
 
     // Vérifications d’accès
-    const adminLike = ['admin', 'administrateur', 'superviseur', 'super_directeur', 'superadmin', 'super_admin', 'operateur'];
+    const adminLike = ['admin', 'administrateur', 'superviseur', 'super_directeur', 'superadmin', 'super_admin', 'operateur', 'operator'];
     const isAdminLike = adminLike.includes(rawUserRole);
     const isSuperAdmin = ['super_directeur', 'superadmin', 'super_admin', 'super admin'].includes(rawUserRole);
+    const isOperator = ['operateur', 'operator'].includes(rawUserRole);
+    const actorAdminId = ['admin', 'administrateur'].includes(rawUserRole) ? userId : null;
 
     if (isAdminLike) {
-      if (!isSuperAdmin) {
+      if (!isSuperAdmin && !isOperator) {
         const { data: link } = await supabase
           .from('admin_companies')
           .select('company_id')
@@ -272,7 +278,7 @@ export const createFacture = async (req, res) => {
         devise: devise || 'Frs CFA',
         montant_en_lettres,
         statut: 'Impayée',
-        id_admin: userId,
+        id_admin: actorAdminId,
         id_companie: compagnieId,
         created_by,
         archived: false
@@ -289,8 +295,10 @@ export const createFacture = async (req, res) => {
       categorie: "Facture",
       reference: numero_facture,
       description: `Création de la facture ${numero_facture} pour ${nom_client}`,
-      id_admin: userId,
-      id_companie: compagnieId
+      id_admin: actorAdminId,
+      id_companie: compagnieId,
+      utilisateur_nom: req.user?.nom_complet || req.user?.nom || req.user?.email || null,
+      utilisateur_email: req.user?.email || null
     });
     
     // 3️⃣ Lignes facture
