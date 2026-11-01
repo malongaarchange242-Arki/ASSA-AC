@@ -1307,7 +1307,7 @@ export const deleteFacture = async (req, res) => {
       categorie: 'Facture',
       reference: numero_facture,
       description: `Facture ${numero_facture} retirée de la liste de facturation`,
-      id_admin: ['admin', 'administrateur', 'superviseur', 'super_directeur'].includes(
+      id_admin: ['admin', 'administrateur', 'super_directeur'].includes(
         String(req.user?.role || '').toLocaleLowerCase('fr-FR')
       ) ? req.user.id : null,
       id_companie: facture.id_companie,

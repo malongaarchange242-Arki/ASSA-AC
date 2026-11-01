@@ -217,6 +217,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 8. Gestion et affichage du Journal des Activités
     let allActivitiesList = [];
+    let filteredActivitiesList = [];
+    let currentActivityPage = 1;
+    const activitiesPerPage = 10;
+    const normalizeActivityText = value => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    const activityActionAliases = {
+        login: ['login', 'connexion', 'connect'],
+        create: ['create', 'created', 'creation', 'cree'],
+        update: ['update', 'updated', 'modification', 'modifie'],
+        delete: ['delete', 'deleted', 'suppression', 'supprime'],
+        validate: ['validate', 'validated', 'validation', 'valide'],
+        reject: ['reject', 'rejected', 'rejection', 'rejet', 'rejete'],
+        submit: ['submit', 'submitted', 'soumission', 'soumis'],
+        archive: ['archive', 'archivage', 'archivee', 'archived'],
+        restore: ['restore', 'restauration', 'restaure', 'restored'],
+        disable: ['disable', 'disabled', 'desactivation', 'desactive'],
+        security: ['security', 'securite'],
+        system: ['system', 'systeme']
+    };
 
     const formatDate = value => {
         if (!value) return '—';
@@ -235,6 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderActivities(list) {
         const tbody = document.querySelector('.ops-table tbody');
         const countBadge = document.getElementById('activityCount');
+        const pagination = document.getElementById('activityPagination');
         if (!tbody) return;
 
         tbody.setAttribute('aria-busy', 'false');
@@ -245,6 +268,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!list || list.length === 0) {
+            if (pagination) {
+                pagination.hidden = true;
+                pagination.replaceChildren();
+            }
             const tr = document.createElement('tr');
             tr.className = 'activity-message-row';
             const td = document.createElement('td');
@@ -255,12 +282,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        const totalPages = Math.ceil(list.length / activitiesPerPage);
+        currentActivityPage = Math.min(Math.max(currentActivityPage, 1), totalPages);
+        const pageStart = (currentActivityPage - 1) * activitiesPerPage;
+        const pageActivities = list.slice(pageStart, pageStart + activitiesPerPage);
+
         const getText = (value, fallback = '—') => {
             if (value === null || value === undefined || value === '') return fallback;
             return typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value);
         };
 
-        list.forEach(item => {
+        pageActivities.forEach(item => {
             const tr = document.createElement('tr');
 
             const agent = getText(item.utilisateur || item.utilisateur_nom || item.admin_name || item.created_by_name || item.user_name || item.user || item.admin || item.actor || item.username || item.name || item.utilisateur_email || item.id_admin || item.id_user || item.created_by);
@@ -396,28 +428,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             tr.append(tdAgent, tdAction, tdTarget, tdDate, tdActions);
             tbody.appendChild(tr);
         });
+
+        if (pagination) {
+            pagination.hidden = false;
+            pagination.replaceChildren();
+
+            const previousButton = document.createElement('button');
+            previousButton.type = 'button';
+            previousButton.disabled = currentActivityPage === 1;
+            previousButton.innerHTML = `<i class="fa-solid fa-chevron-left" aria-hidden="true"></i><span>${getTranslation('pagination_previous', 'Précédent')}</span>`;
+            previousButton.addEventListener('click', () => {
+                currentActivityPage -= 1;
+                renderActivities(filteredActivitiesList);
+            });
+
+            const pageLabel = document.createElement('span');
+            pageLabel.className = 'activity-pagination-page';
+            pageLabel.setAttribute('aria-live', 'polite');
+            pageLabel.textContent = `${getTranslation('page', 'Page')} ${currentActivityPage} ${getTranslation('pagination_of', 'sur')} ${totalPages}`;
+
+            const nextButton = document.createElement('button');
+            nextButton.type = 'button';
+            nextButton.disabled = currentActivityPage === totalPages;
+            nextButton.innerHTML = `<span>${getTranslation('pagination_next', 'Suivant')}</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i>`;
+            nextButton.addEventListener('click', () => {
+                currentActivityPage += 1;
+                renderActivities(filteredActivitiesList);
+            });
+
+            pagination.append(previousButton, pageLabel, nextButton);
+        }
     }
 
     async function chargerActivites() {
         const tbody = document.querySelector('.ops-table tbody');
+        const pagination = document.getElementById('activityPagination');
         if (!tbody) return;
 
         tbody.setAttribute('aria-busy', 'true');
+        if (pagination) {
+            pagination.hidden = true;
+            pagination.replaceChildren();
+        }
         tbody.innerHTML = Array.from({ length: 5 }, () =>
             '<tr class="activity-skeleton-row"><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td><td><span></span></td></tr>'
         ).join('');
 
         try {
-            let data;
-            try {
-                data = await fetchWithAuth(`${API_BASE}/api/journal/recent`);
-            } catch (error) {
-                console.warn('Fallback vers /api/journal...');
-            }
-
-            if (!data || (Array.isArray(data) && data.length === 0) || (Array.isArray(data.activites) && data.activites.length === 0)) {
-                data = await fetchWithAuth(`${API_BASE}/api/journal`);
-            }
+            const data = await fetchWithAuth(`${API_BASE}/api/journal`);
 
             const list = Array.isArray(data)
                 ? data
@@ -428,6 +486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             console.error('Erreur récupération activités :', err);
             tbody.setAttribute('aria-busy', 'false');
+            if (pagination) pagination.hidden = true;
             tbody.replaceChildren();
             const tr = document.createElement('tr');
             tr.className = 'activity-message-row';
@@ -449,35 +508,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         const searchInput = document.getElementById('activitySearchInput');
         const actionSelect = document.getElementById('activityActionSelect');
 
-        const query = (searchInput?.value || '').trim().toLowerCase();
+        const query = normalizeActivityText(searchInput?.value);
         const selectedAction = actionSelect?.value || 'all';
 
         const filtered = allActivitiesList.filter(item => {
-            const role = String(item.role || item.role_utilisateur || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            const category = String(item.categorie || '').toLowerCase();
-            const module = String(item.module || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            const isCompanyActivity = ['compagnie', 'company', 'airline'].includes(role) ||
-                (!item.id_admin && item.id_companie && category === 'auth' && module.includes('auth'));
-            if (isCompanyActivity) return false;
-
-            const agent = String(item.utilisateur || item.utilisateur_nom || item.admin_name || item.name || item.utilisateur_email || '').toLowerCase();
-            const action = String(item.type_activite || item.action || item.type || '').toLowerCase();
-            const cible = String(item.reference || item.numero_facture || item.description || item.target || '').toLowerCase();
+            const agent = normalizeActivityText(item.utilisateur || item.utilisateur_nom || item.admin_name || item.name || item.utilisateur_email);
+            const action = normalizeActivityText(item.type_activite || item.action || item.type);
+            const cible = normalizeActivityText(item.cible || item.reference || item.numero_facture || item.description || item.target || item.compagnie_nom);
+            const searchableText = [
+                agent,
+                action,
+                cible,
+                normalizeActivityText(item.module),
+                normalizeActivityText(item.categorie),
+                normalizeActivityText(item.role_utilisateur || item.role)
+            ].join(' ');
 
             // Filtre par texte
-            const matchesQuery = !query || agent.includes(query) || action.includes(query) || cible.includes(query);
+            const matchesQuery = !query || searchableText.includes(query);
 
             // Filtre par catégorie d'action
-            let matchesAction = true;
-            if (selectedAction !== 'all') {
-                const normAction = action.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-                matchesAction = normAction.includes(selectedAction);
-            }
+            const actionAliases = activityActionAliases[selectedAction];
+            const matchesAction = selectedAction === 'all' ||
+                (actionAliases && actionAliases.some(alias => action.includes(alias)));
 
             return matchesQuery && matchesAction;
         });
 
-        renderActivities(filtered.slice(0, 15));
+        filteredActivitiesList = filtered;
+        currentActivityPage = 1;
+        renderActivities(filteredActivitiesList);
     }
 
     // Écouteurs de recherche et filtrage

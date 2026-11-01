@@ -203,8 +203,8 @@
                             <i class="fa-regular fa-clock"></i>
                         </div>
                         <div>
-                            <h3 id="activitySectionTitle" data-i18n="recent_activities">Dernières Activités</h3>
-                            <p class="activity-subtitle" data-i18n="recent_activities_description">Liste des actions récentes sur la plateforme.</p>
+                            <h3 id="activitySectionTitle" data-i18n="activity_log_title">Journal complet des activités</h3>
+                            <p class="activity-subtitle" data-i18n="activity_log_description">Toutes les actions enregistrées sur la plateforme.</p>
                         </div>
                     </div>
                     <div class="table-actions">
@@ -227,12 +227,18 @@
                     </div>
                     <select id="activityActionSelect" class="toolbar-select" aria-label="Filtrer par action">
                         <option value="all" data-i18n="all_actions">Toutes les actions</option>
-                        <option value="connexion" data-i18n="action_login">Connexion</option>
-                        <option value="creation" data-i18n="action_created">Création</option>
-                        <option value="modification" data-i18n="action_updated">Modification</option>
-                        <option value="suppression" data-i18n="action_deleted">Suppression</option>
-                        <option value="validation" data-i18n="action_validated">Validation</option>
-                        <option value="rejet" data-i18n="action_rejected">Rejet</option>
+                        <option value="login" data-i18n="action_login">Connexion</option>
+                        <option value="create" data-i18n="action_created">Création</option>
+                        <option value="update" data-i18n="action_updated">Modification</option>
+                        <option value="delete" data-i18n="action_deleted">Suppression</option>
+                        <option value="validate" data-i18n="action_validated">Validation</option>
+                        <option value="reject" data-i18n="action_rejected">Rejet</option>
+                        <option value="submit" data-i18n="action_submitted">Soumission</option>
+                        <option value="archive" data-i18n="action_archived">Archivage</option>
+                        <option value="restore" data-i18n="action_restored">Restauration</option>
+                        <option value="disable" data-i18n="action_disabled">Désactivation</option>
+                        <option value="security" data-i18n="action_security">Sécurité</option>
+                        <option value="system" data-i18n="activity_user_system">Système</option>
                     </select>
                     <span id="activityCount" class="toolbar-count"></span>
                 </div>
@@ -258,6 +264,7 @@
                         </tbody>
                     </table>
                 </div>
+                <nav id="activityPagination" class="activity-pagination" aria-label="Pagination des activités" hidden></nav>
             </section>
         </main>
     </div>

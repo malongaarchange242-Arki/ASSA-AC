@@ -740,6 +740,52 @@ body.supervisor-dashboard {
     -webkit-overflow-scrolling: touch;
 }
 
+.activity-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 0 2px;
+}
+
+.activity-pagination[hidden] {
+    display: none;
+}
+
+.activity-pagination button {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.activity-pagination button:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.activity-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.activity-pagination-page {
+    min-width: 90px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
 /* Table styling */
 .ops-table {
     width: 100%;

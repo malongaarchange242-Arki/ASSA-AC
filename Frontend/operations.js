@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${year}-${month}-${day}`;
     }
 
-    const today = getLocalDateInputValue();
-    filterDate.value = today;
+    const currentMonth = getLocalDateInputValue().slice(0, 7);
+    filterDate.value = currentMonth;
 
     const detailPanel = document.getElementById('detailPanel');
     const closePanel = document.getElementById('closePanel');
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         filtered = operations.filter(op => {
             const matchType = !t || op.type === t;
             const matchStatus = !s || normalizeForFilter(op.statut) === normSelectedStatus;
-            const matchDate = !d || String(op.date || '').slice(0, 10) === d;
+            const matchDate = !d || String(op.date || '').slice(0, 7) === d;
             const matchQuery = !q || (
                 (op.ref && op.ref.toLowerCase().includes(q)) ||
                 (op.id && op.id.toLowerCase().includes(q)) ||
@@ -710,7 +710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     filterType.addEventListener('change', () => { currentPage = 1; applyFilters(); });
     filterStatus.addEventListener('change', () => { currentPage = 1; applyFilters(); });
     filterDate.addEventListener('change', () => { currentPage = 1; applyFilters(); });
-    resetFilters.addEventListener('click', () => { filterType.value = ''; filterStatus.value = ''; filterDate.value = today; searchInput.value = ''; currentPage = 1; applyFilters(); });
+    resetFilters.addEventListener('click', () => { filterType.value = ''; filterStatus.value = ''; filterDate.value = currentMonth; searchInput.value = ''; currentPage = 1; applyFilters(); });
     searchInput.addEventListener('input', debounce(() => { currentPage = 1; applyFilters(); }, 250));
     exportBtn.addEventListener('click', () => exportExcel(filtered));
     pageSizeSelect.addEventListener('change', () => { pageSize = parseInt(pageSizeSelect.value, 10); currentPage = 1; render(); });
