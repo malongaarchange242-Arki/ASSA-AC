@@ -980,10 +980,12 @@ export const updateFacture = async (req, res) => {
     const role = String(req.user?.role || '').toLowerCase().trim();
     const userId = req.user?.id;
     let canUpdate = role === 'super_directeur';
+    const invoiceStatus = String(factureData.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const isCorrectionRequest = invoiceStatus === 'a corriger';
 
     if (role === 'operateur') {
       canUpdate = String(factureData.created_by || '') === String(userId || '');
-      if (canUpdate && ['pending', 'pending_correction', 'validated'].includes(String(factureData.daf_status || ''))) {
+      if (canUpdate && !isCorrectionRequest && ['pending', 'pending_correction', 'validated'].includes(String(factureData.daf_status || ''))) {
         return res.status(409).json({ message: 'Cette facture ne peut pas être modifiée pendant ou après sa validation par le DAF.' });
       }
     } else if (role === 'administrateur') {
@@ -1006,9 +1008,29 @@ export const updateFacture = async (req, res) => {
       return res.status(403).json({ message: "Vous n'êtes pas autorisé à modifier cette facture." });
     }
 
+    const updatePayload = {
+      nom_client,
+      objet,
+      periode,
+      aeroport,
+      date_emission,
+      lieu_emission,
+      montant_total,
+      devise,
+      montant_en_lettres,
+      ...(role === 'operateur' && isCorrectionRequest
+        ? {
+            daf_status: 'not_submitted',
+            submitted_to_daf_at: null,
+            validated_by: null,
+            validated_at: null
+          }
+        : {})
+    };
+
     const { data: updatedData, error: updateError } = await supabase
       .from('factures')
-      .update({ nom_client, objet, periode, aeroport, date_emission, lieu_emission, montant_total, devise, montant_en_lettres })
+      .update(updatePayload)
       .eq('numero_facture', numero_facture)
       .select()
       .single();
