@@ -340,9 +340,9 @@ export const createFacture = async (req, res) => {
       montant: montant_total,
       statut: 'Impayée',
 
-      // 👤 Auteur réel de l’action
-      admin_id: userId,
-      admin_nom: req.user.nom_complet || req.user.email || 'Administrateur'
+      // archives.admin_id references admins, so non-admin actors are identified by name.
+      admin_id: actorAdminId,
+      admin_nom: req.user?.nom_complet || req.user?.email || (isOperator ? 'Opérateur' : 'Administrateur')
     });
 
 
