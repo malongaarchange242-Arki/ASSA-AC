@@ -1301,6 +1301,23 @@ export const deleteFacture = async (req, res) => {
     if (error) throw error;
     if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
 
+    if (facture.archived) {
+      return res.status(409).json({ message: 'Cette facture est déjà retirée de la liste de facturation.' });
+    }
+
+    const { data: factureRetiree, error: retraitError } = await supabase
+      .from('factures')
+      .update({ archived: true, statut: 'Archivée' })
+      .eq('numero_facture', numero_facture)
+      .eq('archived', false)
+      .select('numero_facture')
+      .maybeSingle();
+
+    if (retraitError) throw retraitError;
+    if (!factureRetiree) {
+      return res.status(409).json({ message: 'La facture a déjà été retirée de la liste.' });
+    }
+
     await logActivite({
       module: 'Factures',
       type_activite: 'delete',
@@ -1317,7 +1334,7 @@ export const deleteFacture = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Facture ${numero_facture} retirée de la liste et action enregistrée.`
+      message: `Facture ${numero_facture} retirée de la liste de facturation et action enregistrée.`
     });
 
   } catch (err) {

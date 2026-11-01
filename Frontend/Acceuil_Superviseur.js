@@ -297,13 +297,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const agent = getText(item.utilisateur || item.utilisateur_nom || item.admin_name || item.created_by_name || item.user_name || item.user || item.admin || item.actor || item.username || item.name || item.utilisateur_email || item.id_admin || item.id_user || item.created_by);
             const action = getText(item.type_activite || item.action || item.type || item.event || item.verb);
+            const normalizedAction = action.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const description = String(item.description || '').trim();
+            const normalizedContext = `${item.categorie || ''} ${item.module || ''} ${description}`
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const isDeletion = /delete|deletion|deleted|suppression|supprime/.test(normalizedAction);
+            const isCompanyDeletion = isDeletion && /compagnie|company|companies/.test(normalizedContext);
+            const isInvoiceDeletion = isDeletion && /facture|invoice/.test(normalizedContext);
+            const legacyDeleteTarget = action.match(/^(?:delete|suppression|deletion)(.+)$/i)?.[1]?.trim();
+            const deletedCompanyFromDescription = description.match(/(?:compagnie|company)\s+(.+)$/i)?.[1]?.trim().replace(/[.,;]+$/, '');
+            const displayAction = isCompanyDeletion
+                ? getTranslation('activity_delete_company', 'Suppression de compagnie')
+                : isInvoiceDeletion
+                    ? getTranslation('activity_delete_invoice', 'Suppression de facture')
+                    : isDeletion
+                        ? getTranslation('action_deleted', 'Suppression')
+                        : action;
             const isLogin = /^(login|connexion|sign.?in)$/i.test(String(item.type_activite || item.action || item.type || '').trim()) ||
                 String(item.module || '').toLowerCase().includes('login');
-            const cible = getText(
-                item.cible || item.reference || item.ref || item.numero_facture || item.numero ||
+            const cible = getText(isCompanyDeletion
+                ? deletedCompanyFromDescription || item.compagnie_nom || item.company_name || item.reference || item.ref || item.id_companie || description
+                : item.cible || item.reference || item.ref || item.numero_facture || item.numero ||
                 item.target || (isLogin ? item.utilisateur_email || item.utilisateur || item.utilisateur_nom : null) ||
-                item.company_name || item.description
-            );
+                item.company_name || legacyDeleteTarget || description);
             const rawDate = item.date_activite || item.created_at || item.createdAt || item.date || item.timestamp || item.when || item.datetime;
             const date = formatDate(rawDate);
 
@@ -319,7 +335,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // Normalisation de l'action et détermination de l'icône & style
-            const normalizedAction = action.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
             let actionClass = 'neutral';
             let actionIcon = 'fa-solid fa-circle-info';
 
@@ -375,7 +390,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tdAction = document.createElement('td');
             const actionBadge = document.createElement('span');
             actionBadge.className = `activity-badge is-${actionClass}`;
-            actionBadge.innerHTML = `<i class="${actionIcon}"></i><span>${action}</span>`;
+            const actionIconElement = document.createElement('i');
+            actionIconElement.className = actionIcon;
+            actionIconElement.setAttribute('aria-hidden', 'true');
+            const actionLabel = document.createElement('span');
+            actionLabel.textContent = displayAction;
+            actionBadge.append(actionIconElement, actionLabel);
             tdAction.appendChild(actionBadge);
 
             // 3. Colonne Cible
@@ -409,11 +429,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const detAction = document.getElementById('det-action');
                 const detId = document.getElementById('det-id');
                 const detDate = document.getElementById('det-date');
+                const detDescription = document.getElementById('det-description');
                 const detailPanel = document.getElementById('detailPanel');
                 if (detAgent) detAgent.textContent = `${agent} (${role})`;
-                if (detAction) detAction.textContent = action;
+                if (detAction) detAction.textContent = displayAction;
                 if (detId) detId.textContent = cible;
                 if (detDate) detDate.textContent = date;
+                if (detDescription) detDescription.textContent = description || getTranslation('activity_description_unavailable', 'Aucun détail supplémentaire enregistré.');
                 if (detailPanel) detailPanel.classList.add('open');
             };
 

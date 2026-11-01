@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             detailPanel.close();
         }
         render();
-        showDetailConfirmation(data?.message || t('invoice_removed'));
+        showOperationNotification(data?.message || t('invoice_removed'));
     }
 
     async function updateStatusInDB(numero_facture, statut) {
@@ -403,6 +403,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.style.display = 'block';
         clearTimeout(el._hideTimer);
         el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 8000);
+    }
+
+    function showOperationNotification(message) {
+        let notification = document.getElementById('operationNotification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'operationNotification';
+            notification.className = 'operation-notification';
+            notification.setAttribute('role', 'status');
+            notification.setAttribute('aria-live', 'polite');
+
+            const icon = document.createElement('i');
+            icon.className = 'fa-solid fa-circle-check';
+            icon.setAttribute('aria-hidden', 'true');
+            const text = document.createElement('span');
+            text.className = 'operation-notification-message';
+            notification.append(icon, text);
+            document.body.appendChild(notification);
+        }
+
+        notification.querySelector('.operation-notification-message').textContent = message;
+        notification.classList.add('is-visible');
+        clearTimeout(notification._hideTimer);
+        notification._hideTimer = setTimeout(() => {
+            notification.classList.remove('is-visible');
+        }, 5000);
     }
 
     function openDetail(op) {

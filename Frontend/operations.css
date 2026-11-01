@@ -856,6 +856,49 @@
     font-size: 0.78rem;
 }
 
+.operation-notification {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 11000;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    max-width: min(28rem, calc(100vw - 2.5rem));
+    padding: 0.9rem 1.1rem;
+    border: 1px solid #a7f3d0;
+    border-radius: 0.75rem;
+    background: #ecfdf5;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+    color: #065f46;
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-0.5rem);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.operation-notification.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.operation-notification > i {
+    flex: 0 0 auto;
+    font-size: 1.1rem;
+}
+
+.operation-notification-message {
+    overflow-wrap: anywhere;
+}
+
+body.dark-mode .operation-notification {
+    border-color: #065f46;
+    background: #064e3b;
+    color: #d1fae5;
+}
+
 body.dark-mode .operation-detail-dialog {
     border-color: #374151;
     background: #1f2937;
