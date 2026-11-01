@@ -743,7 +743,8 @@ body.dark-mode .action-btn-submit {
     white-space: nowrap;
 }
 
-.daf-status-pending {
+.daf-status-pending,
+.daf-status-pending_correction {
     border-color: #bae6fd;
     background: #e0f2fe;
     color: #075985;
@@ -770,7 +771,8 @@ body.dark-mode .facture-table tbody tr.facture-submitted-daf:hover {
     background: #16364c;
 }
 
-body.dark-mode .daf-status-pending {
+body.dark-mode .daf-status-pending,
+body.dark-mode .daf-status-pending_correction {
     border-color: #075985;
     background: #082f49;
     color: #bae6fd;

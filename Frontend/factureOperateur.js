@@ -217,8 +217,12 @@ function remplirTableau(factures) {
       if (highlightDisputedInvoices) row.classList.add('animate-disputed');
     }
 
-    const dafStatus = f.daf_status || 'not_submitted';
-    if (dafStatus === 'pending') row.classList.add('facture-submitted-daf');
+    const storedDafStatus = f.daf_status || 'not_submitted';
+    const isCorrectionAwaitingCreator = normalizedStatus === 'a corriger';
+    const dafStatus = isCorrectionAwaitingCreator && storedDafStatus === 'pending'
+      ? 'not_submitted'
+      : storedDafStatus;
+    if (dafStatus === 'pending' || dafStatus === 'pending_correction') row.classList.add('facture-submitted-daf');
 
     const addCell = (value) => {
       const cell = document.createElement('td');
@@ -237,15 +241,16 @@ function remplirTableau(factures) {
     statusBadge.className = normalizedStatus === 'contestee' ? 'status-badge contested' : 'status-badge';
     statusBadge.textContent = status;
     statusCell.appendChild(statusBadge);
-    if (dafStatus === 'pending' || dafStatus === 'validated' || dafStatus === 'rejected') {
+    if (['pending', 'pending_correction', 'validated', 'rejected'].includes(dafStatus)) {
       const badge = document.createElement('span');
       badge.className = `daf-status-badge daf-status-${dafStatus}`;
       const labels = {
         pending: 'Soumise au DAF',
+        pending_correction: 'Correction soumise au DAF',
         validated: 'Validée par le DAF',
         rejected: 'Rejetée par le DAF'
       };
-      badge.innerHTML = `<i class="fas ${dafStatus === 'pending' ? 'fa-clock' : dafStatus === 'validated' ? 'fa-circle-check' : 'fa-circle-xmark'}" aria-hidden="true"></i>`;
+      badge.innerHTML = `<i class="fas ${dafStatus === 'pending' || dafStatus === 'pending_correction' ? 'fa-clock' : dafStatus === 'validated' ? 'fa-circle-check' : 'fa-circle-xmark'}" aria-hidden="true"></i>`;
       badge.append(` ${labels[dafStatus]}`);
       statusCell.appendChild(document.createElement('br'));
       statusCell.appendChild(badge);
@@ -273,10 +278,10 @@ function remplirTableau(factures) {
         window.location.href = `enregistrefactureOperateur.html?correction=${encodeURIComponent(numero)}`;
       });
       actionCell.appendChild(correctionButton);
-    } else if (dafStatus === 'pending' || dafStatus === 'validated') {
+    } else if (dafStatus === 'pending' || dafStatus === 'pending_correction' || dafStatus === 'validated') {
       const submittedLabel = document.createElement('span');
       submittedLabel.className = `daf-status-badge daf-status-${dafStatus}`;
-      submittedLabel.textContent = dafStatus === 'pending' ? 'En attente du DAF' : 'Traitée par le DAF';
+      submittedLabel.textContent = dafStatus === 'pending' || dafStatus === 'pending_correction' ? 'En attente du DAF' : 'Traitée par le DAF';
       actionCell.appendChild(submittedLabel);
     } else {
       const submitButton = document.createElement('button');
@@ -343,9 +348,12 @@ async function soumettreFacture(numero, button) {
     if (facture) {
       facture.daf_status = data.daf_status || 'pending';
       facture.submitted_to_daf_at = submittedAt;
+      if (data.statut) facture.statut = data.statut;
     }
     remplirTableau(FACTURES_FILTREES);
-    alert('Facture soumise au DAF');
+    alert(data.journal_status === 'failed'
+      ? 'Facture soumise au DAF, mais son inscription au journal d’activité a échoué.'
+      : 'Facture soumise au DAF');
   } catch (err) {
     console.error(err);
     alert(`Erreur lors de la soumission : ${err.message}`);

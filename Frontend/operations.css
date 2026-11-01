@@ -101,6 +101,87 @@
     margin-left: auto;
 }
 
+.daf-validation-section {
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius-md, 12px);
+    background: var(--card-bg, #ffffff);
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.04));
+}
+
+.daf-validation-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.daf-validation-heading h3 {
+    margin: 0;
+    color: var(--text-primary, #0f172a);
+    font-size: 1rem;
+}
+
+.daf-validation-heading p {
+    margin: 5px 0 0;
+    color: var(--text-muted, #64748b);
+    font-size: 0.85rem;
+}
+
+.daf-validation-count {
+    display: inline-flex;
+    min-width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.daf-validation-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.daf-validation-table {
+    min-width: 760px;
+}
+
+.daf-validation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.daf-validation-actions .table-btn:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.daf-validation-message {
+    margin: 14px 20px 0;
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 0.88rem;
+}
+
+.daf-validation-message.is-error {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
 /* --------------------------------------------------------------------------
    2. TABLEAU DES OPÉRATIONS
    -------------------------------------------------------------------------- */
@@ -175,6 +256,15 @@
 .table-btn.validate:hover {
     background: #059669;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.table-btn.daf-view {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.table-btn.daf-view:hover {
+    background: #dbeafe;
 }
 
 .table-btn.reject {

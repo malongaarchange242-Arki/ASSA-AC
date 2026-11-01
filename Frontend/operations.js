@@ -32,6 +32,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paginationEl = document.getElementById('pagination');
     const exportBtn = document.getElementById('exportBtn');
     const pageSizeSelect = document.getElementById('pageSize');
+    const dafQueueBody = document.getElementById('daf-validation-list');
+    const dafQueueCount = document.getElementById('daf-validation-count');
+    const dafQueueMessage = document.getElementById('daf-validation-message');
+    const dafQueueRefresh = document.getElementById('daf-validation-refresh');
 
     function getLocalDateInputValue(date = new Date()) {
         const year = date.getFullYear();
@@ -72,6 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /* ---------- STATE ---------- */
     let filtered = [...operations];
+    let dafQueue = [];
+    let dafActionInProgress = null;
     let companiesById = new Map();
     let companyDirectoryState = 'loading';
     let companyDirectoryError = '';
@@ -821,9 +827,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetFilters.addEventListener('click', () => { filterType.value = ''; filterStatus.value = ''; filterDate.value = currentMonth; searchInput.value = ''; currentPage = 1; applyFilters(); });
     searchInput.addEventListener('input', debounce(() => { currentPage = 1; applyFilters(); }, 250));
     exportBtn.addEventListener('click', () => exportExcel(filtered));
+    dafQueueRefresh?.addEventListener('click', async () => {
+        dafQueueRefresh.disabled = true;
+        try {
+            await loadData();
+        } finally {
+            dafQueueRefresh.disabled = false;
+        }
+    });
     pageSizeSelect.addEventListener('change', () => { pageSize = parseInt(pageSizeSelect.value, 10); currentPage = 1; render(); });
     window.addEventListener('app-language-change', () => {
         render();
+        renderDafQueue();
         if (detailPanel.open && currentDetailOperationId) {
             const operation = operations.find(item => item.id === currentDetailOperationId);
             if (operation) {
@@ -892,10 +907,167 @@ document.addEventListener('DOMContentLoaded', async () => {
                 company,
                 companyName: item.company_name || '',
                 statut: normalizeStatus(item.statut || item.status || item.etat),
+                dafStatus: item.daf_status || 'not_submitted',
+                amount: Number(item.amount || item.montant_total || 0),
+                submittedAt: item.submitted_to_daf_at || null,
                 motif: item.motif || item.reason || item.commentaire || item.note || '',
                 contestation: item.contestation && typeof item.contestation === 'object' ? item.contestation : null
             };
         });
+    }
+
+    function renderDafQueue() {
+        if (!dafQueueBody) return;
+        dafQueueBody.replaceChildren();
+        const pending = dafQueue.filter(invoice =>
+            ['pending', 'pending_correction'].includes(invoice.dafStatus) &&
+            !(invoice.dafStatus === 'pending' && isWaitingForCreatorCorrection(invoice.statut))
+        );
+        if (dafQueueCount) dafQueueCount.textContent = String(pending.length);
+
+        if (!pending.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 6;
+            cell.className = 'table-message';
+            cell.textContent = t('daf_invoice_queue_empty');
+            row.appendChild(cell);
+            dafQueueBody.appendChild(row);
+            return;
+        }
+
+        pending.forEach(invoice => {
+            const row = document.createElement('tr');
+            const values = [
+                invoice.ref,
+                invoice.client,
+                invoice.date,
+                `${invoice.amount.toLocaleString(localStorage.getItem('lang') === 'en' ? 'en-US' : 'fr-FR')} ${t('xaf_currency')}`,
+                translateOperationStatus(invoice.statut)
+            ];
+            values.forEach(value => {
+                const cell = document.createElement('td');
+                cell.textContent = value || '—';
+                row.appendChild(cell);
+            });
+
+            const actionsCell = document.createElement('td');
+            const actions = document.createElement('div');
+            actions.className = 'daf-validation-actions';
+            const busy = dafActionInProgress === invoice.ref;
+
+            const createButton = (labelKey, icon, className, handler) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `table-btn ${className}`;
+                button.disabled = busy;
+                button.innerHTML = `<i class="fa-solid ${icon}" aria-hidden="true"></i> ${t(labelKey)}`;
+                button.addEventListener('click', handler);
+                actions.appendChild(button);
+            };
+
+            createButton('daf_view_invoice', 'fa-eye', 'daf-view', () => viewDafInvoicePdf(invoice.ref));
+            createButton('daf_approve_invoice', 'fa-check', 'validate', () => processDafInvoice(invoice, 'validate'));
+            createButton('daf_return_invoice', 'fa-rotate-left', 'reject', () => processDafInvoice(invoice, 'reject'));
+            actionsCell.appendChild(actions);
+            row.appendChild(actionsCell);
+            dafQueueBody.appendChild(row);
+        });
+    }
+
+    function showDafQueueMessage(message, isError = false) {
+        if (!dafQueueMessage) return;
+        dafQueueMessage.hidden = false;
+        dafQueueMessage.classList.toggle('is-error', isError);
+        dafQueueMessage.textContent = message;
+    }
+
+    function getDafApiContext() {
+        const apiBase = 'https://assa-ac-api.onrender.com';
+        const token = localStorage.getItem('jwtTokenSuperviseur') ||
+            localStorage.getItem('jwtTokenAdmin') ||
+            localStorage.getItem('jwtToken');
+        if (!token) throw new Error(t('activity_session_expired'));
+        return { apiBase, headers: { Authorization: `Bearer ${token}` } };
+    }
+
+    async function viewDafInvoicePdf(numero) {
+        const previewWindow = window.open('about:blank', '_blank');
+        if (!previewWindow) {
+            showDafQueueMessage(t('daf_popup_blocked'), true);
+            return;
+        }
+
+        try {
+            const { apiBase, headers } = getDafApiContext();
+            const response = await fetch(`${apiBase}/api/factures/${encodeURIComponent(numero)}/pdf`, { headers });
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Erreur API ${response.status}`);
+            }
+            if (!(response.headers.get('content-type') || '').includes('application/pdf')) {
+                throw new Error(t('daf_invalid_pdf'));
+            }
+            const pdfUrl = URL.createObjectURL(await response.blob());
+            previewWindow.location.replace(pdfUrl);
+            previewWindow.addEventListener('pagehide', () => URL.revokeObjectURL(pdfUrl), { once: true });
+        } catch (error) {
+            console.error('Erreur ouverture PDF pour validation DAF :', error);
+            previewWindow.close();
+            showDafQueueMessage(t('daf_view_error').replace('{error}', error.message), true);
+        }
+    }
+
+    async function processDafInvoice(invoice, action) {
+        let reason = '';
+        if (action === 'validate' && !window.confirm(t('daf_confirm_approve'))) return;
+        if (action === 'reject') {
+            const enteredReason = window.prompt(t('daf_return_reason_prompt'));
+            if (enteredReason === null) return;
+            reason = enteredReason.trim();
+            if (!reason) {
+                showDafQueueMessage(t('daf_return_reason_required'), true);
+                return;
+            }
+        }
+
+        dafActionInProgress = invoice.ref;
+        renderDafQueue();
+        if (dafQueueMessage) dafQueueMessage.hidden = true;
+        try {
+            const { apiBase, headers } = getDafApiContext();
+            const endpoint = action === 'validate' ? 'validate' : 'reject';
+            const response = await fetch(`${apiBase}/api/factures/${endpoint}/${encodeURIComponent(invoice.ref)}`, {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                ...(action === 'reject' ? { body: JSON.stringify({ reason }) } : {})
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.message || `Erreur API ${response.status}`);
+
+            dafQueue = dafQueue.filter(item => item.ref !== invoice.ref);
+            const matchingOperation = operations.find(item => item.ref === invoice.ref);
+            if (matchingOperation) {
+                matchingOperation.dafStatus = action === 'validate' ? 'validated' : 'rejected';
+                matchingOperation.statut = result.facture?.statut || (action === 'reject' ? 'À corriger' : matchingOperation.statut);
+            }
+            renderDafQueue();
+            render();
+
+            let message = action === 'validate' ? t('daf_approve_success') : t('daf_return_success');
+            const emailStatus = result.email_status || result.notification_status;
+            if (emailStatus === 'sent') message += ` ${t(action === 'validate' ? 'daf_approved_email_sent' : 'daf_creator_email_sent')}`;
+            else if (emailStatus === 'failed') message += ` ${t('daf_creator_email_failed')}`;
+            else if (emailStatus === 'missing_recipient') message += ` ${t('daf_creator_email_missing')}`;
+            if (result.journal_status === 'failed') message += ` ${t('daf_journal_failed')}`;
+            showDafQueueMessage(message, ['failed', 'missing_recipient'].includes(emailStatus) || result.journal_status === 'failed');
+        } catch (error) {
+            console.error('Erreur traitement de facture par le DAF :', error);
+            showDafQueueMessage(t('daf_action_error').replace('{error}', error.message), true);
+        } finally {
+            dafActionInProgress = null;
+            renderDafQueue();
+        }
     }
 
     async function loadData() {
@@ -931,14 +1103,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const arr = extractArray(data);
             operations = normalizeFactures(arr);
+            dafQueue = operations.filter(invoice => invoice.dafStatus === 'pending');
             currentPage = 1;
             await loadCompanyDirectory(API_BASE, token);
             tbody.setAttribute('aria-busy', 'false');
+            renderDafQueue();
             applyFilters();
 
         } catch (err) {
             console.error('Erreur fetch factures API:', err);
             operations = [];
+            dafQueue = [];
             filtered = [];
             currentPage = 1;
             tbody.setAttribute('aria-busy', 'false');
@@ -956,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             td.append(' ', retryButton);
             tr.appendChild(td);
             tbody.replaceChildren(tr);
+            renderDafQueue();
             renderPagination();
         }
     }

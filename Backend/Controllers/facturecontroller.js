@@ -139,6 +139,29 @@ const sendInvoiceEmail = async (to, numero_facture, montant_total, invoicePdf) =
   return info;
 };
 
+const sendDafCorrectionNotice = async ({ to, numero_facture, reason }) => {
+  if (!to) return false;
+  const safeReason = String(reason || '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
+  const info = await sendEmail({
+    to,
+    subject: `Facture ${numero_facture} à corriger`,
+    text: `La facture ${numero_facture} a été retournée par le DAF pour correction.\n\nConsignes : ${reason}\n\nVeuillez corriger la facture puis la soumettre de nouveau au DAF.\n\nASSA-AC`,
+    html: `<p>La facture <strong>${numero_facture}</strong> a été retournée par le DAF pour correction.</p><p><strong>Consignes :</strong><br>${safeReason.replace(/\n/g, '<br>')}</p><p>Veuillez corriger la facture puis la soumettre de nouveau au DAF.</p><p>ASSA-AC</p>`
+  });
+  const accepted = (info.accepted || []).some(recipient => {
+    const email = typeof recipient === 'string' ? recipient : recipient?.email;
+    return String(email || '').trim().toLowerCase() === to.trim().toLowerCase();
+  });
+  if (!accepted) throw new Error(`Le fournisseur e-mail n'a pas accepté le destinataire ${to}`);
+  return true;
+};
+
 
 // ===============================================================
 // ENDPOINT : Générer une référence de facture
@@ -391,32 +414,45 @@ export const submitFactureForValidation = async (req, res) => {
     }
 
     const invoiceStatus = String(facture.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-    if (!['impayee', 'a corriger'].includes(invoiceStatus) || facture.daf_status === 'pending') {
+    if (!['impayee', 'a corriger', 'en attente'].includes(invoiceStatus) || ['pending', 'pending_correction'].includes(facture.daf_status)) {
       return res.status(409).json({ message: 'Cette facture ne peut pas être soumise au DAF dans son état actuel.' });
     }
 
     const submittedAt = new Date().toISOString();
+    const submittedDafStatus = invoiceStatus === 'a corriger' ? 'pending_correction' : 'pending';
+    const submittedInvoiceStatus = invoiceStatus === 'a corriger' ? 'En attente' : facture.statut;
     const { error: updateError } = await supabase
       .from('factures')
-      .update({ daf_status: 'pending', submitted_to_daf_at: submittedAt })
+      .update({
+        daf_status: submittedDafStatus,
+        submitted_to_daf_at: submittedAt,
+        ...(invoiceStatus === 'a corriger' ? { statut: submittedInvoiceStatus } : {})
+      })
       .eq('numero_facture', numero);
 
     if (updateError) throw updateError;
 
-    // Journaliser la soumission
-    await logActivite({
-      module: 'Factures', type_activite: 'submit', categorie: 'Facture', reference: numero,
-      description: `Soumission de la facture ${numero} au DAF pour validation`,
-      id_companie: facture.id_companie,
-      utilisateur_nom: req.user?.nom_complet || req.user?.name || 'Opérateur',
-      utilisateur_email: req.user?.email || null
-    });
+    let journalStatus = 'recorded';
+    try {
+      await logActivite({
+        module: 'Factures', type_activite: 'submit', categorie: 'Facture', reference: numero,
+        description: `Soumission de la facture ${numero} au DAF pour validation`,
+        id_companie: facture.id_companie,
+        utilisateur_nom: req.user?.nom_complet || req.user?.name || 'Opérateur',
+        utilisateur_email: req.user?.email || null
+      });
+    } catch (journalError) {
+      journalStatus = 'failed';
+      console.error(`Facture ${numero} soumise, mais journalisation échouée :`, journalError);
+    }
 
     res.status(200).json({
       success: true,
       message: 'Facture soumise au DAF',
-      daf_status: 'pending',
-      submitted_to_daf_at: submittedAt
+      daf_status: submittedDafStatus,
+      statut: submittedInvoiceStatus,
+      submitted_to_daf_at: submittedAt,
+      journal_status: journalStatus
     });
   } catch (err) {
     console.error('submitFactureForValidation error:', err);
@@ -437,18 +473,18 @@ export const validateFacture = async (req, res) => {
 
     const { data: facture, error: factureError } = await supabase
       .from('factures')
-      .select('statut, daf_status, id_companie')
+      .select('id, numero_facture, statut, daf_status, id_companie, montant_total')
       .eq('numero_facture', numero)
       .maybeSingle();
 
     if (factureError) throw factureError;
     if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
-    if (facture.daf_status !== 'pending') {
+    if (!['pending', 'pending_correction'].includes(facture.daf_status)) {
       return res.status(409).json({ message: 'Cette facture n’est pas en attente de validation.' });
     }
 
     const currentInvoiceStatus = String(facture.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-    if (!['impayee', 'a corriger'].includes(currentInvoiceStatus)) {
+    if (!['impayee', 'a corriger', 'en attente'].includes(currentInvoiceStatus)) {
       return res.status(409).json({ message: 'Cette facture ne peut pas être validée dans son état actuel.' });
     }
 
@@ -459,23 +495,60 @@ export const validateFacture = async (req, res) => {
         validated_by: req.user?.id,
         validated_at: new Date().toISOString(),
         daf_status: 'validated',
-        ...(currentInvoiceStatus === 'a corriger' ? { statut: 'Impayée' } : {})
+        ...(['a corriger', 'en attente'].includes(currentInvoiceStatus) ? { statut: 'Impayée' } : {})
       })
       .eq('numero_facture', numero)
+      .eq('daf_status', facture.daf_status)
+      .eq('statut', facture.statut)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) return res.status(409).json({ message: 'La facture a changé pendant le traitement. Rechargez la page.' });
 
-    await logActivite({
-      module: 'Factures', type_activite: 'validate', categorie: 'Facture', reference: numero,
-      description: `Validation de la facture ${numero} par DAF`,
-      id_companie: data.id_companie,
-      utilisateur_nom: req.user?.nom_complet || req.user?.name || 'DAF',
-      utilisateur_email: req.user?.email || null
+    let journalStatus = 'recorded';
+    try {
+      await logActivite({
+        module: 'Factures', type_activite: 'validate', categorie: 'Facture', reference: numero,
+        description: `Validation de la facture ${numero} par DAF`,
+        id_companie: data.id_companie,
+        utilisateur_nom: req.user?.nom_complet || req.user?.name || 'DAF',
+        utilisateur_email: req.user?.email || null
+      });
+    } catch (journalError) {
+      journalStatus = 'failed';
+      console.error(`Facture ${numero} validée, mais journalisation échouée :`, journalError);
+    }
+
+    let emailStatus = 'not_required';
+    if (facture.daf_status === 'pending_correction') {
+      try {
+        const [{ data: company, error: companyError }, { data: lignes, error: lignesError }] = await Promise.all([
+          supabase.from('companies').select('email').eq('id', facture.id_companie).maybeSingle(),
+          supabase.from('lignes_facture').select('*').eq('numero_facture', numero).order('numero_ligne')
+        ]);
+        if (companyError) throw companyError;
+        if (lignesError) throw lignesError;
+        if (!company?.email) {
+          emailStatus = 'missing_recipient';
+        } else {
+          const invoicePdf = await generateInvoicePdf(data, lignes || []);
+          await sendInvoiceEmail(company.email, numero, data.montant_total, invoicePdf);
+          emailStatus = 'sent';
+        }
+      } catch (emailError) {
+        emailStatus = 'failed';
+        console.error(`Facture ${numero} validée, mais e-mail de la facture corrigée non envoyé :`, emailError);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Facture validée',
+      facture: data,
+      email_status: emailStatus,
+      journal_status: journalStatus
     });
-
-    res.status(200).json({ success: true, message: 'Facture validée', facture: data });
   } catch (err) {
     console.error('validateFacture error:', err);
     res.status(500).json({ message: 'Erreur validation facture', error: err.message });
@@ -491,29 +564,87 @@ export const rejectFacture = async (req, res) => {
     if (!['superviseur', 'daf', 'super_directeur'].includes(role)) return res.status(403).json({ message: 'Action réservée au DAF' });
 
     const numero = req.params.numero_facture;
-    const { reason } = req.body;
+    const reason = String(req.body?.reason || '').trim();
     if (!numero) return res.status(400).json({ message: 'numero_facture requis' });
+    if (!reason) return res.status(400).json({ message: 'Les consignes de correction sont obligatoires.' });
+    if (reason.length > 2000) return res.status(400).json({ message: 'Les consignes ne peuvent pas dépasser 2 000 caractères.' });
+
+    const { data: currentInvoice, error: invoiceError } = await supabase
+      .from('factures')
+      .select('id, statut, daf_status, id_companie, created_by, id_admin')
+      .eq('numero_facture', numero)
+      .eq('archived', false)
+      .maybeSingle();
+
+    if (invoiceError) throw invoiceError;
+    if (!currentInvoice) return res.status(404).json({ message: 'Facture introuvable' });
+    if (!['pending', 'pending_correction'].includes(currentInvoice.daf_status)) {
+      return res.status(409).json({ message: 'Cette facture n’est pas en attente de validation.' });
+    }
 
     const { data: facture, error: updateError } = await supabase
       .from('factures')
-      .update({ daf_status: 'rejected' })
+      .update({ daf_status: 'rejected', statut: 'À corriger', submitted_to_daf_at: null })
       .eq('numero_facture', numero)
+      .eq('daf_status', currentInvoice.daf_status)
+      .eq('statut', currentInvoice.statut)
       .select('id_companie')
       .maybeSingle();
 
     if (updateError) throw updateError;
-    if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
+    if (!facture) return res.status(409).json({ message: 'La facture a changé pendant le traitement. Rechargez la page.' });
 
     // Journaliser le rejet
-    await logActivite({
-      module: 'Factures', type_activite: 'reject', categorie: 'Facture', reference: numero,
-      description: `Rejet de la facture ${numero} par DAF. Motif: ${reason || 'non précisé'}`,
-      id_companie: facture.id_companie,
-      utilisateur_nom: req.user?.nom_complet || req.user?.name || 'DAF',
-      utilisateur_email: req.user?.email || null
-    });
+    let journalStatus = 'recorded';
+    try {
+      await logActivite({
+        module: 'Factures', type_activite: 'reject', categorie: 'Facture', reference: numero,
+        description: `Facture ${numero} retournée au créateur pour correction par le DAF. Consignes: ${reason}`,
+        id_companie: facture.id_companie,
+        utilisateur_nom: req.user?.nom_complet || req.user?.name || 'DAF',
+        utilisateur_email: req.user?.email || null
+      });
+    } catch (journalError) {
+      journalStatus = 'failed';
+      console.error(`Facture ${numero} retournée pour correction, mais journalisation échouée :`, journalError);
+    }
 
-    res.status(200).json({ success: true, message: 'Facture rejetée' });
+    let notificationStatus = 'missing_recipient';
+    try {
+      let recipientEmail = null;
+      if (currentInvoice.created_by) {
+        const { data: creator, error: creatorError } = await supabase
+          .from('operateurs')
+          .select('email')
+          .eq('id', currentInvoice.created_by)
+          .maybeSingle();
+        if (creatorError) throw creatorError;
+        recipientEmail = creator?.email || null;
+      } else if (currentInvoice.id_admin) {
+        const { data: creator, error: creatorError } = await supabase
+          .from('admins')
+          .select('email')
+          .eq('id', currentInvoice.id_admin)
+          .maybeSingle();
+        if (creatorError) throw creatorError;
+        recipientEmail = creator?.email || null;
+      }
+      if (recipientEmail) {
+        await sendDafCorrectionNotice({ to: recipientEmail, numero_facture: numero, reason });
+        notificationStatus = 'sent';
+      }
+    } catch (emailError) {
+      notificationStatus = 'failed';
+      console.error(`Échec notification au créateur pour la facture ${numero} :`, emailError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Facture retournée au créateur pour correction.',
+      facture: { numero_facture: numero, statut: 'À corriger', daf_status: 'rejected' },
+      notification_status: notificationStatus,
+      journal_status: journalStatus
+    });
   } catch (err) {
     console.error('rejectFacture error:', err);
     res.status(500).json({ message: 'Erreur rejet facture', error: err.message });
@@ -845,6 +976,9 @@ export const updateFacture = async (req, res) => {
 
     if (role === 'operateur') {
       canUpdate = String(factureData.created_by || '') === String(userId || '');
+      if (canUpdate && ['pending', 'pending_correction', 'validated'].includes(String(factureData.daf_status || ''))) {
+        return res.status(409).json({ message: 'Cette facture ne peut pas être modifiée pendant ou après sa validation par le DAF.' });
+      }
     } else if (role === 'administrateur') {
       canUpdate = String(factureData.id_admin || '') === String(userId || '');
 

@@ -182,6 +182,38 @@
                 </div>
             </section>
 
+            <section class="daf-validation-section" aria-labelledby="daf-validation-title">
+                <div class="daf-validation-heading">
+                    <div>
+                        <h3 id="daf-validation-title" data-i18n="daf_invoice_queue_title">Factures soumises au DAF</h3>
+                        <p data-i18n="daf_invoice_queue_description">Examinez chaque facture, puis validez-la ou retournez-la au créateur pour correction.</p>
+                    </div>
+                    <div class="daf-validation-tools">
+                        <button id="daf-validation-refresh" class="btn-control-action" type="button">
+                            <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                            <span data-i18n="refresh">Actualiser</span>
+                        </button>
+                        <span id="daf-validation-count" class="daf-validation-count" aria-live="polite">0</span>
+                    </div>
+                </div>
+                <div id="daf-validation-message" class="daf-validation-message" role="status" hidden></div>
+                <div class="activity-table-scroll">
+                    <table class="ops-table daf-validation-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" data-i18n="ref">Référence</th>
+                                <th scope="col" data-i18n="client">Compagnie</th>
+                                <th scope="col" data-i18n="date">Date</th>
+                                <th scope="col" data-i18n="daf_queue_amount">Montant</th>
+                                <th scope="col" data-i18n="status">Statut</th>
+                                <th scope="col" data-i18n="action">Actions DAF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daf-validation-list"></tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- Tableau des opérations sensibles -->
             <section class="table-wrap" aria-live="polite">
                 <div class="activity-table-scroll">
