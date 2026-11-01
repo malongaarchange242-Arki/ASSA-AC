@@ -581,6 +581,13 @@ export const rejectFacture = async (req, res) => {
     if (!['pending', 'pending_correction'].includes(currentInvoice.daf_status)) {
       return res.status(409).json({ message: 'Cette facture n’est pas en attente de validation.' });
     }
+    const currentInvoiceStatus = String(currentInvoice.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const allowedStatuses = currentInvoice.daf_status === 'pending_correction'
+      ? ['en attente']
+      : ['impayee', 'en attente'];
+    if (!allowedStatuses.includes(currentInvoiceStatus)) {
+      return res.status(409).json({ message: 'Cette facture ne peut pas être retournée dans son état actuel.' });
+    }
 
     const { data: facture, error: updateError } = await supabase
       .from('factures')

@@ -898,6 +898,10 @@
     font-weight: 650;
 }
 
+.operation-detail-card .detail-actions button[hidden] {
+    display: none;
+}
+
 .operation-detail-card .detail-actions button:disabled {
     border: 1px solid #d1d5db;
     background: #e5e7eb;

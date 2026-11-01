@@ -95,6 +95,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return String(status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'a corriger';
     }
 
+    function isEligibleForDafReview(invoice) {
+        const status = String(invoice.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        if (invoice.dafStatus === 'pending') return ['impayee', 'en attente'].includes(status);
+        if (invoice.dafStatus === 'pending_correction') return status === 'en attente';
+        return false;
+    }
+
     function isPendingContestation(operation) {
         const status = String(operation.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
         const contestationStatus = String(operation.contestation?.statut || 'En attente')
@@ -130,10 +137,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateDetailActionState(operation) {
         const disputePending = isPendingContestation(operation);
-        const canProcess = disputePending || String(operation.statut || '').trim().toLowerCase() === 'en attente';
-        const disabled = isPaidStatus(operation.statut) || !canProcess;
-        btnValider.disabled = disabled;
-        btnRejeter.disabled = disabled;
+        const disabled = isPaidStatus(operation.statut);
+        btnValider.hidden = !disputePending;
+        btnRejeter.hidden = !disputePending;
+        btnValider.disabled = disabled || !disputePending;
+        btnRejeter.disabled = disabled || !disputePending;
         btnValider.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${t(disputePending ? 'accept_contestation' : 'validate')}`;
         btnRejeter.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${t(disputePending ? 'reject_contestation' : 'reject')}`;
         dDecisionNote.hidden = !disputePending;
@@ -167,6 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         pageItems.forEach(op => {
             const tr = document.createElement('tr');
+            const disputePending = isPendingContestation(op);
             tr.innerHTML = `
             <td>${op.ref}</td>
             <td>${translateOperationType(op.type)}</td>
@@ -175,8 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td>${translateOperationStatus(op.statut)}</td>
             <td class="actions-col">
                 <div class="table-actions">
-                    <button class="table-btn validate" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) || isWaitingForCreatorCorrection(op.statut) ? `disabled title="${t(isWaitingForCreatorCorrection(op.statut) ? 'waiting_for_creator_correction' : 'paid_invoice_action_unavailable')}"` : ''}>${isPendingContestation(op) ? t('accept_contestation') : t('validate')}</button>
-                    <button class="table-btn reject" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) || isWaitingForCreatorCorrection(op.statut) ? `disabled title="${t(isWaitingForCreatorCorrection(op.statut) ? 'waiting_for_creator_correction' : 'paid_invoice_action_unavailable')}"` : ''}>${isPendingContestation(op) ? t('reject_contestation') : t('reject')}</button>
+                    <button class="table-btn details" data-id="${op.id}" type="button">${t(disputePending ? 'review_contestation' : 'view_details')}</button>
                     <button class="table-btn delete" data-id="${op.id}" type="button">${t('delete')}</button>
                 </div>
             </td>
@@ -187,18 +195,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openDetail(op); 
             });
 
-            tr.querySelector('.validate').addEventListener('click', e => { 
-                e.stopPropagation(); 
-                if (isPendingContestation(op)) openDetail(op);
-                else if (isWaitingForCreatorCorrection(op.statut)) return;
-                else changeStatus(op.id, 'Payée');
-            });
-
-            tr.querySelector('.reject').addEventListener('click', e => { 
-                e.stopPropagation(); 
-                if (isPendingContestation(op)) openDetail(op);
-                else if (isWaitingForCreatorCorrection(op.statut)) return;
-                else changeStatus(op.id, 'Rejetée');
+            tr.querySelector('.details').addEventListener('click', e => {
+                e.stopPropagation();
+                openDetail(op);
             });
 
             tr.querySelector('.delete').addEventListener('click', e => {
@@ -279,55 +278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     /* ---------- ACTIONS ---------- */
-    function changeStatus(id, statut) {
-        const existing = operations.find(o => o.id === id);
-        if (!existing) return;
-        if (isPaidStatus(existing.statut)) return;
-
-        // Special rule: when validating (setting to 'Payée'), only change
-        // invoices that are currently in 'En attente' (case-insensitive).
-        if (statut === 'Payée') {
-            const cur = String(existing.statut || '').toLowerCase();
-            if (!/en\s*attente/.test(cur)) return; // no-op if not 'en attente'
-        }
-
-        // Update master list
-        operations = operations.map(op => op.id === id ? { ...op, statut } : op);
-
-        // Also update the currently visible filtered list so the row is not removed
-        filtered = filtered.map(op => op.id === id ? { ...op, statut } : op);
-
-        if (currentDetailOperationId === id) {
-            dStatut.textContent = translateOperationStatus(statut);
-            updateDetailActionState({ ...existing, statut });
-        }
-
-        // Re-render (do not re-apply filters so the row remains)
-        render();
-
-        // Persist change to backend (optimistic update: UI already updated)
-        const numero = existing.ref || existing.id;
-        updateStatusInDB(numero, statut).then(data => {
-            const emailFailed = ['failed', 'missing_recipient'].includes(data?.email_status);
-            showDetailConfirmation(
-                data?.email_message || `Statut enregistré en base : ${statut}`,
-                emailFailed
-            );
-        }).catch(err => {
-            // Revert optimistic update on failure
-            console.error('Erreur mise à jour statut en base :', err);
-            // revert operations
-            operations = operations.map(op => op.id === id ? { ...op, statut: existing.statut } : op);
-            filtered = filtered.map(op => op.id === id ? { ...op, statut: existing.statut } : op);
-            if (currentDetailOperationId === id) {
-                dStatut.textContent = translateOperationStatus(existing.statut);
-                updateDetailActionState(existing);
-            }
-            render();
-            showDetailConfirmation(`Échec enregistrement: ${err.message || err}`);
-        });
-    }
-
     // Persist status change to backend API
     async function deleteOperation(id) {
         const operation = operations.find(item => item.id === id);
@@ -477,12 +427,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         dDecisionNote.value = '';
         // Load proofs for this operation into the detail panel
         try { viewProofs(op.ref || op.id); } catch (e) { console.warn('viewProofs failed', e); }
-        btnValider.onclick = () => isPendingContestation(op)
-            ? decideContestation(op, 'accept')
-            : changeStatus(op.id, 'Payée');
-        btnRejeter.onclick = () => isPendingContestation(op)
-            ? decideContestation(op, 'reject')
-            : changeStatus(op.id, 'Rejetée');
+        btnValider.onclick = isPendingContestation(op) ? () => decideContestation(op, 'accept') : null;
+        btnRejeter.onclick = isPendingContestation(op) ? () => decideContestation(op, 'reject') : null;
         btnSupprimer.onclick = () => deleteOperation(op.id).catch(error => {
             console.error('Erreur suppression opération :', error);
             showDetailConfirmation(error.message || t('error_deletion'), true);
@@ -919,10 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderDafQueue() {
         if (!dafQueueBody) return;
         dafQueueBody.replaceChildren();
-        const pending = dafQueue.filter(invoice =>
-            ['pending', 'pending_correction'].includes(invoice.dafStatus) &&
-            !(invoice.dafStatus === 'pending' && isWaitingForCreatorCorrection(invoice.statut))
-        );
+        const pending = dafQueue.filter(isEligibleForDafReview);
         if (dafQueueCount) dafQueueCount.textContent = String(pending.length);
 
         if (!pending.length) {
