@@ -1,10 +1,11 @@
 import express from "express";
 import {
   uploadContestationFiles,
-  uploadContestation
+  uploadContestation,
+  decideContestation
 } from "../Controllers/contestationCompagnie.js";
 
-import { verifyToken } from "../Middleware/auth.js";
+import { verifyToken, checkRole } from "../Middleware/auth.js";
 
 export default function contestationsRoutesFactory(broadcastToRoom) {
   const router = express.Router();
@@ -14,6 +15,13 @@ export default function contestationsRoutesFactory(broadcastToRoom) {
     verifyToken,
     uploadContestationFiles,   // <-- 🟩 Multer GÈRE req.body + req.files
     uploadContestation,        // <-- 🟩 Ton controller reçoit tout proprement
+  );
+
+  router.put(
+    "/decision/:numero_facture",
+    verifyToken,
+    checkRole(['superviseur', 'super_directeur']),
+    decideContestation
   );
 
   return router;

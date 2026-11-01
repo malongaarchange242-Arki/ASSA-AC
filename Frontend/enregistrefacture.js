@@ -4,6 +4,10 @@ const INVOICE_TOKEN_KEY = document.body.dataset.userRole === 'operateur'
     ? 'jwtTokenOperateur'
     : 'jwtTokenAdmin';
 const isOperatorInvoicePage = INVOICE_TOKEN_KEY === 'jwtTokenOperateur';
+const correctionInvoiceReference = isOperatorInvoicePage
+    ? new URLSearchParams(window.location.search).get('correction')
+    : null;
+let correctionMode = false;
 const CURRENCY = 'Frs CFA';
 const PRICE_CEMAC = 1000;
 const PRICE_HORS_CEMAC = 1500;
@@ -403,7 +407,18 @@ clientSelect.addEventListener('change', e => {
 });
 
 function updateInvoiceLanguage() {
-    document.title = `${t('invoice_create_title')} - ASSA-AC`;
+    const pageTitle = correctionMode ? t('invoice_correct_title') : t('invoice_create_title');
+    document.title = `${pageTitle} - ASSA-AC`;
+    const heading = document.getElementById('invoice-page-title');
+    if (correctionMode && heading) {
+        heading.textContent = pageTitle;
+        heading.setAttribute('data-i18n', 'invoice_correct_title');
+    }
+    const headerTitle = document.querySelector('.header .page-title');
+    if (correctionMode && headerTitle) {
+        headerTitle.textContent = pageTitle;
+        headerTitle.setAttribute('data-i18n', 'invoice_correct_title');
+    }
     clientSelect.querySelector('option[value=""]')?.replaceChildren(document.createTextNode(t('select_company')));
     itemsContainer.querySelectorAll('tr').forEach(row => {
         const designation = row.querySelector('input[name="designation"]');
@@ -421,6 +436,9 @@ function updateInvoiceLanguage() {
     const previewButton = document.getElementById('preview-button');
     if (previewButton?.getAttribute('aria-busy') === 'true') {
         previewButton.innerHTML = `<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i><span>${t('invoice_preparing_preview')}</span>`;
+    } else if (previewButton) {
+        const previewKey = correctionMode ? 'invoice_preview_correction' : 'invoice_preview';
+        previewButton.innerHTML = `<span data-i18n="${previewKey}">${t(previewKey)}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>`;
     }
     const previewMessage = document.getElementById('preview-message');
     if (previewMessage?.dataset.messageKey) {
@@ -450,6 +468,55 @@ function updateInvoiceLanguage() {
             ? t('invoice_exit_fullscreen')
             : t('invoice_fullscreen');
     }
+}
+
+async function loadInvoiceForCorrection() {
+    if (!correctionInvoiceReference) return;
+    const token = getInvoiceToken();
+    if (!token) throw new Error(t('invoice_session_expired'));
+
+    const response = await fetch(`${API_BASE}/api/factures/${encodeURIComponent(correctionInvoiceReference)}`, {
+        headers: getInvoiceAuthHeaders(token, false)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || `Erreur API ${response.status}`);
+    if (!result.facture || !Array.isArray(result.lignes)) throw new Error('Données de correction incomplètes.');
+
+    const status = String(result.facture.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    if (status !== 'a corriger') throw new Error('Cette facture n’est plus en attente de correction.');
+
+    correctionMode = true;
+    invoiceDraftSaved = true;
+    invoiceIdInput.value = result.facture.numero_facture;
+    const companyName = result.facture.nom_client || '';
+    if (!companiesData[companyName]) {
+        const companyOption = new Option(companyName, companyName);
+        clientSelect.add(companyOption);
+        companiesData[companyName] = {
+            id: result.facture.id_companie,
+            airport: result.facture.aeroport || '',
+            city: result.facture.lieu_emission || ''
+        };
+    }
+    clientSelect.value = companyName;
+    document.getElementById('purpose').value = result.facture.objet || '';
+    airportInput.value = result.facture.aeroport || '';
+    issueLocationInput.value = result.facture.lieu_emission || '';
+    issueDateInput.value = String(result.facture.date_emission || '').slice(0, 10);
+    updateInvoicePeriod();
+
+    itemsContainer.replaceChildren();
+    rowCounter = 0;
+    (result.lignes.length ? result.lignes : [{}]).forEach(line => {
+        addItemRow();
+        const row = itemsContainer.lastElementChild;
+        row.querySelector('input[name="qty"]').value = Number(line.nombre_passagers) || 0;
+        row.querySelector('select[name="zone"]').value = line.destination || '';
+        row.querySelector('input[name="designation"]').dataset.canonicalValue = line.designation || 'Redevance de Sécurité Aérienne';
+        calculateTotals();
+    });
+
+    updateInvoiceLanguage();
 }
 
 window.addEventListener('app-language-change', updateInvoiceLanguage);
@@ -589,7 +656,8 @@ function setPreviewButtonLoading(isLoading) {
     previewBtn.removeAttribute('aria-disabled');
     previewBtn.removeAttribute('aria-busy');
     if (previewBtn.dataset.idleContent) {
-        previewBtn.innerHTML = `<span data-i18n="invoice_preview">${t('invoice_preview')}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>`;
+        const previewKey = correctionMode ? 'invoice_preview_correction' : 'invoice_preview';
+        previewBtn.innerHTML = `<span data-i18n="${previewKey}">${t(previewKey)}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>`;
         delete previewBtn.dataset.idleContent;
     }
 }
@@ -768,6 +836,20 @@ async function showPreview() {
         `;
 
         previewContent.innerHTML = previewHTML;
+        if (correctionMode) {
+            const saveButton = document.getElementById('send-invoice-button');
+            if (saveButton) {
+                saveButton.setAttribute('data-i18n', 'invoice_save_correction');
+                saveButton.textContent = t('invoice_save_correction');
+            }
+            const closeButton = previewContent.querySelector('.preview-close-button');
+            if (closeButton) {
+                closeButton.setAttribute('aria-label', t('invoice_close_preview'));
+                closeButton.title = t('invoice_close_preview');
+                closeButton.setAttribute('data-i18n-aria-label', 'invoice_close_preview');
+                closeButton.setAttribute('data-i18n-title', 'invoice_close_preview');
+            }
+        }
         window.setLanguage(localStorage.getItem('lang') || 'fr');
         document.getElementById('form-area').classList.add('hidden');
         previewZoom = 100;
@@ -948,6 +1030,11 @@ function closePreview() {
 }
 
 async function cancelInvoiceDraft(buttonElement) {
+    if (correctionMode) {
+        closePreview();
+        return;
+    }
+
     if (buttonElement?.disabled) return;
 
     if (!invoiceDraftSaved) {
@@ -1090,6 +1177,34 @@ async function sendInvoice(buttonElement) {
         }
         invoiceDraftSaved = true;
 
+        if (correctionMode) {
+            const submitResponse = await fetch(
+                `${API_BASE}/api/factures/submit/${encodeURIComponent(invoiceIdInput.value)}`,
+                {
+                    method: 'POST',
+                    headers: getInvoiceAuthHeaders(token)
+                }
+            );
+            const submitResult = await submitResponse.json().catch(() => ({}));
+            if (!submitResponse.ok) {
+                throw new Error(`Correction enregistrée, mais la soumission au DAF a échoué : ${submitResult.message || `Erreur API ${submitResponse.status}`}`);
+            }
+
+            const previewMsg = document.getElementById('preview-message');
+            if (previewMsg) {
+                previewMsg.textContent = t('invoice_correction_submitted');
+                previewMsg.style.display = 'block';
+                previewMsg.style.background = '#ecfdf5';
+                previewMsg.style.color = '#065f46';
+                previewMsg.style.border = '1px solid #34d399';
+            }
+            setTimeout(() => {
+                closePreview();
+                window.location.href = 'factureOperateur.html';
+            }, 900);
+            return;
+        }
+
         const emailResponse = await fetch(
             `${API_BASE}/api/factures/${encodeURIComponent(invoiceIdInput.value)}/resend-email`,
             {
@@ -1142,7 +1257,7 @@ async function sendInvoice(buttonElement) {
         // --- LOGIQUE ANTI-DOUBLE CLIC (Ajout - Réactivation) ---
         if (buttonElement) {
             buttonElement.disabled = false;
-            buttonElement.textContent = t('invoice_send_save');
+            buttonElement.textContent = correctionMode ? t('invoice_save_correction') : t('invoice_send_save');
             buttonElement.classList.remove('bg-gray-400', 'cursor-not-allowed');
             buttonElement.classList.add('bg-blue-600', 'hover:bg-blue-700');
         }
@@ -1180,14 +1295,15 @@ function initialiserMenuOperateur() {
     });
 }
 
-window.onload = () => {
+window.onload = async () => {
     try {
         initialiserMenuOperateur();
         updateInvoiceLanguage();
         issueDateInput.value = getLocalDateInputValue();
         updateInvoicePeriod();
 
-        loadClients();
+        await loadClients();
+        await loadInvoiceForCorrection();
 
         if (!itemsContainer.children.length) addItemRow();
         else calculateTotals();
@@ -1196,6 +1312,9 @@ window.onload = () => {
     } catch (err) {
         console.error(err);
         showMessage(t('invoice_validation_error').replace('{error}', err.message), 'error');
+        if (correctionInvoiceReference) {
+            setTimeout(() => { window.location.href = 'factureOperateur.html'; }, 1800);
+        }
     }
 };
 

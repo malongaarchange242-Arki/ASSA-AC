@@ -386,6 +386,15 @@ export const submitFactureForValidation = async (req, res) => {
     if (fErr) throw fErr;
     if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
 
+    if (String(facture.created_by || '') !== String(req.user?.id || '')) {
+      return res.status(403).json({ message: "Vous n'êtes pas autorisé à soumettre cette facture." });
+    }
+
+    const invoiceStatus = String(facture.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    if (!['impayee', 'a corriger'].includes(invoiceStatus) || facture.daf_status === 'pending') {
+      return res.status(409).json({ message: 'Cette facture ne peut pas être soumise au DAF dans son état actuel.' });
+    }
+
     const submittedAt = new Date().toISOString();
     const { error: updateError } = await supabase
       .from('factures')
@@ -426,13 +435,31 @@ export const validateFacture = async (req, res) => {
     const numero = req.params.numero_facture;
     if (!numero) return res.status(400).json({ message: 'numero_facture requis' });
 
-    // Update the DAF workflow status separately from the payment status.
+    const { data: facture, error: factureError } = await supabase
+      .from('factures')
+      .select('statut, daf_status, id_companie')
+      .eq('numero_facture', numero)
+      .maybeSingle();
+
+    if (factureError) throw factureError;
+    if (!facture) return res.status(404).json({ message: 'Facture introuvable' });
+    if (facture.daf_status !== 'pending') {
+      return res.status(409).json({ message: 'Cette facture n’est pas en attente de validation.' });
+    }
+
+    const currentInvoiceStatus = String(facture.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    if (!['impayee', 'a corriger'].includes(currentInvoiceStatus)) {
+      return res.status(409).json({ message: 'Cette facture ne peut pas être validée dans son état actuel.' });
+    }
+
+    // A corrected invoice becomes payable only after the DAF approves it.
     const { data, error } = await supabase
       .from('factures')
       .update({
         validated_by: req.user?.id,
         validated_at: new Date().toISOString(),
-        daf_status: 'validated'
+        daf_status: 'validated',
+        ...(currentInvoiceStatus === 'a corriger' ? { statut: 'Impayée' } : {})
       })
       .eq('numero_facture', numero)
       .select()
@@ -442,7 +469,10 @@ export const validateFacture = async (req, res) => {
 
     await logActivite({
       module: 'Factures', type_activite: 'validate', categorie: 'Facture', reference: numero,
-      description: `Validation de la facture ${numero} par DAF`, id_admin: req.user?.id, id_companie: data.id_companie
+      description: `Validation de la facture ${numero} par DAF`,
+      id_companie: data.id_companie,
+      utilisateur_nom: req.user?.nom_complet || req.user?.name || 'DAF',
+      utilisateur_email: req.user?.email || null
     });
 
     res.status(200).json({ success: true, message: 'Facture validée', facture: data });
@@ -477,7 +507,10 @@ export const rejectFacture = async (req, res) => {
     // Journaliser le rejet
     await logActivite({
       module: 'Factures', type_activite: 'reject', categorie: 'Facture', reference: numero,
-      description: `Rejet de la facture ${numero} par DAF. Motif: ${reason || 'non précisé'}`, id_admin: req.user?.id, id_companie: facture.id_companie
+      description: `Rejet de la facture ${numero} par DAF. Motif: ${reason || 'non précisé'}`,
+      id_companie: facture.id_companie,
+      utilisateur_nom: req.user?.nom_complet || req.user?.name || 'DAF',
+      utilisateur_email: req.user?.email || null
     });
 
     res.status(200).json({ success: true, message: 'Facture rejetée' });
@@ -841,7 +874,11 @@ export const updateFacture = async (req, res) => {
 
     if (updateError) throw updateError;
 
-    await supabase.from('lignes_facture').delete().eq('numero_facture', numero_facture);
+    const { error: deleteLinesError } = await supabase
+      .from('lignes_facture')
+      .delete()
+      .eq('numero_facture', numero_facture);
+    if (deleteLinesError) throw deleteLinesError;
 
     if (lignes?.length) {
       const lignesToInsert = lignes.map(l => ({
@@ -863,8 +900,10 @@ export const updateFacture = async (req, res) => {
       categorie: "Facture",
       reference: numero_facture,
       description: `Mise à jour de la facture ${numero_facture} (${nom_client})`,
-      id_admin: req.user.id,
-      id_companie: factureData.id_companie
+      id_admin: role === 'administrateur' ? userId : null,
+      id_companie: factureData.id_companie,
+      utilisateur_nom: req.user?.nom_complet || req.user?.name || req.user?.email || null,
+      utilisateur_email: req.user?.email || null
     });
     
     

@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dContestation = document.getElementById('detail-contestation');
     const dContestationReason = document.getElementById('detail-contestation-reason');
     const dContestationFiles = document.getElementById('detail-contestation-files');
+    const dDecisionNote = document.getElementById('detail-decision-note');
+    const dDecisionNoteLabel = document.getElementById('detail-decision-note-label');
     const dCompanyLogo = document.getElementById('detail-company-logo');
     const dCompanyLogoFallback = document.getElementById('detail-company-logo-fallback');
     const dCompanyName = document.getElementById('operation-detail-title');
@@ -83,6 +85,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         return String(status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'payee';
     }
 
+    function isWaitingForCreatorCorrection(status) {
+        return String(status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'a corriger';
+    }
+
+    function isPendingContestation(operation) {
+        const status = String(operation.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        const contestationStatus = String(operation.contestation?.statut || 'En attente')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        return status === 'contestee' && contestationStatus === 'en attente';
+    }
+
     function translateOperationValue(value, translations) {
         const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
         const key = translations[normalized];
@@ -103,16 +116,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             payee: 'status_paid',
             impayee: 'status_unpaid',
             contestee: 'status_disputed',
+            'a corriger': 'status_needs_correction',
             validee: 'status_approved',
             rejetee: 'status_rejected'
         });
     }
 
     function updateDetailActionState(operation) {
-        const disabled = isPaidStatus(operation.statut);
+        const disputePending = isPendingContestation(operation);
+        const canProcess = disputePending || String(operation.statut || '').trim().toLowerCase() === 'en attente';
+        const disabled = isPaidStatus(operation.statut) || !canProcess;
         btnValider.disabled = disabled;
         btnRejeter.disabled = disabled;
-        const actionLabel = disabled ? t('paid_invoice_action_unavailable') : '';
+        btnValider.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${t(disputePending ? 'accept_contestation' : 'validate')}`;
+        btnRejeter.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${t(disputePending ? 'reject_contestation' : 'reject')}`;
+        dDecisionNote.hidden = !disputePending;
+        dDecisionNoteLabel.hidden = !disputePending;
+        const actionLabel = isWaitingForCreatorCorrection(operation.statut)
+            ? t('waiting_for_creator_correction')
+            : disabled ? t('paid_invoice_action_unavailable') : '';
         btnValider.title = actionLabel;
         btnRejeter.title = actionLabel;
     }
@@ -147,8 +169,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td>${translateOperationStatus(op.statut)}</td>
             <td class="actions-col">
                 <div class="table-actions">
-                    <button class="table-btn validate" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) ? `disabled title="${t('paid_invoice_action_unavailable')}"` : ''}>${t('validate')}</button>
-                    <button class="table-btn reject" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) ? `disabled title="${t('paid_invoice_action_unavailable')}"` : ''}>${t('reject')}</button>
+                    <button class="table-btn validate" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) || isWaitingForCreatorCorrection(op.statut) ? `disabled title="${t(isWaitingForCreatorCorrection(op.statut) ? 'waiting_for_creator_correction' : 'paid_invoice_action_unavailable')}"` : ''}>${isPendingContestation(op) ? t('accept_contestation') : t('validate')}</button>
+                    <button class="table-btn reject" data-id="${op.id}" type="button" ${isPaidStatus(op.statut) || isWaitingForCreatorCorrection(op.statut) ? `disabled title="${t(isWaitingForCreatorCorrection(op.statut) ? 'waiting_for_creator_correction' : 'paid_invoice_action_unavailable')}"` : ''}>${isPendingContestation(op) ? t('reject_contestation') : t('reject')}</button>
                     <button class="table-btn delete" data-id="${op.id}" type="button">${t('delete')}</button>
                 </div>
             </td>
@@ -161,12 +183,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             tr.querySelector('.validate').addEventListener('click', e => { 
                 e.stopPropagation(); 
-                changeStatus(op.id, 'Payée'); 
+                if (isPendingContestation(op)) openDetail(op);
+                else if (isWaitingForCreatorCorrection(op.statut)) return;
+                else changeStatus(op.id, 'Payée');
             });
 
             tr.querySelector('.reject').addEventListener('click', e => { 
                 e.stopPropagation(); 
-                changeStatus(op.id, 'Rejetée'); 
+                if (isPendingContestation(op)) openDetail(op);
+                else if (isWaitingForCreatorCorrection(op.statut)) return;
+                else changeStatus(op.id, 'Rejetée');
             });
 
             tr.querySelector('.delete').addEventListener('click', e => {
@@ -442,15 +468,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDetailActionState(op);
         renderContestationDetails(op);
         renderCompanyDetails(op);
+        dDecisionNote.value = '';
         // Load proofs for this operation into the detail panel
         try { viewProofs(op.ref || op.id); } catch (e) { console.warn('viewProofs failed', e); }
-        btnValider.onclick = () => changeStatus(op.id, 'Payée');
-        btnRejeter.onclick = () => changeStatus(op.id, 'Rejetée');
+        btnValider.onclick = () => isPendingContestation(op)
+            ? decideContestation(op, 'accept')
+            : changeStatus(op.id, 'Payée');
+        btnRejeter.onclick = () => isPendingContestation(op)
+            ? decideContestation(op, 'reject')
+            : changeStatus(op.id, 'Rejetée');
         btnSupprimer.onclick = () => deleteOperation(op.id).catch(error => {
             console.error('Erreur suppression opération :', error);
             showDetailConfirmation(error.message || t('error_deletion'), true);
         });
         if (!detailPanel.open) detailPanel.showModal();
+    }
+
+    async function decideContestation(operation, decision) {
+        const note = dDecisionNote.value.trim();
+        if (decision === 'accept' && !note) {
+            dDecisionNote.setCustomValidity(t('contestation_accept_note_required'));
+            dDecisionNote.reportValidity();
+            dDecisionNote.focus();
+            return;
+        }
+        dDecisionNote.setCustomValidity('');
+        btnValider.disabled = true;
+        btnRejeter.disabled = true;
+        try {
+            const API_BASE = 'https://assa-ac-api.onrender.com';
+            const token = localStorage.getItem('jwtTokenSuperviseur');
+            const response = await fetch(
+                `${API_BASE}/api/contestations/decision/${encodeURIComponent(operation.ref || operation.id)}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ decision, note })
+                }
+            );
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.message || `Erreur API ${response.status}`);
+
+            operation.statut = data.facture?.statut || (decision === 'accept' ? 'À corriger' : 'Impayée');
+            operation.contestation = {
+                ...operation.contestation,
+                statut: data.contestation?.status || (decision === 'accept' ? 'Acceptée' : 'Rejetée')
+            };
+            operations = operations.map(item => item.id === operation.id ? operation : item);
+            filtered = filtered.map(item => item.id === operation.id ? operation : item);
+            dStatut.textContent = translateOperationStatus(operation.statut);
+            updateDetailActionState(operation);
+            render();
+
+            const emailStates = Object.entries(data.notifications || {})
+                .map(([recipient, status]) => `${recipient}: ${status}`)
+                .join(' · ');
+            const journalWarning = data.journal_status === 'failed' ? ' · Échec de journalisation' : '';
+            showDetailConfirmation(`${data.message}${emailStates ? ` E-mails — ${emailStates}` : ''}${journalWarning}`, false);
+        } catch (error) {
+            console.error('Erreur décision contestation :', error);
+            showDetailConfirmation(error.message || 'Impossible de traiter la contestation.', true);
+            updateDetailActionState(operation);
+        }
     }
 
     function renderContestationDetails(operation) {
@@ -767,6 +849,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             'contestée': 'Contestée',
             'contested': 'Contestée',
             'contestee': 'Contestée',
+            'à corriger': 'À corriger',
+            'a corriger': 'À corriger',
             'impayée': 'Impayée',
             'impayee': 'Impayée',
             'validée': 'Validée',

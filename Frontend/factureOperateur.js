@@ -264,7 +264,16 @@ function remplirTableau(factures) {
 
     const actionCell = addCell('');
     actionCell.style.textAlign = 'right';
-    if (dafStatus === 'pending' || dafStatus === 'validated') {
+    if (normalizedStatus === 'a corriger') {
+      const correctionButton = document.createElement('button');
+      correctionButton.type = 'button';
+      correctionButton.className = 'action-btn-submit';
+      correctionButton.innerHTML = '<i class="fas fa-pen-to-square" aria-hidden="true"></i><span>Corriger la facture</span>';
+      correctionButton.addEventListener('click', () => {
+        window.location.href = `enregistrefactureOperateur.html?correction=${encodeURIComponent(numero)}`;
+      });
+      actionCell.appendChild(correctionButton);
+    } else if (dafStatus === 'pending' || dafStatus === 'validated') {
       const submittedLabel = document.createElement('span');
       submittedLabel.className = `daf-status-badge daf-status-${dafStatus}`;
       submittedLabel.textContent = dafStatus === 'pending' ? 'En attente du DAF' : 'Traitée par le DAF';

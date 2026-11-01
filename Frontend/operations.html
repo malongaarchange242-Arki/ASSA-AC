@@ -158,6 +158,8 @@
                     <select id="filterStatus" class="control-select" aria-label="Filtrer par statut" data-i18n-aria-label="filter_by_status">
                         <option value="" data-i18n="all_statuses">Tous les statuts</option>
                         <option value="En attente" data-i18n="status_pending">En attente</option>
+                        <option value="À corriger" data-i18n="status_needs_correction">À corriger</option>
+                        <option value="Contestée" data-i18n="status_disputed">Contestée</option>
                         <option value="Payée" data-i18n="status_paid">Payée</option>
                         <option value="Impayée" data-i18n="status_unpaid">Impayée</option>
                     </select>
@@ -263,6 +265,8 @@
                         <button id="detail-reject" class="btn-danger" type="button"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Rejeter</button>
                         <button id="detail-delete" class="btn-danger" type="button"><i class="fa-solid fa-trash" aria-hidden="true"></i> Supprimer</button>
                     </div>
+                    <label id="detail-decision-note-label" for="detail-decision-note" data-i18n="contestation_decision_note" hidden>Consignes de correction ou motif du rejet</label>
+                    <textarea id="detail-decision-note" maxlength="2000" rows="3" hidden></textarea>
                 </section>
             </div>
 

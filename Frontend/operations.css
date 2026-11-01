@@ -816,6 +816,32 @@
     opacity: 0.72;
 }
 
+.operation-detail-card #detail-decision-note-label {
+    display: block;
+    margin-top: 12px;
+    color: #243d59;
+    font-size: 0.82rem;
+    font-weight: 650;
+}
+
+.operation-detail-card #detail-decision-note {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 84px;
+    margin-top: 6px;
+    padding: 9px 10px;
+    border: 1px solid var(--border-color, #d4e3f4);
+    border-radius: 7px;
+    color: #243d59;
+    font: inherit;
+    resize: vertical;
+}
+
+.operation-detail-card #detail-decision-note[hidden],
+.operation-detail-card #detail-decision-note-label[hidden] {
+    display: none;
+}
+
 .operation-detail-proofs {
     margin: 0 1.25rem 1.25rem;
 }
