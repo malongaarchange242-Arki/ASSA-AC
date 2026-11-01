@@ -70,7 +70,7 @@ export const requestPasswordResetOtp = async (req, res) => {
     try {
       await sendEmail({
         to: email,
-        subject: 'Réinitialisation du mot de passe - ASSA-AC',
+        subject: 'Récupération du compte - ASSA-AC',
         text: `Bonjour,\n\nVotre code de réinitialisation ASSA-AC est : ${otp}\nIl est valable 10 minutes. Si vous n’avez pas demandé cette réinitialisation, ignorez cet e-mail.\n\nMerci.`
       });
     } catch (emailError) {
