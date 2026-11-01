@@ -244,6 +244,8 @@ function formatInvoiceDate(value) {
 function renderInvoiceDetails(facture, lignes) {
     const content = document.getElementById("invoice-view-content");
     const reference = String(facture.numero_facture || "");
+    const statut = String(facture.statut || "Impayée");
+    const isPaid = statut.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() === "payee";
     document.getElementById("invoice-view-reference").textContent = reference;
 
     const linesHtml = lignes.length
@@ -264,7 +266,8 @@ function renderInvoiceDetails(facture, lignes) {
         : '<tr><td colspan="6" class="invoice-empty-lines">Aucune ligne de détail enregistrée.</td></tr>';
 
     content.innerHTML = `
-        <article class="invoice-detail-sheet">
+        <article class="invoice-detail-sheet${isPaid ? " is-paid" : ""}">
+            ${isPaid ? '<span class="invoice-paid-watermark" aria-label="Facture payée">PAYÉE</span>' : ""}
             <header class="invoice-detail-heading">
                 <div class="invoice-institution">
                     <strong>COMMUNAUTÉ ÉCONOMIQUE ET MONÉTAIRE DE L’AFRIQUE CENTRALE</strong>
@@ -300,7 +303,7 @@ function renderInvoiceDetails(facture, lignes) {
                     <li>Chaque quinzaine entamée est due.</li>
                 </ul>
             </section>
-            <div class="invoice-detail-status">Statut : ${escapeHtml(facture.statut || "Impayée")}</div>
+            ${isPaid ? "" : `<div class="invoice-detail-status">Statut : ${escapeHtml(statut)}</div>`}
         </article>`;
 }
 

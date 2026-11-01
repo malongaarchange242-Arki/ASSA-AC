@@ -1281,6 +1281,7 @@ body.invoice-view-open {
 }
 
 .invoice-detail-sheet {
+    position: relative;
     box-sizing: border-box;
     width: 210mm;
     min-height: 297mm;
@@ -1291,6 +1292,23 @@ body.invoice-view-open {
     box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
     font-family: Arial, sans-serif;
     font-size: 10pt;
+}
+
+.invoice-paid-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    padding: 2mm 12mm;
+    border: 3px solid rgba(185, 28, 28, 0.22);
+    color: rgba(185, 28, 28, 0.22);
+    font-size: 54pt;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-32deg);
+    white-space: nowrap;
 }
 
 .invoice-detail-heading {

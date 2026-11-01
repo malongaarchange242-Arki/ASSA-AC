@@ -229,6 +229,15 @@ export async function generateInvoicePdf(facture, lignes) {
             align: 'center',
             lineBreak: false
           });
+
+          if (String(facture.statut || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'payee') {
+            document.save();
+            document.translate(PAGE_WIDTH / 2, PAGE_HEIGHT / 2);
+            document.rotate(-32);
+            document.font('Helvetica-Bold').fontSize(54).fillColor('#b91c1c').fillOpacity(0.18)
+              .text('PAYÉE', -150, -30, { width: 300, align: 'center', lineBreak: false });
+            document.restore();
+          }
       }
 
       document.end();

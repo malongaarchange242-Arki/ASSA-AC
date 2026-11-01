@@ -1082,8 +1082,13 @@ const sendPaymentConfirmationEmail = async (
   to,
   numero_facture,
   montant_total,
-  company_name
+  company_name,
+  invoicePdf
 ) => {
+  if (!Buffer.isBuffer(invoicePdf) || invoicePdf.length === 0) {
+    throw new Error('Le PDF payé est vide ou invalide');
+  }
+
   const info = await sendEmail({
     to,
     subject: `Confirmation de paiement – Facture ${numero_facture}`,
@@ -1092,6 +1097,7 @@ Bonjour,
 
 Nous confirmons la réception du paiement de la facture ${numero_facture}.
 Montant : ${montant_total} XAF
+La facture acquittée avec le filigrane PAYÉE est jointe à ce courriel au format PDF.
 
 Merci pour votre confiance.
 
@@ -1109,13 +1115,19 @@ ASSA-AC
         <li><strong>Statut :</strong> <span style="color:green;">Payée</span></li>
       </ul>
 
+      <p>La facture acquittée avec le filigrane <strong>PAYÉE</strong> est jointe à ce courriel au format PDF.</p>
       <p>Merci pour votre confiance.</p>
 
       <p>
         Cordialement,<br>
         <strong>ASSA-AC</strong>
       </p>
-    `
+    `,
+    attachments: [{
+      filename: `facture-payee-${String(numero_facture).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`,
+      content: invoicePdf,
+      contentType: 'application/pdf'
+    }]
   });
   const recipientAccepted = (info.accepted || []).some(
     recipient => String(recipient).trim().toLowerCase() === to.trim().toLowerCase()
@@ -1250,11 +1262,19 @@ export const confirmerFacture = async (req, res) => {
     let emailMessage = "Le paiement est confirmé, mais aucun e-mail de confirmation n'a été envoyé.";
     try {
       if (company?.email) {
+        const { data: lignes, error: lignesError } = await supabase
+          .from('lignes_facture')
+          .select('*')
+          .eq('numero_facture', numero_facture);
+        if (lignesError) throw lignesError;
+
+        const invoicePdf = await generateInvoicePdf(updatedFacture, lignes || []);
         const mailInfo = await sendPaymentConfirmationEmail(
           company.email,
           numero_facture,
           facture.montant_total,
-          company.company_name
+          company.company_name,
+          invoicePdf
         );
         emailStatus = "accepted_by_provider";
         emailMessage = "Le fournisseur e-mail a accepté le message. Sa livraison dans la boîte de réception n'est pas confirmée; vérifiez aussi les courriers indésirables.";

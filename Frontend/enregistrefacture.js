@@ -83,8 +83,8 @@ function resetInvoiceForm() {
     issueLocationInput.value = '';
     airportInput.value = '';
 
-    document.getElementById('issue-date').value = getLocalDateInputValue();
-    document.getElementById('period').value = getPreviousMonthPeriod();
+    issueDateInput.value = getLocalDateInputValue();
+    updateInvoicePeriod();
 
     itemsContainer.replaceChildren();
     rowCounter = 0;
@@ -494,7 +494,7 @@ function buildInvoicePayload() {
     return {
         nom_client: clientSelect.value,
         objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
-        periode: document.getElementById('period')?.value || '',
+        periode: updateInvoicePeriod(),
         aeroport: document.getElementById('airport')?.value || '',
         date_emission: document.getElementById('issue-date')?.value || getLocalDateInputValue(),
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
@@ -1027,7 +1027,7 @@ async function sendInvoice(buttonElement) {
     const invoiceData = {
         nom_client: clientSelect.value,
         objet: document.getElementById('purpose')?.value || 'Redevance de Sécurité Aérienne Régionale (RSAR)',
-        periode: document.getElementById('period')?.value || '',
+        periode: updateInvoicePeriod(),
         aeroport: document.getElementById('airport')?.value || '',
         date_emission: document.getElementById('issue-date')?.value || getLocalDateInputValue(),
         lieu_emission: issueLocationInput.value || 'Pointe-Noire',
@@ -1184,8 +1184,8 @@ window.onload = () => {
     try {
         initialiserMenuOperateur();
         updateInvoiceLanguage();
-        document.getElementById('issue-date').value = getLocalDateInputValue();
-        document.getElementById('period').value = getPreviousMonthPeriod();
+        issueDateInput.value = getLocalDateInputValue();
+        updateInvoicePeriod();
 
         loadClients();
 
@@ -1199,13 +1199,21 @@ window.onload = () => {
     }
 };
 
-function getPreviousMonthPeriod() {
-    const date = new Date();
-    date.setDate(1);
-    date.setMonth(date.getMonth() - 1);
+function getInvoicePeriod(issueDateValue) {
+    if (!issueDateValue) return '';
+    const date = parseInvoiceDate(issueDateValue);
+    if (Number.isNaN(date.getTime())) return '';
     const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
     return `Mois de ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
+
+function updateInvoicePeriod() {
+    const period = getInvoicePeriod(issueDateInput.value);
+    document.getElementById('period').value = period;
+    return period;
+}
+
+issueDateInput.addEventListener('change', updateInvoicePeriod);
 // Appliquer la préférence au chargement
 if (localStorage.getItem('theme') === 'dark') {
     document.body.classList.add('dark-mode');
